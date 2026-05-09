@@ -1,0 +1,15 @@
+{
+  "name": "webkitfxv2-may26",
+  "private": true,
+  "version": "0.1.0",
+  "description": "webkitfxv2 — JSON layout, validation, and condition engine workspace",
+  "workspaces": ["packages/core-engine"],
+  "scripts": {
+    "build": "npm run build -w @webkitfxv2/core-engine",
+    "test": "npm run test -w @webkitfxv2/core-engine",
+    "check": "npm run build && npm run test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
