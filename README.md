@@ -24,6 +24,8 @@ npm run test
 
 **Catalog API (.NET + Postgres):** start Postgres with `docker compose -f services/catalog-api/docker-compose.yml up -d`, then `npm run api:catalog` or `dotnet run --project services/catalog-api/Catalog.Api/Catalog.Api.csproj`. Details in `services/catalog-api/Catalog.Api/README.md`.
 
+**Shared API platform:** `services/WebkitFx.Platform` (tenancy, errors, paging, `IMediaStorage`). How services fit together: `services/ARCHITECTURE.md`.
+
 ## Package
 
 | Path | NPM name |

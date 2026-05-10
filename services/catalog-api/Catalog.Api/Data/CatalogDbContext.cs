@@ -14,6 +14,11 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
     public DbSet<ProductFacet> ProductFacets => Set<ProductFacet>();
     public DbSet<AttributeDef> AttributeDefs => Set<AttributeDef>();
     public DbSet<AttributeValue> AttributeValues => Set<AttributeValue>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<Sku> Skus => Set<Sku>();
+    public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
+    public DbSet<ProductMediaRow> ProductMedia => Set<ProductMediaRow>();
+    public DbSet<InventoryPosition> InventoryPositions => Set<InventoryPosition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -123,6 +128,74 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
             e.Property(x => x.SwatchHex).HasMaxLength(16);
             e.HasOne(x => x.AttributeDef).WithMany().HasForeignKey(x => x.AttributeDefId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.AttributeDefId);
+        });
+
+        modelBuilder.Entity<Location>(e =>
+        {
+            e.ToTable("locations");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Code).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(256).IsRequired();
+            e.Property(x => x.Type).HasMaxLength(32).IsRequired();
+            e.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+        });
+
+        modelBuilder.Entity<Sku>(e =>
+        {
+            e.ToTable("skus");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ProductId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.SkuCode).HasMaxLength(128).IsRequired();
+            e.Property(x => x.Barcode).HasMaxLength(64);
+            e.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            e.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.TenantId, x.SkuCode }).IsUnique();
+            e.HasIndex(x => x.ProductId);
+        });
+
+        modelBuilder.Entity<MediaAsset>(e =>
+        {
+            e.ToTable("media_assets");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.StorageKey).HasMaxLength(512).IsRequired();
+            e.Property(x => x.MimeType).HasMaxLength(128).IsRequired();
+            e.Property(x => x.Checksum).HasMaxLength(128);
+            e.HasIndex(x => new { x.TenantId, x.StorageKey }).IsUnique();
+        });
+
+        modelBuilder.Entity<ProductMediaRow>(e =>
+        {
+            e.ToTable("product_media");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.ProductId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.MediaAssetId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Role).HasMaxLength(32).IsRequired();
+            e.Property(x => x.Locale).HasMaxLength(16);
+            e.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.MediaAsset).WithMany().HasForeignKey(x => x.MediaAssetId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.ProductId);
+            e.HasIndex(x => x.MediaAssetId);
+        });
+
+        modelBuilder.Entity<InventoryPosition>(e =>
+        {
+            e.ToTable("inventory_positions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.SkuId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.LocationId).HasMaxLength(64).IsRequired();
+            e.HasOne(x => x.Sku).WithMany().HasForeignKey(x => x.SkuId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Location).WithMany().HasForeignKey(x => x.LocationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.SkuId);
+            e.HasIndex(x => x.LocationId);
+            e.HasIndex(x => new { x.SkuId, x.LocationId }).IsUnique();
         });
     }
 }

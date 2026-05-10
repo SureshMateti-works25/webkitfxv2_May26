@@ -83,4 +83,61 @@ public static class CatalogDevDataSeeder
 
         await db.SaveChangesAsync(ct);
     }
+
+    /// <summary>Warehouse / SKU / media / inventory rows aligned with catalog-domain-model (runs once per DB).</summary>
+    public static async Task EnsureOperationalSeedAsync(CatalogDbContext db, CancellationToken ct = default)
+    {
+        if (await db.Locations.AnyAsync(ct))
+            return;
+        if (!await db.Products.AnyAsync(p => p.Id == "p_kj001", ct))
+            return;
+
+        var now = DateTimeOffset.UtcNow;
+        db.Locations.AddRange(
+            new Location { Id = "loc_mum", TenantId = "t1", Code = "WH-MUM-01", Name = "Mumbai Hub", Type = "warehouse" },
+            new Location { Id = "loc_blr", TenantId = "t1", Code = "ST-BLR-01", Name = "Bengaluru Store", Type = "store" });
+
+        db.MediaAssets.Add(new MediaAsset
+        {
+            Id = "m_hero1",
+            TenantId = "t1",
+            StorageKey = "t1/p_kj001/hero_01.jpg",
+            MimeType = "image/jpeg",
+            Bytes = 0,
+            Checksum = null,
+            UploadedAt = now
+        });
+
+        db.ProductMedia.Add(new ProductMediaRow
+        {
+            Id = "pm1",
+            ProductId = "p_kj001",
+            MediaAssetId = "m_hero1",
+            Role = "hero",
+            SortOrder = 0,
+            Locale = "en-IN"
+        });
+
+        db.Skus.Add(new Sku
+        {
+            Id = "sku_kj_mar_g3",
+            TenantId = "t1",
+            ProductId = "p_kj001",
+            SkuCode = "KJ-MRN-G3-001",
+            Barcode = "8901234567890",
+            Status = "active"
+        });
+
+        db.InventoryPositions.Add(new InventoryPosition
+        {
+            Id = "ip1",
+            SkuId = "sku_kj_mar_g3",
+            LocationId = "loc_mum",
+            OnHand = 18,
+            Reserved = 2,
+            UpdatedAt = now
+        });
+
+        await db.SaveChangesAsync(ct);
+    }
 }

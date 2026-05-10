@@ -1,5 +1,6 @@
 using Catalog.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using WebkitFx.Platform.Tenancy;
 
 namespace Catalog.Api.Catalog;
 
@@ -26,10 +27,16 @@ public static class CatalogEndpoints
             .WithName("CatalogFacetOptions");
     }
 
-    private static async Task<IResult> ListCategories(string tenantId, CatalogDbContext db, CancellationToken ct)
+    private static async Task<IResult> ListCategories(
+        HttpRequest request,
+        ITenantContext tenantContext,
+        CatalogDbContext db,
+        CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(tenantId))
-            return Results.BadRequest(new { error = "tenantId is required" });
+        var tenantFail = TenantResolutionExtensions.RequireTenant(request.ResolveTenantId(tenantContext));
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = request.ResolveTenantId(tenantContext)!;
 
         var rows = await db.Categories.AsNoTracking()
             .Where(c => c.TenantId == tenantId)
@@ -39,10 +46,16 @@ public static class CatalogEndpoints
         return Results.Ok(rows);
     }
 
-    private static async Task<IResult> ListCollections(string tenantId, CatalogDbContext db, CancellationToken ct)
+    private static async Task<IResult> ListCollections(
+        HttpRequest request,
+        ITenantContext tenantContext,
+        CatalogDbContext db,
+        CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(tenantId))
-            return Results.BadRequest(new { error = "tenantId is required" });
+        var tenantFail = TenantResolutionExtensions.RequireTenant(request.ResolveTenantId(tenantContext));
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = request.ResolveTenantId(tenantContext)!;
 
         var now = DateTimeOffset.UtcNow;
         var rows = await db.Collections.AsNoTracking()
@@ -58,30 +71,38 @@ public static class CatalogEndpoints
     private static Task<IResult> ListProductsForCategory(
         string categoryId,
         HttpRequest req,
+        ITenantContext tenantContext,
         CatalogDbContext db,
         CancellationToken ct)
-        => ListProductsCore(req, db, categoryId: categoryId, collectionId: null, ct);
+        => ListProductsCore(req, tenantContext, db, categoryId: categoryId, collectionId: null, ct);
 
     private static Task<IResult> ListProductsForCollection(
         string collectionId,
         HttpRequest req,
+        ITenantContext tenantContext,
         CatalogDbContext db,
         CancellationToken ct)
-        => ListProductsCore(req, db, categoryId: null, collectionId: collectionId, ct);
+        => ListProductsCore(req, tenantContext, db, categoryId: null, collectionId: collectionId, ct);
 
-    private static Task<IResult> ListProducts(HttpRequest req, CatalogDbContext db, CancellationToken ct)
-        => ListProductsCore(req, db, categoryId: null, collectionId: null, ct);
+    private static Task<IResult> ListProducts(
+        HttpRequest req,
+        ITenantContext tenantContext,
+        CatalogDbContext db,
+        CancellationToken ct)
+        => ListProductsCore(req, tenantContext, db, categoryId: null, collectionId: null, ct);
 
     private static async Task<IResult> ListProductsCore(
         HttpRequest req,
+        ITenantContext tenantContext,
         CatalogDbContext db,
         string? categoryId,
         string? collectionId,
         CancellationToken ct)
     {
-        var tenantId = req.Query["tenantId"].ToString();
-        if (string.IsNullOrWhiteSpace(tenantId))
-            return Results.BadRequest(new { error = "tenantId is required" });
+        var tenantFail = TenantResolutionExtensions.RequireTenant(req.ResolveTenantId(tenantContext));
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = req.ResolveTenantId(tenantContext)!;
 
         var categoryIdQ = categoryId ?? req.Query["categoryId"].ToString();
         if (string.IsNullOrEmpty(categoryIdQ))
@@ -130,11 +151,16 @@ public static class CatalogEndpoints
         return Results.Ok(new PagedProductsResponse(view, page, pageSize, total, items));
     }
 
-    private static async Task<IResult> ListFacetOptions(HttpRequest req, CatalogDbContext db, CancellationToken ct)
+    private static async Task<IResult> ListFacetOptions(
+        HttpRequest req,
+        ITenantContext tenantContext,
+        CatalogDbContext db,
+        CancellationToken ct)
     {
-        var tenantId = req.Query["tenantId"].ToString();
-        if (string.IsNullOrWhiteSpace(tenantId))
-            return Results.BadRequest(new { error = "tenantId is required" });
+        var tenantFail = TenantResolutionExtensions.RequireTenant(req.ResolveTenantId(tenantContext));
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = req.ResolveTenantId(tenantContext)!;
 
         var categoryId = req.Query["categoryId"].ToString();
         if (string.IsNullOrEmpty(categoryId))

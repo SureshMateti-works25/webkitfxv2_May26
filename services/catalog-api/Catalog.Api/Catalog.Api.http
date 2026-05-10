@@ -20,4 +20,19 @@ Accept: application/json
 GET {{Catalog.Api_HostAddress}}/api/v1/catalog/facet-options?tenantId=t1&categoryId=cat_silk&includeSubtree=true
 Accept: application/json
 
+### Locations (preferred tenant header)
+GET {{Catalog.Api_HostAddress}}/api/v1/locations
+X-Tenant-Id: t1
+Accept: application/json
+
+### Inventory positions
+GET {{Catalog.Api_HostAddress}}/api/v1/inventory/positions?skuId=sku_kj_mar_g3
+X-Tenant-Id: t1
+Accept: application/json
+
+### Product media
+GET {{Catalog.Api_HostAddress}}/api/v1/products/p_kj001/media
+X-Tenant-Id: t1
+Accept: application/json
+
 ###

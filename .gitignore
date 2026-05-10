@@ -10,3 +10,4 @@ coverage
 **/obj/
 *.user
 .vs/
+uploads/

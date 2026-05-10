@@ -1,9 +1,19 @@
 using Catalog.Api.Catalog;
 using Catalog.Api.Data;
 using Catalog.Api.Entities;
+using Catalog.Api.Features;
+using Catalog.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using WebkitFx.Platform;
+using WebkitFx.Platform.Media;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<LocalMediaStorageOptions>(builder.Configuration.GetSection("Media"));
+
+builder.Services.AddExceptionHandler<EfCoreExceptionHandler>();
+builder.Services.AddWebkitFxPlatform();
 
 builder.Services.AddDbContext<CatalogDbContext>(options =>
 {
@@ -30,11 +40,24 @@ if (app.Environment.IsDevelopment())
         }
 
         await CatalogDevDataSeeder.SeedAsync(db);
+        await CatalogDevDataSeeder.EnsureOperationalSeedAsync(db);
     }
 }
 
+app.UseWebkitFxPlatform();
 app.UseHttpsRedirection();
 
+var mediaOpts = app.Configuration.GetSection("Media").Get<LocalMediaStorageOptions>() ?? new LocalMediaStorageOptions();
+var mediaRoot = Path.GetFullPath(mediaOpts.RootPath);
+Directory.CreateDirectory(mediaRoot);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(mediaRoot),
+    RequestPath = mediaOpts.PublicPathPrefix
+});
+
+app.MapMediaV1();
+app.MapLocationsAndInventoryV1();
 app.MapCatalogV1();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "catalog-api" }))
