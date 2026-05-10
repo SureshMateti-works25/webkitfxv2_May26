@@ -1,3 +1,4 @@
+using Catalog.Api.Catalog;
 using Catalog.Api.Data;
 using Catalog.Api.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -27,10 +28,14 @@ if (app.Environment.IsDevelopment())
             db.Tenants.Add(new Tenant { Id = "t1", Name = "Acme Sarees", Slug = "acme" });
             await db.SaveChangesAsync();
         }
+
+        await CatalogDevDataSeeder.SeedAsync(db);
     }
 }
 
 app.UseHttpsRedirection();
+
+app.MapCatalogV1();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "catalog-api" }))
     .WithName("Health");

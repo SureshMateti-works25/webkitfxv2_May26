@@ -8,4 +8,16 @@ Accept: application/json
 GET {{Catalog.Api_HostAddress}}/api/v1/tenants
 Accept: application/json
 
+### Categories
+GET {{Catalog.Api_HostAddress}}/api/v1/catalog/categories?tenantId=t1
+Accept: application/json
+
+### Products (PLP / card)
+GET {{Catalog.Api_HostAddress}}/api/v1/catalog/products?tenantId=t1&categoryId=cat_kan&includeSubtree=true&view=card&page=1&pageSize=24
+Accept: application/json
+
+### Facet options
+GET {{Catalog.Api_HostAddress}}/api/v1/catalog/facet-options?tenantId=t1&categoryId=cat_silk&includeSubtree=true
+Accept: application/json
+
 ###
