@@ -11,7 +11,8 @@
     "dev": "npm run build && npm run dev -w webkitfxv2-demo",
     "dev:sarees": "npm run build && npm run dev -w sarees-market",
     "test": "npm run test -w @webkitfxv2/core-engine",
-    "check": "npm run build && npm run test"
+    "check": "npm run build && npm run test",
+    "git:push": "node scripts/push-working.mjs"
   },
   "engines": {
     "node": ">=18"
