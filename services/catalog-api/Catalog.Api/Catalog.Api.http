@@ -1,4 +1,11 @@
 @Catalog.Api_HostAddress = http://localhost:5055
+@access_token = replace-after-dev-jwt
+
+### Dev JWT (Development only)
+POST {{Catalog.Api_HostAddress}}/api/v1/dev/jwt
+Content-Type: application/json
+
+{ "subject": "dev-user", "role": "admin", "expiresHours": 8 }
 
 ### Health
 GET {{Catalog.Api_HostAddress}}/health

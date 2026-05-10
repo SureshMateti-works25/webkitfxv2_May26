@@ -11,6 +11,7 @@ public static class MediaEndpoints
     public static void MapMediaV1(this WebApplication app)
     {
         app.MapPost("/api/v1/media/assets", UploadAsset)
+            .RequireAuthorization()
             .WithName("MediaUploadAsset");
 
         app.MapGet("/api/v1/media/assets", ListAssets)

@@ -1,3 +1,4 @@
+using Catalog.Api.Auth;
 using Catalog.Api.Catalog;
 using Catalog.Api.Data;
 using Catalog.Api.Entities;
@@ -21,6 +22,8 @@ builder.Services.AddDbContext<CatalogDbContext>(options =>
         ?? throw new InvalidOperationException("Connection string 'Catalog' is missing. Use appsettings, User Secrets, or env ConnectionStrings__Catalog.");
     options.UseNpgsql(cs);
 });
+
+builder.Services.AddCatalogJwtAuthentication(builder.Configuration);
 
 builder.Services.AddOpenApi();
 
@@ -46,6 +49,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseWebkitFxPlatform();
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 
 var mediaOpts = app.Configuration.GetSection("Media").Get<LocalMediaStorageOptions>() ?? new LocalMediaStorageOptions();
 var mediaRoot = Path.GetFullPath(mediaOpts.RootPath);
@@ -59,6 +64,9 @@ app.UseStaticFiles(new StaticFileOptions
 app.MapMediaV1();
 app.MapLocationsAndInventoryV1();
 app.MapCatalogV1();
+
+if (app.Environment.IsDevelopment())
+    app.MapDevJwt();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "catalog-api" }))
     .WithName("Health");
@@ -85,6 +93,6 @@ app.MapPost("/api/v1/tenants", async (Tenant body, CatalogDbContext db, Cancella
     }
 
     return Results.Created($"/api/v1/tenants/{Uri.EscapeDataString(body.Id)}", body);
-}).WithName("CreateTenant");
+}).RequireAuthorization().WithName("CreateTenant");
 
 app.Run();

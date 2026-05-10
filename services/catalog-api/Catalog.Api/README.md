@@ -28,6 +28,13 @@ dotnet run
 - **OpenAPI:** `/openapi/v1.json` in Development.
 - **Static files:** uploaded blobs under `Media:RootPath` (default `uploads/media`), URL prefix `Media:PublicPathPrefix` (default `/media/...`).
 
+## Authentication (JWT)
+
+- **HS256** with symmetric key from config: **`Jwt:SigningKey`** (UTF-8, **≥ 32 bytes**), **`Jwt:Issuer`**, **`Jwt:Audience`**.
+- Override in production with **User Secrets** or **`Jwt__SigningKey`** (environment).
+- **Protected routes:** `POST /api/v1/media/assets`, `POST /api/v1/tenants` require a valid **`Authorization: Bearer`** token. Catalog reads (PLP, facets, locations, inventory GET) stay **anonymous** unless you add policies later.
+- **Development only:** `POST /api/v1/dev/jwt` with optional JSON `{ "subject": "u1", "role": "admin", "expiresHours": 8 }` returns `{ "access_token", "token_type", "expires_in" }` signed with the same key as the API.
+
 ## Tenant resolution
 
 Prefer header **`X-Tenant-Id: t1`**. `tenantId` query still works for quick tests. Catalog routes return **400** if neither is set.
@@ -85,5 +92,6 @@ Install tool once: `dotnet tool install -g dotnet-ef`
 
 - `ConnectionStrings__Catalog`
 - `Media__RootPath`, `Media__PublicPathPrefix`
+- `Jwt__SigningKey`, `Jwt__Issuer`, `Jwt__Audience`
 
 See also: `services/ARCHITECTURE.md`.

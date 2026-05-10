@@ -16,7 +16,8 @@ This document locks in boundaries so new apps (Sarees, future marketplaces, admi
 
 ## Conventions (do not break without versioning)
 
-- **Tenant:** `X-Tenant-Id` (preferred) or `tenantId` query for dev tools. Handlers use `ITenantContext` / `HttpRequest.ResolveTenantId`.
+- **Auth:** Catalog (and future services) use **JWT Bearer** (HS256 in dev; rotate to OIDC / asymmetric keys in production). Writes that mutate data require `Authorization: Bearer <token>`. Store **`Jwt:SigningKey`** in secrets in production (`Jwt__SigningKey` env).
+- **Tenant:** `X-Tenant-Id` (preferred) or `tenantId` query for dev tools. Handlers use `ITenantContext` / `HttpRequest.ResolveTenantId`. (Optional later: align JWT `tid` / custom claim with tenant.)
 - **API surface:** `/api/v1/...` per service; new breaking shapes → `/api/v2/...`.
 - **Media:** Persist **storage keys** in DB; serve files via configured static path (`/media/...`). Production: implement `IMediaStorage` for S3-compatible or Azure Blob and keep the same interface.
 - **Persistence:** Postgres per service (or schema-per-module in one cluster). Migrations live with the service that owns the tables.
