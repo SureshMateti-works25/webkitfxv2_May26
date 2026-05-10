@@ -5,6 +5,7 @@ Working folder for the **JSON core engine** (`@webkitfxv2/core-engine`): layouts
 ## Prerequisites
 
 - Node.js 18+
+- [.NET SDK](https://dotnet.microsoft.com/download) 10.x (for **Catalog.Api** + PostgreSQL)
 
 ## Commands
 
@@ -20,6 +21,8 @@ npm run test
 **Demo UI:** `npm run dev` builds the libraries, then starts Vite for `apps/demo` (sample `JsonForm` in the browser).
 
 **SareeCart app:** `npm run dev:sarees` builds libraries then runs `apps/sarees` (vendor/shopper signup, login, guest, JSON-driven shell).
+
+**Catalog API (.NET + Postgres):** start Postgres with `docker compose -f services/catalog-api/docker-compose.yml up -d`, then `npm run api:catalog` or `dotnet run --project services/catalog-api/Catalog.Api/Catalog.Api.csproj`. Details in `services/catalog-api/Catalog.Api/README.md`.
 
 ## Package
 
