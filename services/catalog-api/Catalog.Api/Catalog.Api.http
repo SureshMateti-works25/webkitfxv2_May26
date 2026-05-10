@@ -7,6 +7,18 @@ Content-Type: application/json
 
 { "subject": "dev-user", "role": "admin", "expiresHours": 8 }
 
+### Register
+POST {{Catalog.Api_HostAddress}}/api/v1/auth/register
+Content-Type: application/json
+
+{ "email": "shopper@example.com", "password": "password12", "role": "shopper" }
+
+### Login
+POST {{Catalog.Api_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "shopper@example.com", "password": "password12" }
+
 ### Health
 GET {{Catalog.Api_HostAddress}}/health
 Accept: application/json

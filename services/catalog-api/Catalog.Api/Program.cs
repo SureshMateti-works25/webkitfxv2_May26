@@ -2,6 +2,7 @@ using Catalog.Api.Auth;
 using Catalog.Api.Catalog;
 using Catalog.Api.Data;
 using Catalog.Api.Entities;
+using Microsoft.AspNetCore.Identity;
 using Catalog.Api.Features;
 using Catalog.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,19 @@ builder.Services.AddDbContext<CatalogDbContext>(options =>
 });
 
 builder.Services.AddCatalogJwtAuthentication(builder.Configuration);
+
+builder.Services.AddSingleton<PortalJwtIssuer>();
+builder.Services.AddSingleton<IPasswordHasher<PortalUser>, PasswordHasher<PortalUser>>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
+            ?? ["http://localhost:5175", "http://127.0.0.1:5175"];
+        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+    });
+});
 
 builder.Services.AddOpenApi();
 
@@ -49,6 +63,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseWebkitFxPlatform();
 app.UseHttpsRedirection();
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -61,6 +76,7 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = mediaOpts.PublicPathPrefix
 });
 
+app.MapAuthV1();
 app.MapMediaV1();
 app.MapLocationsAndInventoryV1();
 app.MapCatalogV1();

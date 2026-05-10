@@ -1,9 +1,5 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Catalog.Api.Auth;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 namespace Catalog.Api.Features;
 
@@ -17,31 +13,19 @@ public static class DevJwtEndpoints
 
         app.MapPost("/api/v1/dev/jwt", (
                 DevJwtRequest body,
+                PortalJwtIssuer jwtIssuer,
                 IOptions<JwtOptions> jwtOptions) =>
             {
-                var opt = jwtOptions.Value;
-                var keyBytes = Encoding.UTF8.GetBytes(opt.SigningKey);
-                var key = new SymmetricSecurityKey(keyBytes);
-                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
                 var sub = string.IsNullOrWhiteSpace(body.Subject) ? "dev-user" : body.Subject.Trim();
-                var claims = new List<Claim>
+                var role = string.IsNullOrWhiteSpace(body.Role) ? "admin" : body.Role.Trim();
+                var hours = body.ExpiresHours is > 0 and <= 168 ? body.ExpiresHours : 8;
+                var token = jwtIssuer.IssueAccessToken(sub, $"{sub}@dev.local", role, TimeSpan.FromHours(hours));
+                return Results.Ok(new
                 {
-                    new(JwtRegisteredClaimNames.Sub, sub),
-                    new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
-                };
-                if (!string.IsNullOrWhiteSpace(body.Role))
-                    claims.Add(new Claim(ClaimTypes.Role, body.Role.Trim()));
-
-                var token = new JwtSecurityToken(
-                    issuer: opt.Issuer,
-                    audience: opt.Audience,
-                    claims: claims,
-                    notBefore: DateTime.UtcNow,
-                    expires: DateTime.UtcNow.AddHours(body.ExpiresHours is > 0 and <= 168 ? body.ExpiresHours : 8),
-                    signingCredentials: creds);
-
-                var jwt = new JwtSecurityTokenHandler().WriteToken(token);
-                return Results.Ok(new { access_token = jwt, token_type = "Bearer", expires_in = (token.ValidTo - token.ValidFrom).TotalSeconds });
+                    access_token = token.AccessToken,
+                    token_type = "Bearer",
+                    expires_in = (token.ExpiresAtUtc - DateTimeOffset.UtcNow).TotalSeconds
+                });
             })
             .WithTags("Development")
             .WithDescription("Development only. Returns a signed JWT for Authorization: Bearer …");

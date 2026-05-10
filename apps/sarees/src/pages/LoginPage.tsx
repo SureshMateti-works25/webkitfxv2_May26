@@ -1,8 +1,11 @@
+import { getAtPath } from "@webkitfxv2/core-engine";
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { JsonForm } from "@webkitfxv2/react-renderer";
 import { useAuth } from "../auth/AuthContext.js";
 import { loginForm } from "../config/forms/index.js";
 import { getShell } from "../config/getShell.js";
+import { loginWithPassword } from "../lib/catalogApi.js";
 
 export function LoginPage() {
   const shell = getShell();
@@ -10,6 +13,7 @@ export function LoginPage() {
   const ent = copy.enterprise;
   const { signInMember, continueGuest } = useAuth();
   const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="login-enterprise-wrap">
@@ -50,12 +54,38 @@ export function LoginPage() {
             <p className="login-card__brand">{shell.app.name}</p>
             <h2>{copy.cardTitle}</h2>
             <p className="login-card__lede">{copy.lede}</p>
+            {error ? (
+              <p className="login-card__error" role="alert" style={{ color: "var(--color-danger, #b00020)" }}>
+                {error}
+              </p>
+            ) : null}
             <JsonForm
               form={loginForm}
               className="login-card__form"
-              onSubmit={(values) => {
-                signInMember(values as Record<string, unknown>);
-                navigate("/");
+              onSubmit={async (values) => {
+                setError(null);
+                const v = values as Record<string, unknown>;
+                const email = String(getAtPath(v, "credentials.loginName") ?? "").trim();
+                const password = String(getAtPath(v, "credentials.password") ?? "");
+                try {
+                  const auth = await loginWithPassword(email, password);
+                  const role = auth.role === "vendor" ? "vendor" : "shopper";
+                  const prevSession =
+                    typeof v.session === "object" && v.session !== null && !Array.isArray(v.session)
+                      ? (v.session as Record<string, unknown>)
+                      : {};
+                  const session = {
+                    ...prevSession,
+                    accessToken: auth.accessToken,
+                    role,
+                    userId: auth.userId,
+                    email: auth.email,
+                  };
+                  signInMember({ ...v, session }, { accessToken: auth.accessToken, role });
+                  navigate("/");
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Sign in failed");
+                }
               }}
             >
               <div className="webkitfx-form-actions" style={{ flexDirection: "column", gap: "0.65rem" }}>

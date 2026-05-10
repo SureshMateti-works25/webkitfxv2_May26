@@ -28,6 +28,18 @@ dotnet run
 - **OpenAPI:** `/openapi/v1.json` in Development.
 - **Static files:** uploaded blobs under `Media:RootPath` (default `uploads/media`), URL prefix `Media:PublicPathPrefix` (default `/media/...`).
 
+## Auth API (portal users)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/v1/auth/register` | No | `{ "email", "password", "role": "shopper"\|"vendor", "profile"?: object }` → JWT + user |
+| POST | `/api/v1/auth/login` | No | `{ "email", "password" }` → JWT |
+
+Responses use camelCase: `accessToken`, `tokenType`, `expiresIn`, `userId`, `email`, `role`.  
+Users are stored in **`portal_users`** (tenant **`t1`** for now) with ASP.NET Core **password hashing**.
+
+**CORS:** configured for `http://localhost:5175` (Sarees Vite dev). Add origins under **`Cors:Origins`**.
+
 ## Authentication (JWT)
 
 - **HS256** with symmetric key from config: **`Jwt:SigningKey`** (UTF-8, **≥ 32 bytes**), **`Jwt:Issuer`**, **`Jwt:Audience`**.

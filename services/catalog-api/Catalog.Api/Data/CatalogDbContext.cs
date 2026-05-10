@@ -19,6 +19,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
     public DbSet<ProductMediaRow> ProductMedia => Set<ProductMediaRow>();
     public DbSet<InventoryPosition> InventoryPositions => Set<InventoryPosition>();
+    public DbSet<PortalUser> PortalUsers => Set<PortalUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -196,6 +197,20 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
             e.HasIndex(x => x.SkuId);
             e.HasIndex(x => x.LocationId);
             e.HasIndex(x => new { x.SkuId, x.LocationId }).IsUnique();
+        });
+
+        modelBuilder.Entity<PortalUser>(e =>
+        {
+            e.ToTable("portal_users");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Email).HasMaxLength(256).IsRequired();
+            e.Property(x => x.NormalizedEmail).HasMaxLength(256).IsRequired();
+            e.Property(x => x.PasswordHash).HasMaxLength(512).IsRequired();
+            e.Property(x => x.Role).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ProfileJson);
+            e.HasIndex(x => new { x.TenantId, x.NormalizedEmail }).IsUnique();
         });
     }
 }

@@ -9,4 +9,7 @@ public sealed class JwtOptions
 
     public string Issuer { get; set; } = "webkitfx-catalog";
     public string Audience { get; set; } = "webkitfx-clients";
+
+    /// <summary>Access token lifetime for login/register (hours).</summary>
+    public int AccessTokenHours { get; set; } = 168;
 }
