@@ -18,6 +18,8 @@ npm run test
 
 `npm run check` runs build then tests.
 
+**Catalog.Api smoke** (with API + Postgres up): `npm run test:catalog-api` — see `services/catalog-api/Catalog.Api/README.md`.
+
 **Demo UI:** `npm run dev` builds the libraries, then starts Vite for `apps/demo` (sample `JsonForm` in the browser).
 
 **SareeCart app:** `npm run dev:sarees` builds libraries then runs `apps/sarees` (vendor/shopper signup, login, guest, JSON-driven shell).

@@ -13,7 +13,10 @@
     "test": "npm run test -w @webkitfxv2/core-engine",
     "check": "npm run build && npm run test",
     "git:push": "node scripts/push-working.mjs",
-    "api:catalog": "dotnet run --project services/catalog-api/Catalog.Api/Catalog.Api.csproj"
+    "api:catalog": "dotnet run --project services/catalog-api/Catalog.Api/Catalog.Api.csproj",
+    "test:catalog-api": "node scripts/catalog-api-smoke.mjs",
+    "test:catalog-api:auth": "node scripts/catalog-api-smoke.mjs auth",
+    "test:catalog-api:catalog": "node scripts/catalog-api-smoke.mjs catalog"
   },
   "engines": {
     "node": ">=18"

@@ -90,6 +90,32 @@ Prefer header **`X-Tenant-Id: t1`**. `tenantId` query still works for quick test
 - `GET /api/v1/catalog/products` with header `X-Tenant-Id: t1` and query `categoryId=cat_kan&includeSubtree=true`
 - Upload: `POST /api/v1/media/assets` header `X-Tenant-Id: t1`, body multipart `file=@photo.jpg`, optional `productId`, `role=hero`
 
+## Smoke tests (from monorepo root)
+
+Requires **Catalog.Api running** and **Postgres migrated** (dev seed with `p_kj001` / `cat_kan` for catalog assertions).
+
+```powershell
+# Full: health → register (unique email) → login → catalog + inventory (bearer)
+npm run test:catalog-api
+
+# Auth only
+npm run test:catalog-api:auth
+
+# Catalogue only (no register; optional login if SMOKE_EMAIL is set)
+npm run test:catalog-api:catalog
+```
+
+Environment:
+
+| Variable | Default |
+|----------|---------|
+| `CATALOG_API_URL` | `http://localhost:5055` |
+| `TENANT_ID` | `t1` |
+| `SMOKE_EMAIL` | _(unset — register uses a unique email)_ |
+| `SMOKE_PASSWORD` | `SmokeTest_Passw0rd!` |
+
+Script: `scripts/catalog-api-smoke.mjs`.
+
 ## Migrations
 
 ```powershell
