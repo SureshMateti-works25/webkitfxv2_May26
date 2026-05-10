@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode
 } from "react";
@@ -16,6 +17,7 @@ import {
   type ValidationIssue
 } from "@webkitfxv2/core-engine";
 import type { WidgetRegistry } from "./widgetTypes.js";
+import { deepMergeFormSeed } from "./mergeFormSeed.js";
 
 export type FormRendererContextValue = {
   engine: JsonEngine;
@@ -45,20 +47,40 @@ export interface FormRendererProviderProps {
   widgets: WidgetRegistry;
   children: ReactNode;
   onValuesChange?: (values: Record<string, unknown>) => void;
+  /** Shallow+deep merged over field defaults from the form definition. */
+  seedValues?: Record<string, unknown> | null;
+  /** When this value changes, form state is rebuilt from defaults + seedValues (e.g. after API load). */
+  resetKey?: string | number;
+}
+
+function mergedInitial(engine: JsonEngine, seed: Record<string, unknown> | null | undefined) {
+  return deepMergeFormSeed(engine.initialValues(), seed ?? {}) as Record<string, unknown>;
 }
 
 export function FormRendererProvider({
   engine,
   widgets,
   children,
-  onValuesChange
+  onValuesChange,
+  seedValues,
+  resetKey
 }: FormRendererProviderProps) {
-  const [values, setValues] = useState<Record<string, unknown>>(() => engine.initialValues());
+  const [values, setValues] = useState<Record<string, unknown>>(() => mergedInitial(engine, seedValues));
   const [issuesByBinding, setIssuesByBinding] = useState<Record<string, ValidationIssue[]>>({});
   const [visibleByFieldId, setVisibleByFieldId] = useState<Record<string, boolean>>({});
   const [enabledByFieldId, setEnabledByFieldId] = useState<Record<string, boolean>>({});
   const [touchedBindings, setTouchedBindings] = useState(() => new Set<string>());
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const seedRef = useRef(seedValues);
+  seedRef.current = seedValues;
+
+  useEffect(() => {
+    if (resetKey === undefined) return;
+    setValues(mergedInitial(engine, seedRef.current));
+    setSubmitAttempted(false);
+    setTouchedBindings(new Set());
+    setIssuesByBinding({});
+  }, [engine, resetKey]);
 
   useEffect(() => {
     let cancelled = false;

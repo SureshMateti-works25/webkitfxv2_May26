@@ -1,0 +1,84 @@
+{
+  "id": "vendor-product-core",
+  "title": "Product",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Basics",
+        "children": [
+          { "type": "field", "fieldId": "titleDisplay" },
+          { "type": "field", "fieldId": "slug" },
+          { "type": "field", "fieldId": "status" },
+          { "type": "field", "fieldId": "productTypeId" },
+          { "type": "field", "fieldId": "primaryCategoryId" }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "List pricing (catalog card)",
+        "children": [
+          { "type": "field", "fieldId": "currency" },
+          { "type": "field", "fieldId": "minPriceRupees" }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "titleDisplay": {
+      "binding": "core.titleDisplay",
+      "widget": "text",
+      "label": "Title",
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "slug": {
+      "binding": "core.slug",
+      "widget": "text",
+      "label": "Slug",
+      "default": ""
+    },
+    "status": {
+      "binding": "core.status",
+      "widget": "select",
+      "label": "Status",
+      "props": {
+        "options": [
+          { "value": "draft", "label": "Draft" },
+          { "value": "active", "label": "Active (storefront)" }
+        ]
+      },
+      "default": "draft"
+    },
+    "productTypeId": {
+      "binding": "core.productTypeId",
+      "widget": "text",
+      "label": "Product type id",
+      "description": "e.g. pt_saree, pt_phys (see catalog-domain-model.example.json).",
+      "default": ""
+    },
+    "primaryCategoryId": {
+      "binding": "core.primaryCategoryId",
+      "widget": "text",
+      "label": "Primary category id",
+      "default": ""
+    },
+    "currency": {
+      "binding": "core.currency",
+      "widget": "text",
+      "label": "Currency",
+      "default": "INR",
+      "props": { "maxLength": 8 }
+    },
+    "minPriceRupees": {
+      "binding": "core.minPriceRupees",
+      "widget": "text",
+      "label": "From price (major units)",
+      "description": "Shown on cards; stored as minor units on save.",
+      "default": ""
+    }
+  }
+}

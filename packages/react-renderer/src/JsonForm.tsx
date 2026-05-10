@@ -23,6 +23,10 @@ export interface JsonFormProps {
   className?: string;
   onSubmit?: (values: Record<string, unknown>) => void | Promise<void>;
   onValuesChange?: (values: Record<string, unknown>) => void;
+  /** Merged over form field defaults; use with `resetKey` after loading from an API. */
+  seedValues?: Record<string, unknown> | null;
+  /** When this changes, the form resets to defaults merged with the latest `seedValues`. */
+  resetKey?: string | number;
   /** Rendered inside the `<form>` after fields (e.g. `<button type="submit">`). */
   children?: ReactNode;
 }
@@ -46,6 +50,8 @@ export function JsonForm({
   className,
   onSubmit,
   onValuesChange,
+  seedValues,
+  resetKey,
   children
 }: JsonFormProps) {
   useInjectedFormStylesOnce();
@@ -56,7 +62,13 @@ export function JsonForm({
   const mergedWidgets = useMemo(() => mergeWidgets(widgets), [widgets]);
 
   return (
-    <FormRendererProvider engine={engine} widgets={mergedWidgets} onValuesChange={onValuesChange}>
+    <FormRendererProvider
+      engine={engine}
+      widgets={mergedWidgets}
+      onValuesChange={onValuesChange}
+      seedValues={seedValues}
+      resetKey={resetKey}
+    >
       <JsonFormSurface id={id} className={className} onSubmit={onSubmit}>
         {children}
       </JsonFormSurface>

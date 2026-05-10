@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="../WebkitFx.Platform/WebkitFx.Platform.csproj" />
-  <Project Path="Catalog.Api/Catalog.Api.csproj" />
-</Solution>

@@ -1,3 +1,4 @@
+import { getAtPath } from "@webkitfxv2/core-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
@@ -83,7 +84,24 @@ export function Header() {
   const profileItems =
     auth.status === "signedIn" ? shell.header.profileMenu[auth.role] : [];
 
+  const signedInLabel = useMemo(() => {
+    if (auth.status !== "signedIn") return "";
+    const email = String(getAtPath(auth.payload, "session.email") ?? "").trim();
+    const login = String(getAtPath(auth.payload, "credentials.loginName") ?? "").trim();
+    return email || login;
+  }, [auth]);
+
+  const profileMenuAria =
+    signedInLabel.length > 0
+      ? `${shell.header.profileMenuAria}: ${signedInLabel}`
+      : shell.header.profileMenuAria;
+
   const isGuestLike = auth.status === "anonymous" || auth.status === "guest";
+
+  const resolveNavPath = (path: string) => {
+    if (path === "/" && auth.status === "signedIn" && auth.role === "vendor") return "/vendor/products";
+    return path;
+  };
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -127,16 +145,20 @@ export function Header() {
         </div>
 
         <nav className="shell-nav" aria-label="Primary">
-          {centerNav.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/"}
-              className={({ isActive }) => (isActive ? "shell-nav-active" : undefined)}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {centerNav.map((item) => {
+            const to = resolveNavPath(item.path);
+            const navEnd = to === "/vendor/products" ? false : to === "/";
+            return (
+              <NavLink
+                key={item.path}
+                to={to}
+                end={navEnd}
+                className={({ isActive }) => (isActive ? "shell-nav-active" : undefined)}
+              >
+                {item.label}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="shell-header-actions">
@@ -150,31 +172,38 @@ export function Header() {
           ) : null}
           {auth.status === "signedIn" ? (
             <>
-              <div className="shell-settings-wrap" ref={profileWrapRef}>
-                <button
-                  type="button"
-                  className="shell-icon-btn"
-                  aria-expanded={profileOpen}
-                  aria-haspopup="true"
-                  aria-label={shell.header.profileMenuAria}
-                  onClick={() => setProfileOpen((o) => !o)}
-                >
-                  <IconUser />
-                </button>
-                {profileOpen ? (
-                  <div className="shell-settings-panel" role="menu">
-                    {profileItems.map((item) => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        role="menuitem"
-                        onClick={() => setProfileOpen(false)}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
+              <div className="shell-profile-cluster" ref={profileWrapRef}>
+                {signedInLabel ? (
+                  <span className="shell-user-identity" title={signedInLabel}>
+                    {signedInLabel}
+                  </span>
                 ) : null}
+                <div className="shell-settings-wrap">
+                  <button
+                    type="button"
+                    className="shell-icon-btn"
+                    aria-expanded={profileOpen}
+                    aria-haspopup="true"
+                    aria-label={profileMenuAria}
+                    onClick={() => setProfileOpen((o) => !o)}
+                  >
+                    <IconUser />
+                  </button>
+                  {profileOpen ? (
+                    <div className="shell-settings-panel" role="menu">
+                      {profileItems.map((item) => (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          role="menuitem"
+                          onClick={() => setProfileOpen(false)}
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <button
                 type="button"
@@ -193,19 +222,26 @@ export function Header() {
 
       {mobileOpen ? (
         <nav className="shell-mobile-nav" aria-label="Mobile primary">
-          {shell.header.menu.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/"}
-              className={({ isActive }) => (isActive ? "shell-nav-active" : undefined)}
-              onClick={() => setMobileOpen(false)}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {shell.header.menu.map((item) => {
+            const to = resolveNavPath(item.path);
+            const navEnd = to === "/vendor/products" ? false : to === "/";
+            return (
+              <NavLink
+                key={item.path}
+                to={to}
+                end={navEnd}
+                className={({ isActive }) => (isActive ? "shell-nav-active" : undefined)}
+                onClick={() => setMobileOpen(false)}
+              >
+                {item.label}
+              </NavLink>
+            );
+          })}
           {auth.status === "signedIn" ? (
-            <div className="shell-mobile-nav__profile" role="group" aria-label={shell.header.profileMenuAria}>
+            <div className="shell-mobile-nav__profile" role="group" aria-label={profileMenuAria}>
+              {signedInLabel ? (
+                <p className="shell-mobile-nav__identity">{signedInLabel}</p>
+              ) : null}
               {profileItems.map((item) => (
                 <NavLink
                   key={item.path}

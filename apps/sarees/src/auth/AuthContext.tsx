@@ -23,7 +23,7 @@ export type SignInOptions = { role?: PortalRole; accessToken?: string };
 type AuthContextValue = {
   auth: AuthState;
   /**
-   * `payload` is JsonForm values. Pass `accessToken` from Catalog.Api login/register.
+   * `payload` is JsonForm values. Pass `accessToken` from Commerce.Api login/register.
    * `options.role` overrides role claim when the API returns a different shape.
    */
   signInMember: (payload: Record<string, unknown>, options?: SignInOptions) => void;
@@ -40,7 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(AUTH_STORAGE);
+      const raw =
+        localStorage.getItem(AUTH_STORAGE) ?? sessionStorage.getItem(AUTH_STORAGE);
       if (!raw) return;
       const s = JSON.parse(raw) as {
         accessToken?: string;
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (s.accessToken && s.role && s.payload)
         setAuth({ status: "signedIn", role: s.role, accessToken: s.accessToken, payload: s.payload });
     } catch {
+      localStorage.removeItem(AUTH_STORAGE);
       sessionStorage.removeItem(AUTH_STORAGE);
     }
   }, []);
@@ -65,8 +67,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth({ status: "signedIn", role, accessToken, payload });
 
     const remember = getAtPath(payload, "session.rememberMe") === true;
-    if (remember && accessToken)
-      sessionStorage.setItem(AUTH_STORAGE, JSON.stringify({ accessToken, role, payload }));
+    if (accessToken) {
+      const packed = JSON.stringify({ accessToken, role, payload });
+      sessionStorage.setItem(AUTH_STORAGE, packed);
+      if (remember) localStorage.setItem(AUTH_STORAGE, packed);
+      else localStorage.removeItem(AUTH_STORAGE);
+    }
   }, []);
 
   const continueGuest = useCallback(() => {
@@ -75,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     sessionStorage.removeItem(AUTH_STORAGE);
+    localStorage.removeItem(AUTH_STORAGE);
     setAuth({ status: "anonymous" });
   }, []);
 

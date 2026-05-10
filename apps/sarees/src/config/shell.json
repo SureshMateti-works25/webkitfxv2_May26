@@ -24,6 +24,7 @@
         { "label": "Communication", "path": "/communication" }
       ],
       "vendor": [
+        { "label": "My products", "path": "/vendor/products" },
         { "label": "Profile", "path": "/account/profile" },
         { "label": "Settings", "path": "/settings" },
         { "label": "Communication", "path": "/communication" }
@@ -65,6 +66,15 @@
     "/account/profile": [
       { "label": "Home", "path": "/" },
       { "label": "Profile", "path": null }
+    ],
+    "/vendor/products": [
+      { "label": "Home", "path": "/" },
+      { "label": "My products", "path": null }
+    ],
+    "/vendor/products/new": [
+      { "label": "Home", "path": "/" },
+      { "label": "My products", "path": "/vendor/products" },
+      { "label": "New product", "path": null }
     ],
     "/favourites": [{ "label": "Home", "path": "/" }, { "label": "Favourites", "path": null }],
     "/orders": [{ "label": "Home", "path": "/" }, { "label": "Orders", "path": null }],
@@ -208,7 +218,7 @@
     },
     "accountProfile": {
       "title": "Your profile",
-      "body": "Profile and identity details will load from your account pack — this screen is a placeholder."
+      "body": "You are signed in with the account below. Details combine your registration data and the last successful sign-in."
     },
     "favourites": {
       "title": "Favourites",

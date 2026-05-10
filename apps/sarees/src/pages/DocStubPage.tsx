@@ -9,7 +9,6 @@ type StubScreenKey = keyof Pick<
   | "legalPrivacy"
   | "legalTerms"
   | "cart"
-  | "accountProfile"
   | "favourites"
   | "orders"
   | "communication"
@@ -22,7 +21,6 @@ const ROUTE_TO_SCREEN: Record<string, StubScreenKey> = {
   "/legal/privacy": "legalPrivacy",
   "/legal/terms": "legalTerms",
   "/cart": "cart",
-  "/account/profile": "accountProfile",
   "/favourites": "favourites",
   "/orders": "orders",
   "/communication": "communication"

@@ -5,7 +5,7 @@ import { JsonForm } from "@webkitfxv2/react-renderer";
 import { useAuth } from "../auth/AuthContext.js";
 import { loginForm } from "../config/forms/index.js";
 import { getShell } from "../config/getShell.js";
-import { loginWithPassword } from "../lib/catalogApi.js";
+import { formatCommerceApiError, loginWithPassword } from "../lib/commerceApi.js";
 
 export function LoginPage() {
   const shell = getShell();
@@ -14,6 +14,7 @@ export function LoginPage() {
   const { signInMember, continueGuest } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   return (
     <div className="login-enterprise-wrap">
@@ -67,6 +68,7 @@ export function LoginPage() {
                 const v = values as Record<string, unknown>;
                 const email = String(getAtPath(v, "credentials.loginName") ?? "").trim();
                 const password = String(getAtPath(v, "credentials.password") ?? "");
+                setSubmitting(true);
                 try {
                   const auth = await loginWithPassword(email, password);
                   const role = auth.role === "vendor" ? "vendor" : "shopper";
@@ -82,14 +84,19 @@ export function LoginPage() {
                     email: auth.email,
                   };
                   signInMember({ ...v, session }, { accessToken: auth.accessToken, role });
-                  navigate("/");
+                  const dest = role === "vendor" ? "/vendor/products" : "/";
+                  navigate(dest, { state: { notice: "member-signed-in" } });
                 } catch (e) {
-                  setError(e instanceof Error ? e.message : "Sign in failed");
+                  setError(formatCommerceApiError(e));
+                } finally {
+                  setSubmitting(false);
                 }
               }}
             >
               <div className="webkitfx-form-actions" style={{ flexDirection: "column", gap: "0.65rem" }}>
-                <button type="submit">{copy.submitMember}</button>
+                <button type="submit" disabled={submitting} aria-busy={submitting}>
+                  {submitting ? "Signing in…" : copy.submitMember}
+                </button>
                 <button
                   type="button"
                   className="auth-guest-btn"

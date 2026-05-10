@@ -1,0 +1,57 @@
+@Commerce.Api_HostAddress = http://localhost:5055
+@access_token = replace-after-dev-jwt
+
+### Dev JWT (Development only)
+POST {{Commerce.Api_HostAddress}}/api/v1/dev/jwt
+Content-Type: application/json
+
+{ "subject": "dev-user", "role": "admin", "expiresHours": 8 }
+
+### Register
+POST {{Commerce.Api_HostAddress}}/api/v1/auth/register
+Content-Type: application/json
+
+{ "email": "shopper@example.com", "password": "password12", "role": "shopper" }
+
+### Login
+POST {{Commerce.Api_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "shopper@example.com", "password": "password12" }
+
+### Health
+GET {{Commerce.Api_HostAddress}}/health
+Accept: application/json
+
+### Tenants
+GET {{Commerce.Api_HostAddress}}/api/v1/tenants
+Accept: application/json
+
+### Categories
+GET {{Commerce.Api_HostAddress}}/api/v1/catalog/categories?tenantId=t1
+Accept: application/json
+
+### Products (PLP / card)
+GET {{Commerce.Api_HostAddress}}/api/v1/catalog/products?tenantId=t1&categoryId=cat_kan&includeSubtree=true&view=card&page=1&pageSize=24
+Accept: application/json
+
+### Facet options
+GET {{Commerce.Api_HostAddress}}/api/v1/catalog/facet-options?tenantId=t1&categoryId=cat_silk&includeSubtree=true
+Accept: application/json
+
+### Locations (preferred tenant header)
+GET {{Commerce.Api_HostAddress}}/api/v1/locations
+X-Tenant-Id: t1
+Accept: application/json
+
+### Inventory positions
+GET {{Commerce.Api_HostAddress}}/api/v1/inventory/positions?skuId=sku_kj_mar_g3
+X-Tenant-Id: t1
+Accept: application/json
+
+### Product media
+GET {{Commerce.Api_HostAddress}}/api/v1/products/p_kj001/media
+X-Tenant-Id: t1
+Accept: application/json
+
+###

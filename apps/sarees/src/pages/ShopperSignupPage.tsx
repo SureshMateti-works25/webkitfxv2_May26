@@ -5,7 +5,7 @@ import { JsonForm } from "@webkitfxv2/react-renderer";
 import { useAuth } from "../auth/AuthContext.js";
 import { shopperSignupForm } from "../config/forms/index.js";
 import { getShell } from "../config/getShell.js";
-import { registerAccount } from "../lib/catalogApi.js";
+import { formatCommerceApiError, registerAccount } from "../lib/commerceApi.js";
 
 export function ShopperSignupPage() {
   const shell = getShell();
@@ -13,6 +13,7 @@ export function ShopperSignupPage() {
   const navigate = useNavigate();
   const { signInMember } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   return (
     <div>
@@ -34,6 +35,7 @@ export function ShopperSignupPage() {
             getAtPath(v, "profile.email") || getAtPath(v, "credentials.loginName") || ""
           ).trim();
           const password = String(getAtPath(v, "credentials.password") ?? "");
+          setSubmitting(true);
           try {
             const auth = await registerAccount({ email, password, role: "shopper", profile: v });
             const role = auth.role === "vendor" ? "vendor" : "shopper";
@@ -47,12 +49,16 @@ export function ShopperSignupPage() {
             signInMember({ ...v, session }, { accessToken: auth.accessToken, role });
             navigate("/", { state: { notice: "shopper-saved" } });
           } catch (e) {
-            setError(e instanceof Error ? e.message : "Registration failed");
+            setError(formatCommerceApiError(e));
+          } finally {
+            setSubmitting(false);
           }
         }}
       >
         <div className="webkitfx-form-actions">
-          <button type="submit">{copy.submitLabel}</button>
+          <button type="submit" disabled={submitting} aria-busy={submitting}>
+            {submitting ? "Creating account…" : copy.submitLabel}
+          </button>
         </div>
       </JsonForm>
     </div>

@@ -5,7 +5,7 @@ import { JsonForm } from "@webkitfxv2/react-renderer";
 import { useAuth } from "../auth/AuthContext.js";
 import { vendorSignupForm } from "../config/forms/index.js";
 import { getShell } from "../config/getShell.js";
-import { registerAccount } from "../lib/catalogApi.js";
+import { formatCommerceApiError, registerAccount } from "../lib/commerceApi.js";
 
 export function VendorSignupPage() {
   const shell = getShell();
@@ -13,6 +13,7 @@ export function VendorSignupPage() {
   const navigate = useNavigate();
   const { signInMember } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   return (
     <div>
@@ -32,6 +33,7 @@ export function VendorSignupPage() {
           const v = values as Record<string, unknown>;
           const email = String(getAtPath(v, "credentials.loginName") ?? "").trim();
           const password = String(getAtPath(v, "credentials.password") ?? "");
+          setSubmitting(true);
           try {
             const auth = await registerAccount({ email, password, role: "vendor", profile: v });
             const role = "vendor" as const;
@@ -43,14 +45,18 @@ export function VendorSignupPage() {
               rememberMe: true,
             };
             signInMember({ ...v, session }, { accessToken: auth.accessToken, role });
-            navigate("/", { state: { notice: "vendor-submitted" } });
+            navigate("/vendor/products", { state: { notice: "vendor-submitted" } });
           } catch (e) {
-            setError(e instanceof Error ? e.message : "Registration failed");
+            setError(formatCommerceApiError(e));
+          } finally {
+            setSubmitting(false);
           }
         }}
       >
         <div className="webkitfx-form-actions">
-          <button type="submit">{copy.submitLabel}</button>
+          <button type="submit" disabled={submitting} aria-busy={submitting}>
+            {submitting ? "Creating account…" : copy.submitLabel}
+          </button>
         </div>
       </JsonForm>
     </div>

@@ -6,7 +6,7 @@ Configuration-first commerce shell (sarees first; groceries & LPG later).
 
 - **Forms** live in `src/config/forms/*.json` as `FormDefinition` documents for `@webkitfxv2/core-engine` + `JsonForm`.
 - **Chrome & landing** copy live in `src/config/shell.json` — React only maps JSON to layout, no marketing copy in components.
-- **Auth:** `src/auth/AuthContext.tsx` + **`Catalog.Api`** (`/api/v1/auth/login`, `/api/v1/auth/register`). Set **`VITE_CATALOG_API_URL`** in `.env` if the API is not at `http://localhost:5055` (see repo root `npm run api:catalog`).
+- **Auth:** `src/auth/AuthContext.tsx` + **`Commerce.Api`** (`/api/v1/auth/login`, `/api/v1/auth/register`). Set **`VITE_COMMERCE_API_URL`** in `.env` if the API is not at `http://localhost:5055` (legacy `VITE_CATALOG_API_URL` still works; see repo root `npm run api:commerce`).
 
 ## Commands
 
