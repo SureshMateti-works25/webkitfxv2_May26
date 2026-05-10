@@ -1,0 +1,226 @@
+{
+  "app": {
+    "name": "SareeCart",
+    "tagline": "Sarees today — groceries & gas tomorrow. One account, many storefronts."
+  },
+  "brand": {
+    "logoAlt": "NISTTA",
+    "logoSrc": "/logo-nistta.svg"
+  },
+  "header": {
+    "sessionLabels": {
+      "guest": "Guest session",
+      "member": "Signed in",
+      "logout": "Log out",
+      "login": "Login"
+    },
+    "profileMenuAria": "Account menu",
+    "profileMenu": {
+      "shopper": [
+        { "label": "Profile", "path": "/account/profile" },
+        { "label": "Settings", "path": "/settings" },
+        { "label": "Favourites", "path": "/favourites" },
+        { "label": "Orders", "path": "/orders" },
+        { "label": "Communication", "path": "/communication" }
+      ],
+      "vendor": [
+        { "label": "Profile", "path": "/account/profile" },
+        { "label": "Settings", "path": "/settings" },
+        { "label": "Communication", "path": "/communication" }
+      ]
+    },
+    "menu": [
+      { "label": "Home", "path": "/" },
+      { "label": "Cart", "path": "/cart" },
+      { "label": "Login", "path": "/login" },
+      { "label": "Vendor signup", "path": "/signup/vendor" },
+      { "label": "Shopper profile", "path": "/signup/shopper" }
+    ],
+    "settingsMenu": [
+      { "label": "Preferences", "path": "/settings" },
+      { "label": "Notifications", "path": "/settings/notifications" }
+    ]
+  },
+  "breadcrumbs": {
+    "/": [
+      { "label": "Home", "path": "/" },
+      { "label": "Shop", "path": null }
+    ],
+    "/cart": [{ "label": "Home", "path": "/" }, { "label": "Cart", "path": null }],
+    "/login": [{ "label": "Home", "path": "/" }, { "label": "Sign in", "path": null }],
+    "/signup/vendor": [
+      { "label": "Home", "path": "/" },
+      { "label": "Vendor signup", "path": null }
+    ],
+    "/signup/shopper": [
+      { "label": "Home", "path": "/" },
+      { "label": "Shopper profile", "path": null }
+    ],
+    "/settings": [{ "label": "Home", "path": "/" }, { "label": "Settings", "path": null }],
+    "/settings/notifications": [
+      { "label": "Home", "path": "/" },
+      { "label": "Settings", "path": "/settings" },
+      { "label": "Notifications", "path": null }
+    ],
+    "/account/profile": [
+      { "label": "Home", "path": "/" },
+      { "label": "Profile", "path": null }
+    ],
+    "/favourites": [{ "label": "Home", "path": "/" }, { "label": "Favourites", "path": null }],
+    "/orders": [{ "label": "Home", "path": "/" }, { "label": "Orders", "path": null }],
+    "/communication": [
+      { "label": "Home", "path": "/" },
+      { "label": "Communication", "path": null }
+    ],
+    "/support": [{ "label": "Home", "path": "/" }, { "label": "Help centre", "path": null }],
+    "/legal/privacy": [{ "label": "Home", "path": "/" }, { "label": "Privacy", "path": null }],
+    "/legal/terms": [{ "label": "Home", "path": "/" }, { "label": "Terms", "path": null }]
+  },
+  "footer": {
+    "blurb": "Multi-vertical commerce (sarees, groceries, LPG) — configuration-driven UI.",
+    "contact": {
+      "label": "Contact",
+      "email": "hello@sareecart.example",
+      "hours": "Mon–Sat, 9:00–18:00 IST"
+    },
+    "support": {
+      "label": "Support",
+      "phone": "+91 1800-000-0000",
+      "linkLabel": "Help centre",
+      "linkPath": "/support"
+    },
+    "links": [
+      { "label": "Privacy", "path": "/legal/privacy" },
+      { "label": "Terms", "path": "/legal/terms" },
+      { "label": "Vendors", "path": "/signup/vendor" }
+    ],
+    "copyright": "© SareeCart"
+  },
+  "landing": {
+    "sections": [
+      {
+        "type": "strap",
+        "message": "Available · Need help? Chat on WhatsApp · 100% quality-checked dispatch"
+      },
+      {
+        "type": "hero",
+        "surface": "cream",
+        "eyebrow": "Curated collections",
+        "kicker": "Handloom, silk & party wear",
+        "title": "Discover sarees",
+        "subtitle": "Browse GST-linked vendors, save to cart, and checkout with the same calm layout as leading storefront landings — copy and sections stay in this JSON file.",
+        "trustLine": "Secure guest browse · Vendor onboarding · One account for future verticals",
+        "actions": [
+          { "label": "Login", "path": "/login", "variant": "primary" },
+          { "label": "Cart", "path": "/cart", "variant": "secondary" },
+          { "label": "Vendors", "path": "/signup/vendor", "variant": "ghost" },
+          { "label": "Shoppers", "path": "/signup/shopper", "variant": "ghost" }
+        ]
+      },
+      {
+        "type": "highlights",
+        "title": "Built for scale",
+        "items": [
+          {
+            "title": "Configuration-first",
+            "body": "Forms, validation, and layout live in JSON consumed by @webkitfxv2/core-engine."
+          },
+          {
+            "title": "Roadmap",
+            "body": "Same shell supports groceries and gas-cylinder distribution — swap form packs per vertical."
+          },
+          {
+            "title": "Guests welcome",
+            "body": "Browse and checkout flows can start as guest; upgrade to a full profile anytime."
+          }
+        ]
+      }
+    ]
+  },
+  "screens": {
+    "login": {
+      "title": "Login",
+      "ribbon": "Trusted supplier & shopper portal · Configuration-driven screens (demo)",
+      "cardTitle": "Welcome back",
+      "lede": "Sign in with the verified email and password for your account. Your role (shopper or vendor) is determined from that account — not chosen here.",
+      "guestCta": "Continue as guest",
+      "submitMember": "Login",
+      "signupLinks": [
+        { "label": "New vendor account", "path": "/signup/vendor" },
+        { "label": "New shopper profile", "path": "/signup/shopper" }
+      ],
+      "enterprise": {
+        "eyebrow": "Enterprise retail · India",
+        "headline": "Run sarees today, groceries and LPG tomorrow on one rails",
+        "intro": "Operators are consolidating storefronts, dark stores, and route logistics onto unified order and identity stacks. SareeCart is built as configuration-first commerce so you can swap vertical packs without rewriting screens — ideal when categories expand from high-touch apparel to repeat grocery baskets and regulated cylinder fulfilment.",
+        "trendsTitle": "What the market expects now",
+        "trends": [
+          {
+            "title": "Omnichannel truth, not slides",
+            "body": "Buyers research on mobile, pay with UPI, and expect the same profile whether they checkout as a guest or sign in later. Your stack should treat identity and consent as shared services."
+          },
+          {
+            "title": "Quick commerce discipline",
+            "body": "SLA-driven fulfilment windows, cut-offs, and exception handling are table stakes. JSON-driven forms let you tune capture fields per city or hub without redeploying the host app."
+          },
+          {
+            "title": "Trust & verification",
+            "body": "GST-linked vendors, KYC-light shoppers, and auditable contact roles reduce chargebacks and failed deliveries — capture them once at onboarding, re-use everywhere."
+          }
+        ],
+        "metrics": [
+          { "label": "Repeat purchase lift", "value": "9–15%" },
+          { "label": "Support cost drop", "value": "18–24%" },
+          { "label": "Time-to-launch new vertical", "value": "days, not months" }
+        ],
+        "footerNote": "Roadmap: plug grocery catalogues and LPG subscription cycles into the same shell — business rules stay in JSON packs per vertical."
+      }
+    },
+    "vendorSignup": {
+      "title": "Vendor registration",
+      "lede": "Create portal credentials first (login name + password), then business, GST, address, and contact rows — those credentials are what you will use on Sign in.",
+      "submitLabel": "Submit vendor application"
+    },
+    "shopperSignup": {
+      "title": "Shopper profile",
+      "lede": "Set portal login name and password, then profile and delivery details — reuse them on Sign in.",
+      "submitLabel": "Save profile"
+    },
+    "settings": {
+      "title": "Settings",
+      "body": "Preference screens will be driven by JSON packs per vertical (sarees, groceries, LPG) — wire forms here the same way as signup."
+    },
+    "support": {
+      "title": "Help centre",
+      "body": "Support content and ticketing will load from your operations JSON — no hardcoded FAQs in the app bundle."
+    },
+    "legalPrivacy": {
+      "title": "Privacy",
+      "body": "Privacy policy text will be supplied as markdown or HTML from configuration per tenant."
+    },
+    "legalTerms": {
+      "title": "Terms of use",
+      "body": "Terms will be versioned in configuration alongside rollout of groceries and LPG modules."
+    },
+    "cart": {
+      "title": "Your cart",
+      "body": "Cart line items and checkout will be driven by JSON order forms — this route is a placeholder until the basket pack is wired."
+    },
+    "accountProfile": {
+      "title": "Your profile",
+      "body": "Profile and identity details will load from your account pack — this screen is a placeholder."
+    },
+    "favourites": {
+      "title": "Favourites",
+      "body": "Saved items and lists will appear here once the catalogue pack is wired."
+    },
+    "orders": {
+      "title": "Orders",
+      "body": "Order history and tracking will load from your commerce services — this route is a placeholder."
+    },
+    "communication": {
+      "title": "Communication",
+      "body": "Messages, alerts, and announcements will be driven from your notifications configuration — placeholder for now."
+    }
+  }
+}

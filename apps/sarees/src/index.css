@@ -1,0 +1,28 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Slightly compact scale — reads closer to NISTTA product UI */
+  font-size: 15px;
+}
+
+body {
+  margin: 0;
+  font-family: "DM Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* JsonForm — sareeapp_v2 primary #8b4513 + soft focus ring (dark form theme unchanged). */
+.shell-root .webkitfx-json-form.webkitfx-theme:not(.webkitfx-theme--dark) {
+  --fx-font: "DM Sans", system-ui, sans-serif;
+  --fx-accent: #8b4513;
+  --fx-accent-soft: rgba(139, 69, 19, 0.12);
+  --fx-accent-hover: #7a3b10;
+  --fx-focus: 0 0 0 3px rgba(212, 168, 83, 0.45);
+}

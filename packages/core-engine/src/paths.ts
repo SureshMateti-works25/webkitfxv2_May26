@@ -39,7 +39,17 @@ export function setAtPath(root: unknown, path: string, value: unknown): unknown 
     if (cur === null || cur === undefined) return clone;
     if (/^\d+$/.test(s)) {
       const arr = ensureArray(cur, Number(s));
-      cur = ensureIndex(arr, Number(s));
+      const idx = Number(s);
+      cur = ensureIndex(arr, idx);
+      /* If the next segment is a property name (not another index), the slot must be an object.
+         Otherwise `getParent` is undefined and the final write is skipped (e.g. `contacts[0].name`). */
+      if (!/^\d+$/.test(next)) {
+        if (cur === undefined || cur === null || typeof cur !== "object" || Array.isArray(cur)) {
+          const slot: Record<string, unknown> = {};
+          arr[idx] = slot;
+          cur = slot;
+        }
+      }
     } else {
       const obj = ensureObject(cur, s);
       cur = ensureKey(obj, s, /^\d+$/.test(next) ? [] : {});

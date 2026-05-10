@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 172 36" fill="none" aria-hidden="true">
+  <g stroke="#fcf9f5" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 10h10l1.2 14.5a1.8 1.8 0 0 1-1.8 1.65H8.6A1.8 1.8 0 0 1 6.8 24.5L8 10Z" />
+    <path d="M6 10 7.5 6h3" />
+    <circle cx="10" cy="29" r="1.35" fill="#fcf9f5" stroke="none" />
+    <circle cx="18" cy="29" r="1.35" fill="#fcf9f5" stroke="none" />
+  </g>
+  <text
+    x="30"
+    y="26.5"
+    fill="#fcf9f5"
+    font-family="Cormorant Garamond, Georgia, serif"
+    font-size="22"
+    font-weight="600"
+    letter-spacing="0.16em"
+  >
+    NISTTA
+  </text>
+</svg>

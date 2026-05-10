@@ -3,9 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "description": "webkitfxv2 — JSON layout, validation, and condition engine workspace",
-  "workspaces": ["packages/core-engine"],
+  "workspaces": ["packages/core-engine", "packages/react-renderer", "apps/demo", "apps/sarees"],
   "scripts": {
-    "build": "npm run build -w @webkitfxv2/core-engine",
+    "build": "npm run build -w @webkitfxv2/core-engine && npm run build -w @webkitfxv2/react-renderer",
+    "build:demo": "npm run build && npm run build -w webkitfxv2-demo",
+    "build:sarees": "npm run build && npm run build -w sarees-market",
+    "dev": "npm run build && npm run dev -w webkitfxv2-demo",
+    "dev:sarees": "npm run build && npm run dev -w sarees-market",
     "test": "npm run test -w @webkitfxv2/core-engine",
     "check": "npm run build && npm run test"
   },

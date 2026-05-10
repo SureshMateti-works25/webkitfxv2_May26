@@ -1,0 +1,308 @@
+{
+  "id": "vendor-registration",
+  "title": "Vendor registration",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "1rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Portal credentials",
+        "children": [
+          { "type": "field", "fieldId": "credLoginName" },
+          {
+            "type": "grid",
+            "columns": "repeat(auto-fill, minmax(min(100%, 14rem), 1fr))",
+            "children": [
+              { "type": "field", "fieldId": "credPassword" },
+              { "type": "field", "fieldId": "credConfirmPassword" }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Business identity",
+        "children": [
+          { "type": "field", "fieldId": "vendorSystemId" },
+          { "type": "field", "fieldId": "vendorOutletCode" },
+          { "type": "field", "fieldId": "businessName" },
+          { "type": "field", "fieldId": "gstin" }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Registered address",
+        "children": [
+          { "type": "field", "fieldId": "addrLine1" },
+          {
+            "type": "grid",
+            "columns": "repeat(auto-fill, minmax(min(100%, 10rem), 1fr))",
+            "children": [
+              { "type": "field", "fieldId": "addrCity" },
+              { "type": "field", "fieldId": "addrState" },
+              { "type": "field", "fieldId": "addrPin" }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Primary contact",
+        "children": [
+          {
+            "type": "grid",
+            "columns": "repeat(auto-fill, minmax(min(100%, 12rem), 1fr))",
+            "children": [
+              { "type": "field", "fieldId": "c0name" },
+              { "type": "field", "fieldId": "c0phone" },
+              { "type": "field", "fieldId": "c0role" },
+              { "type": "field", "fieldId": "c0dept" }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Secondary contact",
+        "children": [
+          {
+            "type": "grid",
+            "columns": "repeat(auto-fill, minmax(min(100%, 12rem), 1fr))",
+            "children": [
+              { "type": "field", "fieldId": "c1name" },
+              { "type": "field", "fieldId": "c1phone" },
+              { "type": "field", "fieldId": "c1role" },
+              { "type": "field", "fieldId": "c1dept" }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Additional contact",
+        "children": [
+          {
+            "type": "grid",
+            "columns": "repeat(auto-fill, minmax(min(100%, 12rem), 1fr))",
+            "children": [
+              { "type": "field", "fieldId": "c2name" },
+              { "type": "field", "fieldId": "c2phone" },
+              { "type": "field", "fieldId": "c2role" },
+              { "type": "field", "fieldId": "c2dept" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "credLoginName": {
+      "binding": "credentials.loginName",
+      "widget": "text",
+      "label": "Login name",
+      "description": "You will use this with your password on the Sign in page (email, mobile, or handle).",
+      "props": { "placeholder": "you@business.com", "autoComplete": "username" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 3 }]
+    },
+    "credPassword": {
+      "binding": "credentials.password",
+      "widget": "password",
+      "label": "Password",
+      "props": { "autoComplete": "new-password" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 8 }]
+    },
+    "credConfirmPassword": {
+      "binding": "credentials.confirmPassword",
+      "widget": "password",
+      "label": "Confirm password",
+      "props": { "autoComplete": "new-password" },
+      "default": "",
+      "rules": [
+        { "kind": "required" },
+        {
+          "kind": "eqPath",
+          "path": "credentials.password",
+          "message": "Must match password"
+        }
+      ]
+    },
+    "vendorSystemId": {
+      "binding": "vendor.registration.vendorSystemId",
+      "widget": "text",
+      "label": "Vendor ID",
+      "description": "Leave blank on first signup — assigned after verification.",
+      "props": { "readOnly": true, "placeholder": "— pending —" },
+      "default": ""
+    },
+    "vendorOutletCode": {
+      "binding": "vendor.registration.outletCode",
+      "widget": "text",
+      "label": "Vendor / outlet code",
+      "description": "Your internal shop or branch code (unique per tenant).",
+      "props": { "placeholder": "e.g. BLR-SAR-01" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 3 }]
+    },
+    "businessName": {
+      "binding": "vendor.registration.businessName",
+      "widget": "text",
+      "label": "Business name (GST)",
+      "props": { "placeholder": "Registered legal name" },
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "gstin": {
+      "binding": "vendor.registration.gstin",
+      "widget": "text",
+      "label": "GSTIN",
+      "description": "15-character GST identification number.",
+      "props": { "placeholder": "22AAAAA0000A1Z5", "autoComplete": "off", "maxLength": 15 },
+      "default": "",
+      "rules": [
+        { "kind": "required" },
+        { "kind": "minLength", "value": 15 },
+        { "kind": "maxLength", "value": 15 },
+        {
+          "kind": "pattern",
+          "regex": "^[0-9A-Z]{15}$",
+          "flags": "i",
+          "message": "GSTIN must be 15 letters or digits (refine pattern in JSON when you wire GST verification)"
+        }
+      ]
+    },
+    "addrLine1": {
+      "binding": "vendor.address.line1",
+      "widget": "textarea",
+      "label": "Address",
+      "props": { "rows": 3 },
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "addrCity": {
+      "binding": "vendor.address.city",
+      "widget": "text",
+      "label": "City",
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "addrState": {
+      "binding": "vendor.address.state",
+      "widget": "text",
+      "label": "State / UT",
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "addrPin": {
+      "binding": "vendor.address.pinCode",
+      "widget": "text",
+      "label": "PIN code",
+      "props": { "inputMode": "numeric" },
+      "default": "",
+      "rules": [
+        { "kind": "required" },
+        { "kind": "pattern", "regex": "^[0-9]{6}$", "message": "PIN must be 6 digits" }
+      ]
+    },
+    "c0name": {
+      "binding": "vendor.contacts[0].name",
+      "widget": "text",
+      "label": "Name",
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "c0phone": {
+      "binding": "vendor.contacts[0].phone",
+      "widget": "tel",
+      "label": "Mobile",
+      "default": "",
+      "rules": [
+        { "kind": "required" },
+        { "kind": "pattern", "regex": "^[6-9]\\d{9}$", "message": "10-digit mobile" }
+      ]
+    },
+    "c0role": {
+      "binding": "vendor.contacts[0].role",
+      "widget": "text",
+      "label": "Role",
+      "description": "e.g. Owner, Manager",
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "c0dept": {
+      "binding": "vendor.contacts[0].department",
+      "widget": "text",
+      "label": "Department",
+      "description": "e.g. Sales, Dispatch, Accounts",
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "c1name": {
+      "binding": "vendor.contacts[1].name",
+      "widget": "text",
+      "label": "Name",
+      "default": ""
+    },
+    "c1phone": {
+      "binding": "vendor.contacts[1].phone",
+      "widget": "tel",
+      "label": "Mobile",
+      "description": "Optional — leave blank if unused.",
+      "default": "",
+      "rules": [
+        {
+          "kind": "pattern",
+          "regex": "^$|^[6-9]\\d{9}$",
+          "message": "Enter 10 digits or leave blank"
+        }
+      ]
+    },
+    "c1role": {
+      "binding": "vendor.contacts[1].role",
+      "widget": "text",
+      "label": "Role",
+      "default": ""
+    },
+    "c1dept": {
+      "binding": "vendor.contacts[1].department",
+      "widget": "text",
+      "label": "Department",
+      "default": ""
+    },
+    "c2name": {
+      "binding": "vendor.contacts[2].name",
+      "widget": "text",
+      "label": "Name",
+      "default": ""
+    },
+    "c2phone": {
+      "binding": "vendor.contacts[2].phone",
+      "widget": "tel",
+      "label": "Mobile",
+      "description": "Optional — leave blank if unused.",
+      "default": "",
+      "rules": [
+        {
+          "kind": "pattern",
+          "regex": "^$|^[6-9]\\d{9}$",
+          "message": "Enter 10 digits or leave blank"
+        }
+      ]
+    },
+    "c2role": {
+      "binding": "vendor.contacts[2].role",
+      "widget": "text",
+      "label": "Role",
+      "default": ""
+    },
+    "c2dept": {
+      "binding": "vendor.contacts[2].department",
+      "widget": "text",
+      "label": "Department",
+      "default": ""
+    }
+  }
+}
