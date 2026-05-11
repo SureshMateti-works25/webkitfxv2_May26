@@ -18,8 +18,13 @@ $root = Split-Path $PSScriptRoot -Parent
 
 if ($StopExisting) {
     $stop = Join-Path $PSScriptRoot "stop-commerce-api.ps1"
-    & $stop -Port 5055
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    try {
+        & $stop -Port 5055
+    }
+    catch {
+        Write-Host "Could not free port 5055: $_" -ForegroundColor Red
+        exit 1
+    }
 }
 
 $apiDir = Join-Path $root "services/commerce-api/Commerce.Api"

@@ -151,6 +151,190 @@ export async function listCatalogCategories(): Promise<CatalogCategoryRow[]> {
   return (await res.json()) as CatalogCategoryRow[];
 }
 
+/** Merchandising badges on product images (from API / `commerce.merchandising.imageIndicators`). */
+export type ProductImageIndicator = {
+  kind: string;
+  label: string | null;
+  placement: string;
+};
+
+export type CatalogProductCard = {
+  id: string;
+  slug: string;
+  titleDisplay: string;
+  heroStorageKey: string | null;
+  minPriceMinor: number | null;
+  currency: string | null;
+  publishedAt: string | null;
+  /** MRP / list price for strike-through when greater than sale (`minPriceMinor`). */
+  listPriceMinor: number | null;
+  /** When set with an active offer type, shown as the main price; original/MRP struck. */
+  offerPriceMinor: number | null;
+  offerType: string | null;
+  /** Copy shown on cards with the offer pill (e.g. “Pongal 10% off”). */
+  offerCardText: string | null;
+  /** Corner / edge badges on card imagery. */
+  imageIndicators: ProductImageIndicator[];
+};
+
+export type CatalogProductGalleryImage = {
+  storageKey: string;
+  role: string;
+  sortOrder: number;
+};
+
+export type CatalogProductDetail = CatalogProductCard & {
+  gallery: CatalogProductGalleryImage[];
+};
+
+export type CatalogProductsPage = {
+  view: string;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  items: CatalogProductCard[];
+};
+
+export type ListCatalogProductsParams = {
+  page?: number;
+  pageSize?: number;
+  /** published_desc (default), trending, price_desc, … */
+  sort?: string;
+  categoryId?: string;
+  includeSubtree?: boolean;
+  /** Exact product slug (PDP fetch). */
+  slug?: string;
+  q?: string;
+};
+
+function optionalMinorField(row: Record<string, unknown>, camel: string, pascal: string): number | null {
+  const v = row[camel] ?? row[pascal];
+  if (v == null || v === "") return null;
+  if (typeof v === "bigint") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function optionalStringField(row: Record<string, unknown>, camel: string, pascal: string): string | null {
+  const v = row[camel] ?? row[pascal];
+  if (v == null || v === "") return null;
+  return typeof v === "string" ? v : String(v);
+}
+
+function normalizeImageIndicators(raw: unknown): ProductImageIndicator[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ProductImageIndicator[] = [];
+  for (const el of raw) {
+    if (el == null || typeof el !== "object") continue;
+    const o = el as Record<string, unknown>;
+    const kind = String(o.kind ?? o.Kind ?? "tag").trim() || "tag";
+    const labelRaw = o.label ?? o.Label;
+    const label =
+      labelRaw == null || labelRaw === ""
+        ? null
+        : typeof labelRaw === "string"
+          ? labelRaw.trim() || null
+          : String(labelRaw).trim() || null;
+    const placement = String(o.placement ?? o.Placement ?? "top-start").trim() || "top-start";
+    out.push({ kind, label, placement });
+  }
+  return out;
+}
+
+export function normalizeCatalogProductCard(row: Record<string, unknown>): CatalogProductCard {
+  const hero = row.heroStorageKey ?? row.HeroStorageKey;
+  const heroStr =
+    hero == null || hero === ""
+      ? null
+      : typeof hero === "string"
+        ? hero
+        : String(hero);
+  return {
+    id: String(row.id ?? row.Id ?? ""),
+    slug: String(row.slug ?? row.Slug ?? ""),
+    titleDisplay: String(row.titleDisplay ?? row.TitleDisplay ?? ""),
+    heroStorageKey: heroStr,
+    minPriceMinor:
+      row.minPriceMinor != null || row.MinPriceMinor != null
+        ? Number(row.minPriceMinor ?? row.MinPriceMinor)
+        : null,
+    currency: (row.currency ?? row.Currency) == null ? null : String(row.currency ?? row.Currency),
+    publishedAt: (row.publishedAt ?? row.PublishedAt) == null ? null : String(row.publishedAt ?? row.PublishedAt),
+    listPriceMinor: optionalMinorField(row, "listPriceMinor", "ListPriceMinor"),
+    offerPriceMinor: optionalMinorField(row, "offerPriceMinor", "OfferPriceMinor"),
+    offerType: optionalStringField(row, "offerType", "OfferType"),
+    offerCardText: optionalStringField(row, "offerCardText", "OfferCardText"),
+    imageIndicators: normalizeImageIndicators(row.imageIndicators ?? row.ImageIndicators),
+  };
+}
+
+function normalizeGalleryImage(row: Record<string, unknown>): CatalogProductGalleryImage {
+  return {
+    storageKey: String(row.storageKey ?? row.StorageKey ?? ""),
+    role: String(row.role ?? row.Role ?? ""),
+    sortOrder: Number(row.sortOrder ?? row.SortOrder ?? 0),
+  };
+}
+
+export function normalizeCatalogProductDetail(row: Record<string, unknown>): CatalogProductDetail {
+  const base = normalizeCatalogProductCard(row);
+  const gRaw = row.gallery ?? row.Gallery;
+  const gallery: CatalogProductGalleryImage[] = Array.isArray(gRaw)
+    ? (gRaw as Record<string, unknown>[]).map((x) => normalizeGalleryImage(x))
+    : [];
+  return { ...base, gallery };
+}
+
+export async function getCatalogProductDetail(params: {
+  slug?: string;
+  id?: string;
+}): Promise<CatalogProductDetail | null> {
+  const slug = params.slug?.trim();
+  const id = params.id?.trim();
+  if (!slug && !id) throw new Error("getCatalogProductDetail: slug or id required");
+  const qs = new URLSearchParams();
+  if (id) qs.set("id", id);
+  else if (slug) qs.set("slug", slug);
+  const res = await fetch(`${BASE}/api/v1/catalog/product-detail?${qs}`, {
+    headers: commerceTenantHeaders(),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const raw = (await res.json()) as Record<string, unknown>;
+  return normalizeCatalogProductDetail(raw);
+}
+
+export async function listCatalogProducts(params?: ListCatalogProductsParams): Promise<CatalogProductsPage> {
+  const qs = new URLSearchParams();
+  qs.set("view", "card");
+  if (params?.page != null) qs.set("page", String(params.page));
+  if (params?.pageSize != null) qs.set("pageSize", String(params.pageSize));
+  if (params?.sort?.trim()) qs.set("sort", params.sort.trim());
+  if (params?.categoryId?.trim()) qs.set("categoryId", params.categoryId.trim());
+  if (params?.includeSubtree) qs.set("includeSubtree", "true");
+  if (params?.slug?.trim()) qs.set("slug", params.slug.trim());
+  if (params?.q?.trim()) qs.set("q", params.q.trim());
+  const res = await fetch(`${BASE}/api/v1/catalog/products?${qs}`, {
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const raw = (await res.json()) as Record<string, unknown>;
+  const itemsRaw = raw.items ?? raw.Items;
+  const items: CatalogProductCard[] = Array.isArray(itemsRaw)
+    ? (itemsRaw as Record<string, unknown>[]).map(normalizeCatalogProductCard)
+    : [];
+  return {
+    view: String(raw.view ?? raw.View ?? "card"),
+    page: Number(raw.page ?? raw.Page ?? 1),
+    pageSize: Number(raw.pageSize ?? raw.PageSize ?? 0),
+    totalCount: Number(raw.totalCount ?? raw.TotalCount ?? 0),
+    items,
+  };
+}
+
 export type VendorProductListItem = {
   id: string;
   slug: string;
@@ -160,6 +344,11 @@ export type VendorProductListItem = {
   minPriceMinor: number | null;
   currency: string | null;
   publishedAt: string | null;
+  listPriceMinor: number | null;
+  offerPriceMinor: number | null;
+  offerType: string | null;
+  offerCardText: string | null;
+  imageIndicators: ProductImageIndicator[];
 };
 
 export type VendorProductsPage = {
@@ -168,6 +357,30 @@ export type VendorProductsPage = {
   totalCount: number;
   items: VendorProductListItem[];
 };
+
+function normalizeVendorListItem(row: Record<string, unknown>): VendorProductListItem {
+  const hero = row.heroStorageKey ?? row.HeroStorageKey;
+  const heroStr =
+    hero == null || hero === "" ? null : typeof hero === "string" ? hero : String(hero);
+  return {
+    id: String(row.id ?? row.Id ?? ""),
+    slug: String(row.slug ?? row.Slug ?? ""),
+    titleDisplay: String(row.titleDisplay ?? row.TitleDisplay ?? ""),
+    status: String(row.status ?? row.Status ?? ""),
+    heroStorageKey: heroStr,
+    minPriceMinor:
+      row.minPriceMinor != null || row.MinPriceMinor != null
+        ? Number(row.minPriceMinor ?? row.MinPriceMinor)
+        : null,
+    currency: (row.currency ?? row.Currency) == null ? null : String(row.currency ?? row.Currency),
+    publishedAt: (row.publishedAt ?? row.PublishedAt) == null ? null : String(row.publishedAt ?? row.PublishedAt),
+    listPriceMinor: optionalMinorField(row, "listPriceMinor", "ListPriceMinor"),
+    offerPriceMinor: optionalMinorField(row, "offerPriceMinor", "OfferPriceMinor"),
+    offerType: optionalStringField(row, "offerType", "OfferType"),
+    offerCardText: optionalStringField(row, "offerCardText", "OfferCardText"),
+    imageIndicators: normalizeImageIndicators(row.imageIndicators ?? row.ImageIndicators),
+  };
+}
 
 export async function listVendorProducts(
   accessToken: string,
@@ -182,7 +395,17 @@ export async function listVendorProducts(
     headers: commerceAuthorizedHeaders(accessToken),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return (await res.json()) as VendorProductsPage;
+  const raw = (await res.json()) as Record<string, unknown>;
+  const itemsRaw = raw.items ?? raw.Items;
+  const items: VendorProductListItem[] = Array.isArray(itemsRaw)
+    ? (itemsRaw as Record<string, unknown>[]).map(normalizeVendorListItem)
+    : [];
+  return {
+    page: Number(raw.page ?? raw.Page ?? 1),
+    pageSize: Number(raw.pageSize ?? raw.PageSize ?? 0),
+    totalCount: Number(raw.totalCount ?? raw.TotalCount ?? 0),
+    items,
+  };
 }
 
 export type VendorProductDetail = {

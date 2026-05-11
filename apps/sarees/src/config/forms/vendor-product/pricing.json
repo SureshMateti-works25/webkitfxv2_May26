@@ -8,7 +8,17 @@
     "children": [
       {
         "type": "region",
-        "name": "Promotions",
+        "name": "Storefront card (all shoppers)",
+        "children": [
+          { "type": "field", "fieldId": "offerType" },
+          { "type": "field", "fieldId": "offerCardText" },
+          { "type": "field", "fieldId": "listPriceRupees" },
+          { "type": "field", "fieldId": "offerPriceRupees" }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Promotions (optional)",
         "children": [
           { "type": "field", "fieldId": "offerLabel" },
           { "type": "field", "fieldId": "promoEndsAt" }
@@ -17,11 +27,46 @@
     ]
   },
   "fields": {
+    "offerType": {
+      "binding": "commerce.pricing.offerType",
+      "widget": "select",
+      "label": "Offer type (pill on cards)",
+      "props": {
+        "options": [
+          { "value": "none", "label": "None" },
+          { "value": "flat", "label": "Flat off" },
+          { "value": "percent", "label": "Percent off" },
+          { "value": "bogo", "label": "Buy 2 get 1" }
+        ]
+      },
+      "default": "none"
+    },
+    "offerCardText": {
+      "binding": "commerce.pricing.offerCardText",
+      "widget": "text",
+      "label": "Offer text on card",
+      "description": "Shown next to the offer type on home, browse, and PDP for guests and signed-in shoppers.",
+      "default": ""
+    },
+    "listPriceRupees": {
+      "binding": "commerce.pricing.listPriceRupees",
+      "widget": "text",
+      "label": "MRP / list price (major units)",
+      "description": "Struck through on cards when higher than the price shown to shoppers (see offer price below or catalogue “from” price).",
+      "default": ""
+    },
+    "offerPriceRupees": {
+      "binding": "commerce.pricing.offerPriceRupees",
+      "widget": "text",
+      "label": "Offer price (major units)",
+      "description": "Optional. When set with an offer type, this is the bold price on cards and MRP / catalogue price is struck through.",
+      "default": ""
+    },
     "offerLabel": {
       "binding": "commerce.pricing.offerLabel",
       "widget": "text",
-      "label": "Offer label",
-      "description": "e.g. Pongal 15% off",
+      "label": "Offer label (legacy)",
+      "description": "Used as card text fallback if “Offer text on card” is empty.",
       "default": ""
     },
     "promoEndsAt": {

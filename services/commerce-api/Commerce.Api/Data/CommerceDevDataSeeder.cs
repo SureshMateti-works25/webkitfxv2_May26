@@ -5,6 +5,45 @@ namespace Commerce.Api.Data;
 
 public static class CommerceDevDataSeeder
 {
+    /// <summary>Valid 1×1 JPEG used when no real file exists yet (seed hero path must resolve for /media).</summary>
+    private const string TinyJpegBase64 =
+        "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh4YGB8gJC4nLDE6ND8QREpPUDwzLRMmMz9KPD1DTj9KSDP/2wBDAQcJCQkJDBINDgwVFCQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjQ3NjT/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=";
+
+    /// <summary>
+    /// Catalogue seed uses <c>t1/p_kj001/hero_01.jpg</c>; write bytes so static <c>/media/...</c> returns 200.
+    /// Prefer copying any existing tenant upload; otherwise writes a tiny JPEG.
+    /// </summary>
+    public static void EnsureSeedHeroMediaBlobExists(string mediaRootAbsolute)
+    {
+        var dest = Path.Combine(mediaRootAbsolute, "t1", "p_kj001", "hero_01.jpg");
+        if (File.Exists(dest))
+            return;
+
+        var dir = Path.GetDirectoryName(dest);
+        if (dir is not null)
+            Directory.CreateDirectory(dir);
+
+        if (Directory.Exists(mediaRootAbsolute))
+        {
+            foreach (var path in Directory.EnumerateFiles(mediaRootAbsolute, "*.*", SearchOption.AllDirectories))
+            {
+                var ext = Path.GetExtension(path);
+                if (ext.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+                    || ext.Equals(".jpeg", StringComparison.OrdinalIgnoreCase)
+                    || ext.Equals(".png", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.Equals(path, dest, StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Copy(path, dest, overwrite: false);
+                        return;
+                    }
+                }
+            }
+        }
+
+        File.WriteAllBytes(dest, Convert.FromBase64String(TinyJpegBase64));
+    }
+
     public static async Task SeedAsync(CommerceDbContext db, CancellationToken ct = default)
     {
         if (await db.Categories.AnyAsync(ct))
@@ -51,7 +90,9 @@ public static class CommerceDevDataSeeder
             PublishedAt = published,
             HeroStorageKey = "t1/p_kj001/hero_01.jpg",
             MinPriceMinor = 2499900,
-            Currency = "INR"
+            Currency = "INR",
+            CommerceJson =
+                """{"pricing":{"offerType":"percent","offerCardText":"Pongal season — 10% off list price","offerLabel":"Pongal 10%","promoEndsAt":"","listPriceMinor":2799900},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}"""
         });
 
         db.ProductCategories.AddRange(
@@ -118,6 +159,27 @@ public static class CommerceDevDataSeeder
             Locale = "en-IN"
         });
 
+        db.MediaAssets.Add(new MediaAsset
+        {
+            Id = "m_kj_gallery_2",
+            TenantId = "t1",
+            StorageKey = "t1/p_kj001/hero_01.jpg",
+            MimeType = "image/jpeg",
+            Bytes = 0,
+            Checksum = null,
+            UploadedAt = now
+        });
+
+        db.ProductMedia.Add(new ProductMediaRow
+        {
+            Id = "pm2",
+            ProductId = "p_kj001",
+            MediaAssetId = "m_kj_gallery_2",
+            Role = "gallery",
+            SortOrder = 1,
+            Locale = "en-IN"
+        });
+
         db.Skus.Add(new Sku
         {
             Id = "sku_kj_mar_g3",
@@ -138,6 +200,23 @@ public static class CommerceDevDataSeeder
             UpdatedAt = now
         });
 
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Dev-only: older DBs may have <c>p_kj001</c> without <c>commerce.pricing.listPriceMinor</c>; patch so storefront cards show MRP + offer.
+    /// </summary>
+    public static async Task EnsureDemoProductCardPricingAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        var p = await db.Products.FirstOrDefaultAsync(x => x.Id == "p_kj001", ct);
+        if (p is null)
+            return;
+        if (!string.IsNullOrWhiteSpace(p.CommerceJson)
+            && p.CommerceJson.Contains("\"listPriceMinor\"", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        p.CommerceJson =
+            """{"pricing":{"offerType":"percent","offerCardText":"Pongal season — 10% off list price","offerLabel":"Pongal 10%","promoEndsAt":"","listPriceMinor":2799900},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}""";
         await db.SaveChangesAsync(ct);
     }
 }

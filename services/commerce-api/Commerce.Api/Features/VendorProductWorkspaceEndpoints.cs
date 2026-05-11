@@ -426,11 +426,12 @@ public static class VendorProductWorkspaceEndpoints
 
     private static void EnsureCommerceStubs(JsonObject root)
     {
-        root["pricing"] ??= new JsonObject
-        {
-            ["offerLabel"] = "",
-            ["promoEndsAt"] = ""
-        };
+        root["pricing"] ??= new JsonObject();
+        var pr = root["pricing"]!.AsObject();
+        pr["offerLabel"] ??= "";
+        pr["promoEndsAt"] ??= "";
+        pr["offerType"] ??= "none";
+        pr["offerCardText"] ??= "";
         root["tax"] ??= new JsonObject
         {
             ["hsnCode"] = "",

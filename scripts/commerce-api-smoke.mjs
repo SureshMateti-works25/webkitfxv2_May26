@@ -122,6 +122,16 @@ async function testCatalog(accessToken) {
   log("catalog", "products (cat_kan subtree)", { totalCount: total, pageItems: items.length });
 
   res = await fetch(
+    `${BASE}/api/v1/catalog/product-detail?slug=royal-kanjeevaram-zari`,
+    { headers: tenantHeaders }
+  );
+  data = await json(res);
+  if (!res.ok) fail("catalog", "product-detail", res, data);
+  const gallery = data.gallery ?? data.Gallery ?? [];
+  const ind = data.imageIndicators ?? data.ImageIndicators ?? [];
+  log("catalog", "product-detail", { gallery: gallery.length, imageIndicators: ind.length });
+
+  res = await fetch(
     `${BASE}/api/v1/catalog/facet-options?categoryId=cat_silk&includeSubtree=true`,
     { headers: tenantHeaders }
   );

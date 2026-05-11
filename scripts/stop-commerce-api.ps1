@@ -36,7 +36,9 @@ function Get-PidsListeningOnPort([int] $LocalPort) {
 $pids = Get-PidsListeningOnPort -LocalPort $Port
 if ($pids.Count -eq 0) {
     Write-Host "No listener on port $Port (nothing to stop)." -ForegroundColor DarkGray
-    exit 0
+    # Do not use `exit` here: when this script is dot-called from dev-sarees-stack.ps1, `exit`
+    # terminates the parent PowerShell session and aborts the stack before Docker/Vite.
+    return
 }
 
 foreach ($procId in ($pids | Sort-Object -Unique)) {
@@ -47,7 +49,7 @@ foreach ($procId in ($pids | Sort-Object -Unique)) {
     }
     catch {
         Write-Host "Could not stop PID $procId : $_" -ForegroundColor Red
-        exit 1
+        throw
     }
 }
 

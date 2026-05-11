@@ -1,24 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
-import {
-  formatCommerceApiError,
-  listVendorProducts,
-  type VendorProductListItem,
-} from "../lib/commerceApi.js";
+import { CatalogProductVisual } from "../components/CatalogProductVisual.js";
+import { ProductCardPrices } from "../components/ProductCardPrices.js";
+import { formatCommerceApiError, listVendorProducts, type VendorProductListItem } from "../lib/commerceApi.js";
 
 const SIGNIN_NOTICES: Record<string, string> = {
   "vendor-submitted":
     "Your vendor account is ready. Add products below — drafts stay private until you mark them active.",
   "member-signed-in": "Signed in successfully.",
 };
-
-function formatPriceMinor(minor: number | null, currency: string | null): string {
-  if (minor == null) return "—";
-  const unit = (currency ?? "INR").toUpperCase();
-  const major = minor / 100;
-  return `${unit} ${major.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 export function VendorProductsPage() {
   const { auth, getAccessToken } = useAuth();
@@ -107,15 +98,25 @@ export function VendorProductsPage() {
           {items.map((p) => (
             <li key={p.id}>
               <Link to={`/vendor/products/${p.id}`} className="vendor-product-card">
-                <div className="vendor-product-card__media" aria-hidden="true" />
+                <div className="vendor-product-card__media" aria-hidden="true">
+                  <CatalogProductVisual storageKey={p.heroStorageKey} imageIndicators={p.imageIndicators} />
+                </div>
                 <div className="vendor-product-card__body">
                   <h2 className="vendor-product-card__title">{p.titleDisplay}</h2>
                   <p className="vendor-product-card__meta">
                     <span className={`vendor-product-card__status vendor-product-card__status--${p.status}`}>
                       {p.status}
                     </span>
-                    <span className="vendor-product-card__price">{formatPriceMinor(p.minPriceMinor, p.currency)}</span>
                   </p>
+                  <ProductCardPrices
+                    className="vendor-product-card__prices"
+                    minPriceMinor={p.minPriceMinor}
+                    currency={p.currency}
+                    listPriceMinor={p.listPriceMinor}
+                    offerPriceMinor={p.offerPriceMinor}
+                    offerType={p.offerType}
+                    offerCardText={p.offerCardText}
+                  />
                   <p className="vendor-product-card__slug">{p.slug}</p>
                 </div>
               </Link>

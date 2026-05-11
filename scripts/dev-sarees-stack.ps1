@@ -32,8 +32,13 @@ Write-Host "`n=== Sarees local stack ===" -ForegroundColor Cyan
 
 if (-not $NoStopPort) {
     Write-Host "`n[1/5] Free port 5055 (stop stale Commerce.Api if any)" -ForegroundColor Cyan
-    & $stopScript -Port 5055
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    try {
+        & $stopScript -Port 5055
+    }
+    catch {
+        Write-Host "Could not free port 5055: $_" -ForegroundColor Red
+        exit 1
+    }
 }
 else {
     Write-Host "`n[1/5] Skipping port stop (-NoStopPort)." -ForegroundColor Yellow

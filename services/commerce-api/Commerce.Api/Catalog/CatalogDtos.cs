@@ -1,5 +1,9 @@
 namespace Commerce.Api.Catalog;
 
+public sealed record ProductImageIndicatorDto(string Kind, string? Label, string Placement);
+
+public sealed record ProductGalleryImageDto(string StorageKey, string Role, int SortOrder);
+
 public sealed record ProductCardDto(
     string Id,
     string Slug,
@@ -7,7 +11,27 @@ public sealed record ProductCardDto(
     string? HeroStorageKey,
     long? MinPriceMinor,
     string? Currency,
-    DateTimeOffset? PublishedAt);
+    DateTimeOffset? PublishedAt,
+    long? ListPriceMinor,
+    string? OfferType,
+    string? OfferCardText,
+    long? OfferPriceMinor,
+    IReadOnlyList<ProductImageIndicatorDto> ImageIndicators);
+
+public sealed record ProductDetailDto(
+    string Id,
+    string Slug,
+    string TitleDisplay,
+    string? HeroStorageKey,
+    long? MinPriceMinor,
+    string? Currency,
+    DateTimeOffset? PublishedAt,
+    long? ListPriceMinor,
+    string? OfferType,
+    string? OfferCardText,
+    long? OfferPriceMinor,
+    IReadOnlyList<ProductImageIndicatorDto> ImageIndicators,
+    IReadOnlyList<ProductGalleryImageDto> Gallery);
 
 public sealed record PagedProductsResponse(
     string View,

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
-import { getShell } from "../config/getShell.js";
-import { LandingSections } from "./LandingSections.js";
+import { HomeCatalogRails } from "./HomeCatalogRails.js";
 
 const SIGNIN_NOTICES: Record<string, string> = {
   "vendor-submitted":
@@ -12,7 +11,6 @@ const SIGNIN_NOTICES: Record<string, string> = {
 };
 
 export function HomePage() {
-  const shell = getShell();
   const { auth } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -49,7 +47,7 @@ export function HomePage() {
           </button>
         </div>
       ) : null}
-      <LandingSections sections={shell.landing.sections} />
+      <HomeCatalogRails />
     </div>
   );
 }

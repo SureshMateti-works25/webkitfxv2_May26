@@ -19,6 +19,9 @@ public static class CatalogEndpoints
         app.MapGet("/api/v1/catalog/products", ListProducts)
             .WithName("CatalogListProducts");
 
+        app.MapGet("/api/v1/catalog/product-detail", GetProductDetail)
+            .WithName("CatalogGetProductDetail");
+
         app.MapGet("/api/v1/catalog/categories/{categoryId}/products", ListProductsForCategory)
             .WithName("CatalogListProductsByCategory");
 
@@ -127,6 +130,9 @@ public static class CatalogEndpoints
         var filters = req.Query["filters"].ToString();
         var sort = req.Query["sort"].ToString();
         var view = string.IsNullOrWhiteSpace(req.Query["view"].ToString()) ? "card" : req.Query["view"].ToString();
+        var slug = req.Query["slug"].ToString();
+        if (string.IsNullOrWhiteSpace(slug))
+            slug = null;
 
         if (!int.TryParse(req.Query["page"].ToString(), out var page) || page < 1)
             page = 1;
@@ -138,25 +144,137 @@ public static class CatalogEndpoints
         var facetPairs = CatalogListingQueries.ParseFacetFilters(filters);
 
         var now = DateTimeOffset.UtcNow;
-        var baseQ = CatalogListingQueries.BaseProductQuery(db, tenantId, scope, collectionIdQ, search, now);
+        var baseQ = CatalogListingQueries.BaseProductQuery(db, tenantId, scope, collectionIdQ, search, now, slug);
         var filtered = CatalogListingQueries.ApplyFacetFilters(db, baseQ, facetPairs);
         var sorted = CatalogListingQueries.ApplySort(filtered, sort);
 
         var total = await sorted.CountAsync(ct);
-        var items = await sorted
+        var rows = await sorted
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(p => new ProductCardDto(
+            .Select(p => new
+            {
                 p.Id,
                 p.Slug,
                 p.TitleDisplay,
                 p.HeroStorageKey,
                 p.MinPriceMinor,
                 p.Currency,
-                p.PublishedAt))
+                p.PublishedAt,
+                p.CommerceJson
+            })
             .ToListAsync(ct);
+        var nowCard = DateTimeOffset.UtcNow;
+        var items = rows.Select(r =>
+        {
+            var f = CommercePricingCardReader.ReadCard(r.CommerceJson);
+            var offerMinor = CommercePricingCardReader.ResolveOfferPriceMinorForCard(f, r.MinPriceMinor);
+            var imageIndicators = ProductMerchandisingIndicators.Build(
+                r.CommerceJson,
+                r.MinPriceMinor,
+                f.ListPriceMinor,
+                offerMinor,
+                f.OfferType,
+                f.OfferCardText,
+                r.PublishedAt,
+                nowCard,
+                ProductMerchandisingIndicators.DefaultCardMax,
+                compactCard: true);
+            return new ProductCardDto(
+                r.Id,
+                r.Slug,
+                r.TitleDisplay,
+                r.HeroStorageKey,
+                r.MinPriceMinor,
+                r.Currency,
+                r.PublishedAt,
+                f.ListPriceMinor,
+                f.OfferType,
+                f.OfferCardText,
+                offerMinor,
+                imageIndicators);
+        }).ToList();
 
         return Results.Ok(new PagedProductsResponse(view, page, pageSize, total, items));
+    }
+
+    private static async Task<IResult> GetProductDetail(
+        HttpRequest req,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(req.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = req.ResolveTenantId(tenantContext)!;
+
+        var slug = req.Query["slug"].ToString().Trim();
+        var id = req.Query["id"].ToString().Trim();
+        if (slug.Length == 0 && id.Length == 0)
+            return Results.BadRequest(new { error = "Provide slug or id." });
+
+        var row = await db.Products.AsNoTracking()
+            .Where(p => p.TenantId == tenantId && p.Status == "active")
+            .Where(p => id.Length > 0 ? p.Id == id : p.Slug == slug)
+            .Select(p => new
+            {
+                p.Id,
+                p.Slug,
+                p.TitleDisplay,
+                p.HeroStorageKey,
+                p.MinPriceMinor,
+                p.Currency,
+                p.PublishedAt,
+                p.CommerceJson
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (row is null)
+            return Results.NotFound();
+
+        var galleryRows = await (
+            from pm in db.ProductMedia.AsNoTracking()
+            join ma in db.MediaAssets.AsNoTracking() on pm.MediaAssetId equals ma.Id
+            where pm.ProductId == row.Id && ma.TenantId == tenantId && pm.SkuId == null
+            orderby pm.SortOrder, pm.Id
+            select new { ma.StorageKey, pm.Role, pm.SortOrder }
+        ).ToListAsync(ct);
+
+        var gallery = galleryRows
+            .Select(g => new ProductGalleryImageDto(g.StorageKey, g.Role, g.SortOrder))
+            .ToList();
+
+        var now = DateTimeOffset.UtcNow;
+        var f = CommercePricingCardReader.ReadCard(row.CommerceJson);
+        var offerMinor = CommercePricingCardReader.ResolveOfferPriceMinorForCard(f, row.MinPriceMinor);
+        var imageIndicators = ProductMerchandisingIndicators.Build(
+            row.CommerceJson,
+            row.MinPriceMinor,
+            f.ListPriceMinor,
+            offerMinor,
+            f.OfferType,
+            f.OfferCardText,
+            row.PublishedAt,
+            now,
+            ProductMerchandisingIndicators.DefaultDetailMax,
+            compactCard: false);
+
+        return Results.Ok(new ProductDetailDto(
+            row.Id,
+            row.Slug,
+            row.TitleDisplay,
+            row.HeroStorageKey,
+            row.MinPriceMinor,
+            row.Currency,
+            row.PublishedAt,
+            f.ListPriceMinor,
+            f.OfferType,
+            f.OfferCardText,
+            offerMinor,
+            imageIndicators,
+            gallery));
     }
 
     private static async Task<IResult> ListFacetOptions(
@@ -186,7 +304,7 @@ public static class CatalogEndpoints
 
         var scope = CatalogListingQueries.ResolveCategoryScope(db, tenantId, categoryId, includeSubtree);
         var now = DateTimeOffset.UtcNow;
-        var baseQ = CatalogListingQueries.BaseProductQuery(db, tenantId, scope, collectionId, search, now);
+        var baseQ = CatalogListingQueries.BaseProductQuery(db, tenantId, scope, collectionId, search, now, slug: null);
 
         var defs = await db.AttributeDefs.AsNoTracking()
             .Where(d => d.TenantId == tenantId && d.Filterable)

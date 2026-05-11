@@ -88,6 +88,12 @@ if (app.Environment.IsDevelopment())
 
         await CommerceDevDataSeeder.SeedAsync(db);
         await CommerceDevDataSeeder.EnsureOperationalSeedAsync(db);
+        await CommerceDevDataSeeder.EnsureDemoProductCardPricingAsync(db);
+
+        var mediaRootForSeed = Path.GetFullPath(Path.Combine(
+            app.Environment.ContentRootPath,
+            builder.Configuration.GetSection("Media").Get<LocalMediaStorageOptions>()?.RootPath ?? "uploads/media"));
+        CommerceDevDataSeeder.EnsureSeedHeroMediaBlobExists(mediaRootForSeed);
 
         await audit.RecordAsync(
             AuditActions.BootstrapMigrate,

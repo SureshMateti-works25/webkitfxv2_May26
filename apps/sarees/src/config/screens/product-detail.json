@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "copy": {
+    "backLink": "Back to home",
+    "loading": "Loading product…",
+    "notFound": "This product is unavailable or the link may have changed.",
+    "trustNote": "Prices reflect current offers on the catalogue. Checkout and delivery will connect here next."
+  },
+  "sections": ["gallery", "title", "prices", "meta"]
+}

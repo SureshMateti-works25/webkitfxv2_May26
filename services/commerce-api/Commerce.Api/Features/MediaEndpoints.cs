@@ -225,6 +225,16 @@ public static class MediaEndpoints
                 SortOrder = await db.ProductMedia.CountAsync(x => x.ProductId == pid, ct),
                 Locale = null
             });
+
+            // PLP / vendor card thumbnail: prefer explicit hero roles; otherwise first linked image.
+            if (trackedProduct is not null)
+            {
+                var heroish = r.Equals("front", StringComparison.OrdinalIgnoreCase)
+                    || r.Equals("hero", StringComparison.OrdinalIgnoreCase)
+                    || r.Equals("primary", StringComparison.OrdinalIgnoreCase);
+                if (heroish || string.IsNullOrWhiteSpace(trackedProduct.HeroStorageKey))
+                    trackedProduct.HeroStorageKey = entity.StorageKey;
+            }
         }
 
         await db.SaveChangesAsync(ct);

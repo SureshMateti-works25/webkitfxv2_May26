@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Commerce.Api.Audit;
+using Commerce.Api.Catalog;
 using Commerce.Api.Data;
 using Commerce.Api.Entities;
 using Commerce.Api.Infrastructure;
@@ -72,21 +73,64 @@ public static class VendorProductEndpoints
             .Where(p => p.TenantId == tenantId && p.VendorPortalUserId == uid);
 
         var total = await q.CountAsync(ct);
-        var items = await q
+        var raw = await q
             .OrderByDescending(p => p.PublishedAt ?? DateTimeOffset.MinValue)
             .ThenBy(p => p.TitleDisplay)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(p => new VendorProductListItem(
+            .Select(p => new
+            {
                 p.Id,
                 p.Slug,
                 p.TitleDisplay,
                 p.Status,
                 p.HeroStorageKey,
+                HeroFromMedia = db.ProductMedia
+                    .Where(pm => pm.ProductId == p.Id)
+                    .Join(db.MediaAssets, pm => pm.MediaAssetId, ma => ma.Id, (pm, ma) => new { pm, ma })
+                    .OrderBy(x => x.pm.SortOrder)
+                    .ThenBy(x => x.pm.Id)
+                    .Select(x => x.ma.StorageKey)
+                    .FirstOrDefault(),
                 p.MinPriceMinor,
                 p.Currency,
-                p.PublishedAt))
+                p.PublishedAt,
+                p.CommerceJson
+            })
             .ToListAsync(ct);
+
+        var nowList = DateTimeOffset.UtcNow;
+        var items = raw.Select(r =>
+        {
+            var f = CommercePricingCardReader.ReadCard(r.CommerceJson);
+            var offerMinor = CommercePricingCardReader.ResolveOfferPriceMinorForCard(f, r.MinPriceMinor);
+            var hero = r.HeroStorageKey ?? r.HeroFromMedia;
+            var imageIndicators = ProductMerchandisingIndicators.Build(
+                r.CommerceJson,
+                r.MinPriceMinor,
+                f.ListPriceMinor,
+                offerMinor,
+                f.OfferType,
+                f.OfferCardText,
+                r.PublishedAt,
+                nowList,
+                ProductMerchandisingIndicators.DefaultCardMax,
+                compactCard: true);
+            return new VendorProductListItem(
+                r.Id,
+                r.Slug,
+                r.TitleDisplay,
+                r.Status,
+                hero,
+                r.MinPriceMinor,
+                r.Currency,
+                r.PublishedAt,
+                f.ListPriceMinor,
+                f.OfferType,
+                f.OfferCardText,
+                offerMinor,
+                imageIndicators);
+        }).ToList();
 
         return Results.Ok(new VendorProductsPageResponse(page, pageSize, total, items));
     }
@@ -180,7 +224,7 @@ public static class VendorProductEndpoints
             VendorPortalUserId = uid,
             ProductTypeId = string.IsNullOrWhiteSpace(body.ProductTypeId) ? null : body.ProductTypeId!.Trim()[..Math.Min(64, body.ProductTypeId.Trim().Length)],
             CommerceJson =
-                """{"pricing":{"offerLabel":"","promoEndsAt":""},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}""",
+                """{"pricing":{"offerType":"none","offerCardText":"","offerLabel":"","promoEndsAt":""},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}""",
             Slug = slug,
             TitleDisplay = title,
             SearchText = title.ToLowerInvariant(),
@@ -452,7 +496,12 @@ public static class VendorProductEndpoints
         string? HeroStorageKey,
         long? MinPriceMinor,
         string? Currency,
-        DateTimeOffset? PublishedAt);
+        DateTimeOffset? PublishedAt,
+        long? ListPriceMinor,
+        string? OfferType,
+        string? OfferCardText,
+        long? OfferPriceMinor,
+        IReadOnlyList<ProductImageIndicatorDto> ImageIndicators);
 
     private sealed record VendorProductsPageResponse(
         int Page,

@@ -69,16 +69,55 @@ function workspaceToFormSeed(ws: VendorProductWorkspace): Record<string, unknown
   const minMinor = core.minPriceMinor;
   core.minPriceRupees =
     minMinor != null && typeof minMinor === "number" ? String(minMinor / 100) : "";
+  const commerce = JSON.parse(JSON.stringify(ws.commerce ?? {})) as Record<string, unknown>;
+  const pricing = { ...((commerce.pricing as Record<string, unknown>) ?? {}) };
+  const listMinor = pricing.listPriceMinor;
+  if (typeof listMinor === "number" && Number.isFinite(listMinor)) {
+    pricing.listPriceRupees = String(listMinor / 100);
+  } else {
+    pricing.listPriceRupees = "";
+  }
+  const offMinor = pricing.offerPriceMinor;
+  if (typeof offMinor === "number" && Number.isFinite(offMinor)) {
+    pricing.offerPriceRupees = String(offMinor / 100);
+  } else {
+    pricing.offerPriceRupees = "";
+  }
+  delete pricing.listPriceMinor;
+  delete pricing.offerPriceMinor;
+  commerce.pricing = pricing;
   return {
     core,
     collections: ws.collections ?? { idsCsv: "" },
     attributes: { ...ws.attributes },
-    commerce: JSON.parse(JSON.stringify(ws.commerce ?? {})) as Record<string, unknown>,
+    commerce,
     skus: ws.skus,
     media: ws.media,
     inventory: ws.inventory,
     locations: ws.locations,
   };
+}
+
+function pricingPayloadFromFormValues(values: Record<string, unknown>): Record<string, unknown> {
+  const raw = getAtPath(values, "commerce.pricing") as Record<string, unknown> | undefined;
+  const pricing = { ...(raw ?? {}) };
+  const mrp = String(pricing.listPriceRupees ?? "").trim();
+  delete pricing.listPriceRupees;
+  if (mrp.length > 0) {
+    const minor = minorFromRupeesInput(mrp);
+    pricing.listPriceMinor = minor ?? null;
+  } else {
+    pricing.listPriceMinor = null;
+  }
+  const off = String(pricing.offerPriceRupees ?? "").trim();
+  delete pricing.offerPriceRupees;
+  if (off.length > 0) {
+    const minor = minorFromRupeesInput(off);
+    pricing.offerPriceMinor = minor ?? null;
+  } else {
+    pricing.offerPriceMinor = null;
+  }
+  return pricing;
 }
 
 function corePayloadFromForm(values: Record<string, unknown>): Record<string, unknown> {
@@ -572,9 +611,10 @@ export function VendorProductEditPage() {
                   className="vendor-media-upload__input-native"
                   disabled={mediaUploading || !productId}
                   onChange={(e) => {
-                    const files = e.target.files;
+                    // Snapshot before clearing: `FileList` is live; resetting `value` empties it.
+                    const picked = e.target.files ? Array.from(e.target.files) : [];
                     e.target.value = "";
-                    if (!files?.length || !productId) return;
+                    if (!picked.length || !productId) return;
                     if (!token) {
                       setError("Your session has no access token. Sign out and sign in again.");
                       return;
@@ -585,7 +625,7 @@ export function VendorProductEditPage() {
                       try {
                         const role = mediaRole.trim() || "gallery";
                         const sku = mediaSkuId.trim() || undefined;
-                        for (const file of Array.from(files)) {
+                        for (const file of picked) {
                           await uploadVendorProductMedia(token, productId, file, {
                             role,
                             skuId: sku,
@@ -593,9 +633,9 @@ export function VendorProductEditPage() {
                         }
                         await loadWorkspace();
                         flash(
-                          files.length === 1
+                          picked.length === 1
                             ? "Image uploaded."
-                            : `${files.length} images uploaded.`
+                            : `${picked.length} images uploaded.`
                         );
                       } catch (err) {
                         setError(formatCommerceApiError(err));
@@ -657,9 +697,9 @@ export function VendorProductEditPage() {
               setSaving(true);
               setError(null);
               try {
-                const pricing = getAtPath(values, "commerce.pricing");
+                const pricing = pricingPayloadFromFormValues(values as Record<string, unknown>);
                 await putVendorProductWorkspace(token, productId, {
-                  commercePatch: { pricing: pricing ?? {} },
+                  commercePatch: { pricing },
                 });
                 await loadWorkspace();
                 flash("Pricing saved.");

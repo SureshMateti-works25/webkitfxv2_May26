@@ -69,9 +69,16 @@ public static class CatalogListingQueries
         HashSet<string> categoryScope,
         string? collectionId,
         string? search,
-        DateTimeOffset? now)
+        DateTimeOffset? now,
+        string? slug = null)
     {
         var q = db.Products.AsNoTracking().Where(p => p.TenantId == tenantId && p.Status == "active");
+
+        if (!string.IsNullOrWhiteSpace(slug))
+        {
+            var s = slug.Trim();
+            q = q.Where(p => p.Slug == s);
+        }
 
         if (categoryScope.Count > 0)
         {
@@ -126,6 +133,10 @@ public static class CatalogListingQueries
             "title_asc" => q.OrderBy(p => p.TitleDisplay).ThenBy(p => p.Id),
             "price_asc" => q.OrderBy(p => p.MinPriceMinor ?? long.MaxValue).ThenBy(p => p.Id),
             "price_desc" => q.OrderByDescending(p => p.MinPriceMinor ?? long.MinValue).ThenBy(p => p.Id),
+            // Distinct from recent: premium-first, then newest (proxy until sales/trend signals exist).
+            "trending" => q.OrderByDescending(p => p.MinPriceMinor ?? 0)
+                .ThenByDescending(p => p.PublishedAt ?? DateTimeOffset.MinValue)
+                .ThenBy(p => p.Id),
             _ => q.OrderByDescending(p => p.PublishedAt).ThenBy(p => p.Id), // published_desc default
         };
     }
