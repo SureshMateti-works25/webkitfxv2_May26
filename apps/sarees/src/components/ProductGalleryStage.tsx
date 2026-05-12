@@ -9,6 +9,8 @@ export type ProductGalleryStageProps = {
   imageIndicators: ProductImageIndicator[] | null | undefined;
   title: string;
   variant?: "detail";
+  /** When set, shows full-screen control and opens the lightbox at the given index. */
+  onRequestFullView?: (index: number) => void;
 };
 
 /**
@@ -20,6 +22,7 @@ export function ProductGalleryStage({
   imageIndicators,
   title,
   variant = "detail",
+  onRequestFullView,
 }: ProductGalleryStageProps) {
   const slides =
     gallery.length > 0
@@ -58,12 +61,32 @@ export function ProductGalleryStage({
   return (
     <div className={`product-gallery-stage product-gallery-stage--${variant}`}>
       <div className="product-gallery-stage__frame">
-        <CatalogThumbnail
-          key={current.storageKey + String(safeIndex)}
-          storageKey={current.storageKey}
-          alt={title}
-          mediaClassName="product-gallery-stage__media"
-        />
+        {onRequestFullView ? (
+          <button
+            type="button"
+            className="product-gallery-stage__expand"
+            aria-label="View product photos full screen"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRequestFullView(safeIndex);
+            }}
+          >
+            Full screen
+          </button>
+        ) : null}
+        <div
+          className={
+            "product-gallery-stage__hit" + (onRequestFullView ? " product-gallery-stage__hit--zoomable" : "")
+          }
+          onClick={() => onRequestFullView?.(safeIndex)}
+        >
+          <CatalogThumbnail
+            key={current.storageKey + String(safeIndex)}
+            storageKey={current.storageKey}
+            alt={title}
+            mediaClassName="product-gallery-stage__media"
+          />
+        </div>
         <ProductImageOverlays indicators={imageIndicators} variant="detail" />
       </div>
       {showDots ? (

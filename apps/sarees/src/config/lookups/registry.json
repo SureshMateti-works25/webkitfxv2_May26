@@ -1,0 +1,34 @@
+{
+  "version": "1",
+  "lookupTypes": [
+    {
+      "id": "regions",
+      "title": "Regions",
+      "description": "Top-level geography (no parent).",
+      "parentLookupId": null,
+      "entryIdPrefix": "reg_"
+    },
+    {
+      "id": "cities",
+      "title": "Cities",
+      "description": "Cities belong to a region.",
+      "parentLookupId": "regions",
+      "parentFieldLabel": "Region",
+      "entryIdPrefix": "city_"
+    },
+    {
+      "id": "payment_methods",
+      "title": "Payment methods",
+      "description": "Standalone lookup with no parent.",
+      "parentLookupId": null,
+      "entryIdPrefix": "pay_"
+    },
+    {
+      "id": "product_categories",
+      "title": "Product categories",
+      "description": "Merchandising categories for the storefront. Use Code as the URL slug (e.g. kanjivaram) and Label as the shopper-facing name. Browse uses /browse/:categorySlug — keep Code unique and slug-safe.",
+      "parentLookupId": null,
+      "entryIdPrefix": "cat_"
+    }
+  ]
+}

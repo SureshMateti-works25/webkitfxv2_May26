@@ -21,6 +21,18 @@ public static class CatalogEndpoints
 
         app.MapGet("/api/v1/catalog/product-detail", GetProductDetail)
             .WithName("CatalogGetProductDetail");
+        app.MapGet("/api/v1/catalog/products/{productId}/engagement", GetProductEngagement)
+            .WithName("CatalogGetProductEngagement");
+        app.MapPost("/api/v1/catalog/products/{productId}/view", TrackProductView)
+            .WithName("CatalogTrackProductView");
+        app.MapPost("/api/v1/catalog/products/{productId}/ratings", AddProductRating)
+            .WithName("CatalogAddProductRating");
+        app.MapPost("/api/v1/catalog/products/{productId}/like", IncrementProductLike)
+            .WithName("CatalogIncrementProductLike");
+        app.MapPost("/api/v1/catalog/products/{productId}/dislike", IncrementProductDislike)
+            .WithName("CatalogIncrementProductDislike");
+        app.MapPost("/api/v1/catalog/products/{productId}/comments", AddProductComment)
+            .WithName("CatalogAddProductComment");
 
         app.MapGet("/api/v1/catalog/categories/{categoryId}/products", ListProductsForCategory)
             .WithName("CatalogListProductsByCategory");
@@ -161,9 +173,29 @@ public static class CatalogEndpoints
                 p.MinPriceMinor,
                 p.Currency,
                 p.PublishedAt,
-                p.CommerceJson
+                p.CommerceJson,
+                p.VendorPortalUserId
             })
             .ToListAsync(ct);
+
+        var productIds = rows.Select(r => r.Id).ToList();
+        IReadOnlyDictionary<string, IReadOnlyList<string>> skuByProduct;
+        if (productIds.Count == 0)
+        {
+            skuByProduct = new Dictionary<string, IReadOnlyList<string>>();
+        }
+        else
+        {
+            var skuRows = await db.Skus.AsNoTracking()
+                .Where(s => s.TenantId == tenantId && productIds.Contains(s.ProductId) && s.Status == "active")
+                .OrderBy(s => s.SkuCode)
+                .Select(s => new { s.ProductId, s.SkuCode })
+                .ToListAsync(ct);
+            skuByProduct = skuRows
+                .GroupBy(x => x.ProductId)
+                .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(x => x.SkuCode).ToList());
+        }
+
         var nowCard = DateTimeOffset.UtcNow;
         var items = rows.Select(r =>
         {
@@ -180,6 +212,8 @@ public static class CatalogEndpoints
                 nowCard,
                 ProductMerchandisingIndicators.DefaultCardMax,
                 compactCard: true);
+            var vendorCode = CommerceVendorDisplayReader.ResolveVendorCode(r.CommerceJson, r.VendorPortalUserId);
+            var skuCodes = skuByProduct.TryGetValue(r.Id, out var codes) ? codes : Array.Empty<string>();
             return new ProductCardDto(
                 r.Id,
                 r.Slug,
@@ -192,7 +226,9 @@ public static class CatalogEndpoints
                 f.OfferType,
                 f.OfferCardText,
                 offerMinor,
-                imageIndicators);
+                imageIndicators,
+                vendorCode,
+                skuCodes);
         }).ToList();
 
         return Results.Ok(new PagedProductsResponse(view, page, pageSize, total, items));
@@ -215,66 +251,308 @@ public static class CatalogEndpoints
         if (slug.Length == 0 && id.Length == 0)
             return Results.BadRequest(new { error = "Provide slug or id." });
 
-        var row = await db.Products.AsNoTracking()
-            .Where(p => p.TenantId == tenantId && p.Status == "active")
-            .Where(p => id.Length > 0 ? p.Id == id : p.Slug == slug)
-            .Select(p => new
-            {
-                p.Id,
-                p.Slug,
-                p.TitleDisplay,
-                p.HeroStorageKey,
-                p.MinPriceMinor,
-                p.Currency,
-                p.PublishedAt,
-                p.CommerceJson
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (row is null)
+        var dto = await CatalogProductDetailAssembler.BuildForActiveCatalogAsync(db, tenantId, id, slug, ct);
+        if (dto is null)
             return Results.NotFound();
 
-        var galleryRows = await (
-            from pm in db.ProductMedia.AsNoTracking()
-            join ma in db.MediaAssets.AsNoTracking() on pm.MediaAssetId equals ma.Id
-            where pm.ProductId == row.Id && ma.TenantId == tenantId && pm.SkuId == null
-            orderby pm.SortOrder, pm.Id
-            select new { ma.StorageKey, pm.Role, pm.SortOrder }
-        ).ToListAsync(ct);
+        return Results.Ok(dto);
+    }
 
-        var gallery = galleryRows
-            .Select(g => new ProductGalleryImageDto(g.StorageKey, g.Role, g.SortOrder))
-            .ToList();
+    private static async Task<IResult> GetProductEngagement(
+        string productId,
+        HttpRequest req,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(req.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = req.ResolveTenantId(tenantContext)!;
 
-        var now = DateTimeOffset.UtcNow;
-        var f = CommercePricingCardReader.ReadCard(row.CommerceJson);
-        var offerMinor = CommercePricingCardReader.ResolveOfferPriceMinorForCard(f, row.MinPriceMinor);
-        var imageIndicators = ProductMerchandisingIndicators.Build(
-            row.CommerceJson,
-            row.MinPriceMinor,
-            f.ListPriceMinor,
-            offerMinor,
-            f.OfferType,
-            f.OfferCardText,
-            row.PublishedAt,
-            now,
-            ProductMerchandisingIndicators.DefaultDetailMax,
-            compactCard: false);
+        var exists = await db.Products.AsNoTracking()
+            .AnyAsync(p => p.TenantId == tenantId && p.Id == productId, ct);
+        if (!exists) return Results.NotFound();
 
-        return Results.Ok(new ProductDetailDto(
-            row.Id,
-            row.Slug,
-            row.TitleDisplay,
-            row.HeroStorageKey,
-            row.MinPriceMinor,
-            row.Currency,
-            row.PublishedAt,
-            f.ListPriceMinor,
-            f.OfferType,
-            f.OfferCardText,
-            offerMinor,
-            imageIndicators,
-            gallery));
+        var summary = await db.ProductEngagementSummaries.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.ProductId == productId, ct);
+        var comments = await db.ProductComments.AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.ProductId == productId)
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(20)
+            .Select(c => new ProductCommentDto(c.Id, c.AuthorName, c.CommentText, c.CreatedAt))
+            .ToListAsync(ct);
+
+        var ratingsCount = summary?.RatingsCount ?? 0;
+        var ratingsTotal = summary?.RatingsTotal ?? 0L;
+        var averageRating = ratingsCount > 0 ? Math.Round((decimal)ratingsTotal / ratingsCount, 2) : 0m;
+        var dto = new ProductEngagementDto(
+            summary?.ViewsCount ?? 0,
+            summary?.LikesCount ?? 0,
+            summary?.DislikesCount ?? 0,
+            ratingsCount,
+            averageRating,
+            summary?.CommentsCount ?? comments.Count,
+            comments);
+        return Results.Ok(dto);
+    }
+
+    private static async Task<IResult> TrackProductView(
+        string productId,
+        HttpRequest req,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(req.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = req.ResolveTenantId(tenantContext)!;
+
+        var exists = await db.Products.AsNoTracking()
+            .AnyAsync(p => p.TenantId == tenantId && p.Id == productId, ct);
+        if (!exists) return Results.NotFound();
+
+        var summary = await db.ProductEngagementSummaries
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.ProductId == productId, ct);
+        if (summary is null)
+        {
+            summary = new Entities.ProductEngagementSummary
+            {
+                TenantId = tenantId,
+                ProductId = productId,
+                ViewsCount = 1,
+                LikesCount = 0,
+                DislikesCount = 0,
+                RatingsTotal = 0,
+                RatingsCount = 0,
+                CommentsCount = 0,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.ProductEngagementSummaries.Add(summary);
+        }
+        else
+        {
+            summary.ViewsCount += 1;
+            summary.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new { summary.ViewsCount });
+    }
+
+    private static async Task<IResult> IncrementProductLike(
+        string productId,
+        HttpRequest req,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(req.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = req.ResolveTenantId(tenantContext)!;
+
+        var exists = await db.Products.AsNoTracking()
+            .AnyAsync(p => p.TenantId == tenantId && p.Id == productId, ct);
+        if (!exists) return Results.NotFound();
+
+        var summary = await db.ProductEngagementSummaries
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.ProductId == productId, ct);
+        if (summary is null)
+        {
+            summary = new Entities.ProductEngagementSummary
+            {
+                TenantId = tenantId,
+                ProductId = productId,
+                ViewsCount = 0,
+                LikesCount = 1,
+                DislikesCount = 0,
+                RatingsTotal = 0,
+                RatingsCount = 0,
+                CommentsCount = 0,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.ProductEngagementSummaries.Add(summary);
+        }
+        else
+        {
+            summary.LikesCount += 1;
+            summary.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new { summary.LikesCount, summary.DislikesCount });
+    }
+
+    private static async Task<IResult> IncrementProductDislike(
+        string productId,
+        HttpRequest req,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(req.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = req.ResolveTenantId(tenantContext)!;
+
+        var exists = await db.Products.AsNoTracking()
+            .AnyAsync(p => p.TenantId == tenantId && p.Id == productId, ct);
+        if (!exists) return Results.NotFound();
+
+        var summary = await db.ProductEngagementSummaries
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.ProductId == productId, ct);
+        if (summary is null)
+        {
+            summary = new Entities.ProductEngagementSummary
+            {
+                TenantId = tenantId,
+                ProductId = productId,
+                ViewsCount = 0,
+                LikesCount = 0,
+                DislikesCount = 1,
+                RatingsTotal = 0,
+                RatingsCount = 0,
+                CommentsCount = 0,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.ProductEngagementSummaries.Add(summary);
+        }
+        else
+        {
+            summary.DislikesCount += 1;
+            summary.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new { summary.LikesCount, summary.DislikesCount });
+    }
+
+    private sealed record AddProductRatingBody(int Score, string? AuthorName, string? CommentText);
+    private static async Task<IResult> AddProductRating(
+        string productId,
+        AddProductRatingBody body,
+        HttpRequest req,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(req.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = req.ResolveTenantId(tenantContext)!;
+
+        if (body.Score < 1 || body.Score > 5)
+            return Results.BadRequest(new { error = "Score must be between 1 and 5." });
+
+        var exists = await db.Products.AsNoTracking()
+            .AnyAsync(p => p.TenantId == tenantId && p.Id == productId, ct);
+        if (!exists) return Results.NotFound();
+
+        db.ProductRatings.Add(new Entities.ProductRating
+        {
+            Id = "pr_" + Guid.NewGuid().ToString("N")[..12],
+            TenantId = tenantId,
+            ProductId = productId,
+            Score = body.Score,
+            AuthorName = string.IsNullOrWhiteSpace(body.AuthorName) ? null : body.AuthorName.Trim()[..Math.Min(128, body.AuthorName.Trim().Length)],
+            CommentText = string.IsNullOrWhiteSpace(body.CommentText) ? null : body.CommentText.Trim()[..Math.Min(2048, body.CommentText.Trim().Length)],
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+
+        var summary = await db.ProductEngagementSummaries
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.ProductId == productId, ct);
+        if (summary is null)
+        {
+            summary = new Entities.ProductEngagementSummary
+            {
+                TenantId = tenantId,
+                ProductId = productId,
+                ViewsCount = 0,
+                LikesCount = 0,
+                DislikesCount = 0,
+                RatingsTotal = body.Score,
+                RatingsCount = 1,
+                CommentsCount = 0,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.ProductEngagementSummaries.Add(summary);
+        }
+        else
+        {
+            summary.RatingsTotal += body.Score;
+            summary.RatingsCount += 1;
+            summary.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new { ok = true });
+    }
+
+    private sealed record AddProductCommentBody(string CommentText, string? AuthorName);
+    private static async Task<IResult> AddProductComment(
+        string productId,
+        AddProductCommentBody body,
+        HttpRequest req,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(req.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = req.ResolveTenantId(tenantContext)!;
+
+        var text = body.CommentText?.Trim() ?? "";
+        if (text.Length == 0)
+            return Results.BadRequest(new { error = "Comment text is required." });
+
+        var exists = await db.Products.AsNoTracking()
+            .AnyAsync(p => p.TenantId == tenantId && p.Id == productId, ct);
+        if (!exists) return Results.NotFound();
+
+        db.ProductComments.Add(new Entities.ProductComment
+        {
+            Id = "pc_" + Guid.NewGuid().ToString("N")[..12],
+            TenantId = tenantId,
+            ProductId = productId,
+            CommentText = text[..Math.Min(2048, text.Length)],
+            AuthorName = string.IsNullOrWhiteSpace(body.AuthorName) ? null : body.AuthorName.Trim()[..Math.Min(128, body.AuthorName.Trim().Length)],
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+
+        var summary = await db.ProductEngagementSummaries
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.ProductId == productId, ct);
+        if (summary is null)
+        {
+            summary = new Entities.ProductEngagementSummary
+            {
+                TenantId = tenantId,
+                ProductId = productId,
+                ViewsCount = 0,
+                LikesCount = 0,
+                DislikesCount = 0,
+                RatingsTotal = 0,
+                RatingsCount = 0,
+                CommentsCount = 1,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.ProductEngagementSummaries.Add(summary);
+        }
+        else
+        {
+            summary.CommentsCount += 1;
+            summary.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new { ok = true });
     }
 
     private static async Task<IResult> ListFacetOptions(

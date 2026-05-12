@@ -71,7 +71,10 @@ export function LoginPage() {
                 setSubmitting(true);
                 try {
                   const auth = await loginWithPassword(email, password);
-                  const role = auth.role === "vendor" ? "vendor" : "shopper";
+                  const role =
+                    auth.role === "vendor" || auth.role === "admin"
+                      ? auth.role
+                      : "shopper";
                   const prevSession =
                     typeof v.session === "object" && v.session !== null && !Array.isArray(v.session)
                       ? (v.session as Record<string, unknown>)

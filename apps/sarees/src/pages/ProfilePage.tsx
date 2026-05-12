@@ -24,8 +24,10 @@ export function ProfilePage() {
   const userId = asStr(getAtPath(payload, "session.userId"));
   const loginName = asStr(getAtPath(payload, "credentials.loginName"));
 
+  const roleLabel = role === "vendor" ? "Vendor" : role === "admin" ? "Site admin" : "Shopper";
+
   const rows: { label: string; value: string }[] = [
-    { label: "Role", value: role === "vendor" ? "Vendor" : "Shopper" },
+    { label: "Role", value: roleLabel },
     { label: "Signed in as", value: sessionEmail || loginName || "—" },
     { label: "User ID", value: userId || "—" },
   ];
@@ -48,7 +50,7 @@ export function ProfilePage() {
         value: [line1, city, state, pin].filter(Boolean).join(", "),
       });
     }
-  } else {
+  } else if (role === "vendor") {
     const businessName = asStr(getAtPath(payload, "vendor.registration.businessName"));
     const outlet = asStr(getAtPath(payload, "vendor.registration.outletCode"));
     const gstin = asStr(getAtPath(payload, "vendor.registration.gstin"));

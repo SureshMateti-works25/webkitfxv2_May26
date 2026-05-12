@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "schemaVersion": "1.0",
+    "description": "Example lookup datamodel bundle. Authoritative types/values live in Postgres (Commerce.Api lookup_types / lookup_values). apps/sarees/src/config/lookups/registry.json is optional documentation only. JsonForm dropdown wiring: lookup-form-bindings.json.",
+    "tenantId": "t1",
+    "invariants": {
+      "typeParent": "If lookupTypes[].parentLookupId is set, it must equal the id of another entry in lookupTypes (acyclic tree of types).",
+      "valueParent": "For a dependent type, each valuesByLookupTypeId[typeId][].parentId must reference an existing valuesByLookupTypeId[parentLookupId][].id.",
+      "codeUniqueness": "LookupEntry.code is unique within its lookup type id scope.",
+      "rootValues": "For types with parentLookupId null, parentId on values must be null or omitted.",
+      "dropdownBindings": "JsonForm fields are mapped to lookup types via apps/sarees/src/config/lookups/lookup-form-bindings.json (see formDropdownBindings example below). Commerce dev seed mirrors categories → product_categories lookup so ids match categories.id."
+    }
+  },
+  "formDropdownBindings": {
+    "version": "1",
+    "bindings": [
+      {
+        "formId": "vendor-product-core",
+        "fieldId": "primaryCategoryId",
+        "lookupTypeId": "product_categories",
+        "optionValueKey": "id",
+        "placeholderOption": "— None —",
+        "label": "Primary category",
+        "description": "Values mirror Commerce.Api categories (see EnsureProductCategoryLookupMirrorsCatalogAsync)."
+      }
+    ]
+  },
+  "registry": {
+    "version": "1",
+    "lookupTypes": [
+      {
+        "id": "regions",
+        "title": "Regions",
+        "description": "Root geography lookup (no parent type).",
+        "parentLookupId": null,
+        "entryIdPrefix": "reg_"
+      },
+      {
+        "id": "cities",
+        "title": "Cities",
+        "description": "Child lookup: each city references a region row by parentId.",
+        "parentLookupId": "regions",
+        "parentFieldLabel": "Region",
+        "entryIdPrefix": "city_"
+      },
+      {
+        "id": "payment_methods",
+        "title": "Payment methods",
+        "description": "Standalone enum-like lookup.",
+        "parentLookupId": null,
+        "entryIdPrefix": "pay_"
+      },
+      {
+        "id": "product_categories",
+        "title": "Product categories",
+        "description": "Merchandising categories; code often doubles as storefront slug.",
+        "parentLookupId": null,
+        "entryIdPrefix": "cat_"
+      }
+    ]
+  },
+  "valuesByLookupTypeId": {
+    "regions": [
+      { "id": "reg_south", "code": "south", "label": "South India", "sortOrder": 10, "parentId": null },
+      { "id": "reg_north", "code": "north", "label": "North India", "sortOrder": 20, "parentId": null }
+    ],
+    "cities": [
+      {
+        "id": "city_che",
+        "code": "chennai",
+        "label": "Chennai",
+        "sortOrder": 10,
+        "parentId": "reg_south"
+      },
+      {
+        "id": "city_blr",
+        "code": "bengaluru",
+        "label": "Bengaluru",
+        "sortOrder": 20,
+        "parentId": "reg_south"
+      }
+    ],
+    "payment_methods": [
+      { "id": "pay_upi", "code": "upi", "label": "UPI", "sortOrder": 10, "parentId": null }
+    ],
+    "product_categories": [
+      { "id": "cat_saree", "code": "sarees", "label": "Sarees", "sortOrder": 10, "parentId": null },
+      { "id": "cat_silk", "code": "silk", "label": "Silk sarees", "sortOrder": 20, "parentId": null },
+      { "id": "cat_kan", "code": "kanjeevaram", "label": "Kanjeevaram", "sortOrder": 30, "parentId": null },
+      { "id": "pcat_kalamkari", "code": "kalamkari", "label": "Kalamkari", "sortOrder": 35, "parentId": null }
+    ]
+  }
+}

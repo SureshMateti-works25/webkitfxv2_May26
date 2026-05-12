@@ -1,0 +1,52 @@
+{
+  "id": "product-engagement",
+  "title": "Product engagement",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.75rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Add your feedback",
+        "children": [
+          { "type": "field", "fieldId": "authorName" },
+          { "type": "field", "fieldId": "rating" },
+          { "type": "field", "fieldId": "commentText" }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "authorName": {
+      "binding": "input.authorName",
+      "widget": "text",
+      "label": "Your name",
+      "props": { "placeholder": "Optional display name" },
+      "default": ""
+    },
+    "rating": {
+      "binding": "input.rating",
+      "widget": "select",
+      "label": "Rating",
+      "props": {
+        "placeholderOption": "Rate this product",
+        "options": [
+          { "value": "5", "label": "5 - Excellent" },
+          { "value": "4", "label": "4 - Very good" },
+          { "value": "3", "label": "3 - Good" },
+          { "value": "2", "label": "2 - Fair" },
+          { "value": "1", "label": "1 - Poor" }
+        ]
+      },
+      "default": ""
+    },
+    "commentText": {
+      "binding": "input.commentText",
+      "widget": "textarea",
+      "label": "Comment",
+      "props": { "placeholder": "Share fit, quality, fabric, drape, and value", "rows": 3 },
+      "default": ""
+    }
+  }
+}

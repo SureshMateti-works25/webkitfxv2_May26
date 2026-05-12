@@ -22,6 +22,11 @@ public static class VendorProductEndpoints
             .WithTags(tag)
             .WithName("VendorListProducts");
 
+        app.MapGet($"{basePath}/{{productId}}/storefront", GetStorefrontDetail)
+            .RequireAuthorization(auth)
+            .WithTags(tag)
+            .WithName("VendorGetProductStorefront");
+
         app.MapGet($"{basePath}/{{productId}}", GetOne)
             .RequireAuthorization(auth)
             .WithTags(tag)
@@ -95,9 +100,28 @@ public static class VendorProductEndpoints
                 p.MinPriceMinor,
                 p.Currency,
                 p.PublishedAt,
-                p.CommerceJson
+                p.CommerceJson,
+                p.VendorPortalUserId
             })
             .ToListAsync(ct);
+
+        var productIds = raw.Select(r => r.Id).ToList();
+        IReadOnlyDictionary<string, IReadOnlyList<string>> skuByProduct;
+        if (productIds.Count == 0)
+        {
+            skuByProduct = new Dictionary<string, IReadOnlyList<string>>();
+        }
+        else
+        {
+            var skuRows = await db.Skus.AsNoTracking()
+                .Where(s => s.TenantId == tenantId && productIds.Contains(s.ProductId) && s.Status == "active")
+                .OrderBy(s => s.SkuCode)
+                .Select(s => new { s.ProductId, s.SkuCode })
+                .ToListAsync(ct);
+            skuByProduct = skuRows
+                .GroupBy(x => x.ProductId)
+                .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(x => x.SkuCode).ToList());
+        }
 
         var nowList = DateTimeOffset.UtcNow;
         var items = raw.Select(r =>
@@ -116,6 +140,8 @@ public static class VendorProductEndpoints
                 nowList,
                 ProductMerchandisingIndicators.DefaultCardMax,
                 compactCard: true);
+            var vendorCode = CommerceVendorDisplayReader.ResolveVendorCode(r.CommerceJson, r.VendorPortalUserId);
+            var skuCodes = skuByProduct.TryGetValue(r.Id, out var codes) ? codes : Array.Empty<string>();
             return new VendorProductListItem(
                 r.Id,
                 r.Slug,
@@ -129,10 +155,36 @@ public static class VendorProductEndpoints
                 f.OfferType,
                 f.OfferCardText,
                 offerMinor,
-                imageIndicators);
+                imageIndicators,
+                vendorCode,
+                skuCodes);
         }).ToList();
 
         return Results.Ok(new VendorProductsPageResponse(page, pageSize, total, items));
+    }
+
+    private static async Task<IResult> GetStorefrontDetail(
+        string productId,
+        HttpRequest request,
+        ClaimsPrincipal user,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(request.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = request.ResolveTenantId(tenantContext)!;
+        var uid = PortalUserId(user);
+        if (string.IsNullOrEmpty(uid))
+            return Results.Unauthorized();
+
+        var dto = await CatalogProductDetailAssembler.BuildForVendorOwnedProductAsync(db, tenantId, productId, uid, ct);
+        if (dto is null)
+            return Results.NotFound();
+
+        return Results.Ok(dto);
     }
 
     private static async Task<IResult> GetOne(
@@ -224,7 +276,7 @@ public static class VendorProductEndpoints
             VendorPortalUserId = uid,
             ProductTypeId = string.IsNullOrWhiteSpace(body.ProductTypeId) ? null : body.ProductTypeId!.Trim()[..Math.Min(64, body.ProductTypeId.Trim().Length)],
             CommerceJson =
-                """{"pricing":{"offerType":"none","offerCardText":"","offerLabel":"","promoEndsAt":""},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}""",
+                """{"pricing":{"offerType":"none","offerCardText":"","offerLabel":"","promoEndsAt":""},"vendor":{"vendorCode":"","outletCode":""},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}""",
             Slug = slug,
             TitleDisplay = title,
             SearchText = title.ToLowerInvariant(),
@@ -501,7 +553,9 @@ public static class VendorProductEndpoints
         string? OfferType,
         string? OfferCardText,
         long? OfferPriceMinor,
-        IReadOnlyList<ProductImageIndicatorDto> ImageIndicators);
+        IReadOnlyList<ProductImageIndicatorDto> ImageIndicators,
+        string? VendorCode,
+        IReadOnlyList<string> SkuCodes);
 
     private sealed record VendorProductsPageResponse(
         int Page,

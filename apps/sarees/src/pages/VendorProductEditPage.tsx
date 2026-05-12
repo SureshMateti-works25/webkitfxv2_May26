@@ -8,17 +8,16 @@ import {
   deleteVendorProduct,
   formatCommerceApiError,
   getVendorProductWorkspace,
-  listCatalogCategories,
   mediaAssetUrl,
   putVendorProductWorkspace,
   uploadVendorProductMedia,
-  type CatalogCategoryRow,
   type VendorProductWorkspace,
   type VendorWorkspaceSku,
 } from "../lib/commerceApi.js";
+import { vendorProductCoreFormWithResolvedLookups } from "../lib/buildVendorProductCoreForm.js";
+import { fetchResolvedLookupFieldOptions, type ResolvedLookupSelectPatch } from "../lib/lookupFormBindings.js";
 import {
   vendorProductCollectionsForm,
-  vendorProductCoreForm,
   vendorProductEnquiriesForm,
   vendorProductFacetsForm,
   vendorProductOrdersForm,
@@ -66,6 +65,8 @@ function minorFromRupeesInput(s: string): number | null {
 
 function workspaceToFormSeed(ws: VendorProductWorkspace): Record<string, unknown> {
   const core = { ...(ws.core as Record<string, unknown>) };
+  const pc = core.primaryCategoryId;
+  core.primaryCategoryId = pc == null || pc === "" ? "" : String(pc);
   const minMinor = core.minPriceMinor;
   core.minPriceRupees =
     minMinor != null && typeof minMinor === "number" ? String(minMinor / 100) : "";
@@ -135,7 +136,11 @@ export function VendorProductEditPage() {
   const navigate = useNavigate();
   const isNew = productId === "new";
 
-  const [categories, setCategories] = useState<CatalogCategoryRow[]>([]);
+  /** Resolved select patches for `vendor-product-core` (see `lookup-form-bindings.json`). */
+  const [vendorCoreLookupResolved, setVendorCoreLookupResolved] = useState<
+    Record<string, ResolvedLookupSelectPatch>
+  >({});
+  const [lookupOptionsError, setLookupOptionsError] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<VendorProductWorkspace | null>(null);
   const [workspaceRev, setWorkspaceRev] = useState(0);
   const [activeTab, setActiveTab] = useState<TabId>("product");
@@ -184,16 +189,24 @@ export function VendorProductEditPage() {
     let cancelled = false;
     (async () => {
       try {
-        const cats = await listCatalogCategories();
-        if (!cancelled) setCategories(cats.sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug)));
-      } catch {
-        /* optional */
+        setLookupOptionsError(null);
+        const resolved = await fetchResolvedLookupFieldOptions("vendor-product-core");
+        if (!cancelled) setVendorCoreLookupResolved(resolved);
+      } catch (e) {
+        if (!cancelled) setLookupOptionsError(formatCommerceApiError(e));
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const vendorProductCoreFormResolved = useMemo(
+    () => vendorProductCoreFormWithResolvedLookups(vendorCoreLookupResolved),
+    [vendorCoreLookupResolved]
+  );
+
+  const primaryCategorySelectOptions = vendorCoreLookupResolved.primaryCategoryId?.options ?? [];
 
   useEffect(() => {
     if (isNew || !token || !productId) return;
@@ -308,15 +321,22 @@ export function VendorProductEditPage() {
             />
           </label>
           <label className="vendor-field">
-            <span>Category</span>
+            <span>Primary category</span>
             <select value={newCategoryId} onChange={(e) => setNewCategoryId(e.target.value)}>
               <option value="">— None —</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.slug} ({c.id})
+              {primaryCategorySelectOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label ?? o.value}
                 </option>
               ))}
             </select>
+            {lookupOptionsError ? (
+              <span className="vendor-field__hint vendor-field__hint--error" role="alert">
+                {lookupOptionsError}
+              </span>
+            ) : primaryCategorySelectOptions.length === 0 ? (
+              <span className="vendor-field__hint">Loading categories from Commerce.Api lookups…</span>
+            ) : null}
           </label>
           <div className="vendor-field-row">
             <label className="vendor-field vendor-field--grow">
@@ -405,8 +425,14 @@ export function VendorProductEditPage() {
 
       <div className="vendor-workspace-panel">
         {activeTab === "product" ? (
-          <JsonForm
-            form={vendorProductCoreForm}
+          <>
+            {lookupOptionsError ? (
+              <p className="vendor-products-page__error" role="alert">
+                Lookup options could not be loaded (see `lookup-form-bindings.json`). {lookupOptionsError}
+              </p>
+            ) : null}
+            <JsonForm
+            form={vendorProductCoreFormResolved}
             seedValues={formSeed}
             resetKey={workspaceRev}
             onSubmit={async (values) => {
@@ -430,6 +456,7 @@ export function VendorProductEditPage() {
               Save product
             </button>
           </JsonForm>
+          </>
         ) : null}
 
         {activeTab === "variants" ? (

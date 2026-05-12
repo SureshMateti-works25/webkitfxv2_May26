@@ -48,6 +48,7 @@ Other helpers:
 |--------|---------|
 | `npm run stop:commerce-api` | Free port **5055** only (stop stale API) |
 | `npm run api:commerce:exec:fresh` | Stop 5055, then build + `dotnet exec` in **this** window |
+| `npm run api:commerce:watch` | Stop 5055, then **`dotnet watch run`** — **restarts Commerce.Api automatically** when you save C# changes |
 | `npm run api:commerce:exec` | Build + exec without stopping (fails if DLL locked) |
 
 **You still need:** Node 18+, .NET 10 SDK, **Docker Desktop** (for Postgres), and a one-time `npm install`. No extra npm packages are required for this flow.

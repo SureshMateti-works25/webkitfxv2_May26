@@ -329,6 +329,88 @@ namespace Commerce.Api.Migrations
                     b.ToTable("locations", (string)null);
                 });
 
+            modelBuilder.Entity("Commerce.Api.Entities.LookupType", b =>
+                {
+                    b.Property<string>("TenantId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("EntryIdPrefix")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ParentFieldLabel")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ParentLookupTypeId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("TenantId", "Id");
+
+                    b.HasIndex("TenantId", "ParentLookupTypeId");
+
+                    b.ToTable("lookup_types", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Api.Entities.LookupValue", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("LookupTypeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ParentValueId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentValueId");
+
+                    b.HasIndex("TenantId", "LookupTypeId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("lookup_values", (string)null);
+                });
+
             modelBuilder.Entity("Commerce.Api.Entities.MediaAsset", b =>
                 {
                     b.Property<string>("Id")
@@ -503,6 +585,79 @@ namespace Commerce.Api.Migrations
                     b.ToTable("product_categories", (string)null);
                 });
 
+            modelBuilder.Entity("Commerce.Api.Entities.ProductComment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AuthorName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CommentText")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProductId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "ProductId", "CreatedAt");
+
+                    b.ToTable("product_comments", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Api.Entities.ProductEngagementSummary", b =>
+                {
+                    b.Property<string>("TenantId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ProductId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("CommentsCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("DislikesCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("LikesCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("RatingsCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("RatingsTotal")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("ViewsCount")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("TenantId", "ProductId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("product_engagement_summaries", (string)null);
+                });
+
             modelBuilder.Entity("Commerce.Api.Entities.ProductFacet", b =>
                 {
                     b.Property<string>("ProductId")
@@ -567,6 +722,43 @@ namespace Commerce.Api.Migrations
                     b.ToTable("product_media", (string)null);
                 });
 
+            modelBuilder.Entity("Commerce.Api.Entities.ProductRating", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AuthorName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CommentText")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProductId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "ProductId", "CreatedAt");
+
+                    b.ToTable("product_ratings", (string)null);
+                });
+
             modelBuilder.Entity("Commerce.Api.Entities.Sku", b =>
                 {
                     b.Property<string>("Id")
@@ -611,6 +803,44 @@ namespace Commerce.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("skus", (string)null);
+                });
+
+            modelBuilder.Entity("Commerce.Api.Entities.StorefrontSponsoredProduct", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("ProductId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("TenantId", "ProductId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "SortOrder");
+
+                    b.ToTable("storefront_sponsored_products", (string)null);
                 });
 
             modelBuilder.Entity("Commerce.Api.Entities.Tenant", b =>
@@ -686,6 +916,32 @@ namespace Commerce.Api.Migrations
                     b.Navigation("Sku");
                 });
 
+            modelBuilder.Entity("Commerce.Api.Entities.LookupType", b =>
+                {
+                    b.HasOne("Commerce.Api.Entities.LookupType", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ParentLookupTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Commerce.Api.Entities.LookupValue", b =>
+                {
+                    b.HasOne("Commerce.Api.Entities.LookupValue", "ParentValue")
+                        .WithMany()
+                        .HasForeignKey("ParentValueId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Commerce.Api.Entities.LookupType", "LookupType")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "LookupTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LookupType");
+
+                    b.Navigation("ParentValue");
+                });
+
             modelBuilder.Entity("Commerce.Api.Entities.ProductCategory", b =>
                 {
                     b.HasOne("Commerce.Api.Entities.Category", "Category")
@@ -751,6 +1007,15 @@ namespace Commerce.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Commerce.Api.Entities.StorefrontSponsoredProduct", b =>
+                {
+                    b.HasOne("Commerce.Api.Entities.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

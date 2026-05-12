@@ -69,7 +69,7 @@ export function ProductCardPrices({
 
   return (
     <div className={rootClass.trim()}>
-      {showOfferRow ? (
+      {showOfferRow && variant === "detail" ? (
         <div className="product-card-prices__offer">
           <span className="product-card-prices__pill" title={offerCardText?.trim() || undefined}>
             {typeLbl ? <span className="product-card-prices__pill-type">{typeLbl}</span> : null}

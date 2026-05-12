@@ -14,6 +14,7 @@
     "dev:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-sarees-stack.ps1",
     "stop:commerce-api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-commerce-api.ps1",
     "api:commerce:exec:fresh": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-commerce-api.ps1 -StopExisting",
+    "api:commerce:watch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-commerce-api-watch.ps1",
     "docker:commerce-db": "docker compose -f services/commerce-api/docker-compose.yml up -d",
     "test": "npm run test -w @webkitfxv2/core-engine",
     "check": "npm run build && npm run test",

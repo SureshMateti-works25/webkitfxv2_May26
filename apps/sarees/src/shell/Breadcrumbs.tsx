@@ -4,6 +4,13 @@ import { getShell } from "../config/getShell.js";
 function resolveTrail(pathname: string, shell: ReturnType<typeof getShell>) {
   const direct = shell.breadcrumbs[pathname];
   if (direct) return direct;
+  if (pathname.includes("/vendor/products/") && pathname.endsWith("/storefront")) {
+    return [
+      { label: "Home", path: "/" },
+      { label: "My products", path: "/vendor/products" },
+      { label: "Storefront preview", path: null },
+    ];
+  }
   if (pathname.startsWith("/vendor/products/") && pathname !== "/vendor/products/new") {
     return [
       { label: "Home", path: "/" },

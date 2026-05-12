@@ -1,0 +1,110 @@
+{
+  "id": "catalog-search-filters",
+  "title": "Search filters",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Keywords",
+        "children": [
+          { "type": "field", "fieldId": "itemName" },
+          { "type": "field", "fieldId": "sku" },
+          { "type": "field", "fieldId": "vendor" }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Attributes",
+        "children": [
+          { "type": "field", "fieldId": "fabricType" },
+          { "type": "field", "fieldId": "productCategory" },
+          { "type": "field", "fieldId": "discount" },
+          { "type": "field", "fieldId": "collection" }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "itemName": {
+      "binding": "filters.itemName",
+      "widget": "search",
+      "label": "Item name",
+      "props": { "placeholder": "e.g. Kanchipuram silk", "searchParam": "q" },
+      "default": ""
+    },
+    "sku": {
+      "binding": "filters.sku",
+      "widget": "text",
+      "label": "SKU",
+      "props": { "placeholder": "e.g. SKU-1001", "searchParam": "sku" },
+      "default": ""
+    },
+    "vendor": {
+      "binding": "filters.vendor",
+      "widget": "text",
+      "label": "Vendor",
+      "props": { "placeholder": "e.g. NISTTA Weaves", "searchParam": "vendor" },
+      "default": ""
+    },
+    "fabricType": {
+      "binding": "filters.fabricType",
+      "widget": "select",
+      "label": "Fabric type",
+      "props": {
+        "placeholderOption": "Any fabric",
+        "searchParam": "fabricType",
+        "options": [
+          { "value": "silk", "label": "Silk" },
+          { "value": "cotton", "label": "Cotton" },
+          { "value": "linen", "label": "Linen" },
+          { "value": "organza", "label": "Organza" },
+          { "value": "georgette", "label": "Georgette" }
+        ]
+      },
+      "default": ""
+    },
+    "productCategory": {
+      "binding": "filters.productCategory",
+      "widget": "select",
+      "label": "Product category",
+      "props": {
+        "placeholderOption": "Any category",
+        "searchParam": "category",
+        "options": [
+          { "value": "bridal", "label": "Bridal" },
+          { "value": "party-wear", "label": "Party wear" },
+          { "value": "casual", "label": "Casual" },
+          { "value": "office", "label": "Office" },
+          { "value": "festive", "label": "Festive" }
+        ]
+      },
+      "default": ""
+    },
+    "discount": {
+      "binding": "filters.discount",
+      "widget": "select",
+      "label": "Discount",
+      "props": {
+        "placeholderOption": "Any discount",
+        "searchParam": "discount",
+        "options": [
+          { "value": "none", "label": "No discount" },
+          { "value": "upto10", "label": "Up to 10%" },
+          { "value": "10to25", "label": "10% to 25%" },
+          { "value": "25plus", "label": "25%+" }
+        ]
+      },
+      "default": ""
+    },
+    "collection": {
+      "binding": "filters.collection",
+      "widget": "text",
+      "label": "Collection",
+      "props": { "placeholder": "e.g. Wedding 2026", "searchParam": "collection" },
+      "default": ""
+    }
+  }
+}

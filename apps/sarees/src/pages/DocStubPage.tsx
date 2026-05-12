@@ -12,6 +12,9 @@ type StubScreenKey = keyof Pick<
   | "favourites"
   | "orders"
   | "communication"
+  | "adminVendors"
+  | "adminShoppers"
+  | "adminOrders"
 >;
 
 const ROUTE_TO_SCREEN: Record<string, StubScreenKey> = {
@@ -23,7 +26,10 @@ const ROUTE_TO_SCREEN: Record<string, StubScreenKey> = {
   "/cart": "cart",
   "/favourites": "favourites",
   "/orders": "orders",
-  "/communication": "communication"
+  "/communication": "communication",
+  "/admin/vendors": "adminVendors",
+  "/admin/shoppers": "adminShoppers",
+  "/admin/orders": "adminOrders"
 };
 
 export function DocStubPage() {

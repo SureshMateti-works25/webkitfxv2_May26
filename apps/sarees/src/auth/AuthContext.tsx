@@ -9,7 +9,7 @@ import {
   type ReactNode
 } from "react";
 
-export type PortalRole = "shopper" | "vendor";
+export type PortalRole = "shopper" | "vendor" | "admin";
 
 const AUTH_STORAGE = "webkitfx.auth";
 
@@ -61,7 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options?.role ??
       (getAtPath(payload, "session.role") as PortalRole | undefined) ??
       (getAtPath(payload, "identity.role") as PortalRole | undefined);
-    const role: PortalRole = fromApi === "vendor" ? "vendor" : "shopper";
+    const role: PortalRole =
+      fromApi === "vendor" || fromApi === "admin" ? fromApi : "shopper";
     const accessToken =
       options?.accessToken ?? (getAtPath(payload, "session.accessToken") as string | undefined) ?? "";
     setAuth({ status: "signedIn", role, accessToken, payload });

@@ -1,0 +1,15 @@
+{
+  "version": "1",
+  "description": "Maps JsonForm definitions (formId) + fieldId to a Commerce.Api lookup type whose values populate that select. optionValueKey: form submits id or code; primary category must use id to match categories.id / product_categories FK.",
+  "bindings": [
+    {
+      "formId": "vendor-product-core",
+      "fieldId": "primaryCategoryId",
+      "lookupTypeId": "product_categories",
+      "optionValueKey": "id",
+      "placeholderOption": "— None —",
+      "label": "Primary category",
+      "description": "Mirrored from Commerce.Api catalog categories into lookup type product_categories (ids align with categories.id)."
+    }
+  ]
+}

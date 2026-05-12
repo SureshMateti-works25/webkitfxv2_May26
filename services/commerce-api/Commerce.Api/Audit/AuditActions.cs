@@ -14,4 +14,6 @@ public static class AuditActions
     public const string CatalogProductMutate = "catalog.product_mutate";
     public const string DataConstraintFailure = "data.constraint_failure";
     public const string BootstrapMigrate = "bootstrap.migrate";
+    public const string LookupMutate = "lookup.mutate";
+    public const string StorefrontSponsorMutate = "storefront.sponsor_mutate";
 }

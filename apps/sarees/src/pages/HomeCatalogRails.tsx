@@ -22,11 +22,42 @@ function displayTitleFromSlug(slug: string): string {
     .join(" ");
 }
 
+/** Root categories (department-level). */
+function rootCategories(cats: CatalogCategoryRow[]): CatalogCategoryRow[] {
+  return cats
+    .filter((c) => c.parentId == null || c.parentId === "")
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug));
+}
+
+/**
+ * Tiles for "Shop by category" and per-category rails.
+ * When there is a single root (e.g. "Sarees"), show real browse categories (children / descendants),
+ * not only that one department node.
+ */
+function categoryShowcaseTiles(cats: CatalogCategoryRow[]): CatalogCategoryRow[] {
+  const roots = rootCategories(cats);
+  if (roots.length === 0) return [];
+
+  if (roots.length === 1) {
+    const descendants = cats
+      .filter((c) => c.parentId != null && c.parentId !== "")
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug));
+    if (descendants.length > 0) return descendants.slice(0, MAX_CATEGORY_RAILS);
+  }
+
+  return roots.slice(0, MAX_CATEGORY_RAILS);
+}
+
 function StorefrontProductCard({ product }: { product: CatalogProductCard }) {
   return (
     <Link to={`/p/${encodeURIComponent(product.slug)}`} className="storefront-product-card">
       <div className="storefront-product-card__media">
-        <CatalogProductVisual storageKey={product.heroStorageKey} imageIndicators={product.imageIndicators} />
+        <CatalogProductVisual
+          storageKey={product.heroStorageKey}
+          imageIndicators={product.imageIndicators}
+          vendorCode={product.vendorCode}
+          skuCodes={product.skuCodes}
+        />
       </div>
       <div className="storefront-product-card__body">
         <h3 className="storefront-product-card__title">{product.titleDisplay}</h3>
@@ -93,7 +124,10 @@ type CategoryRail = { category: CatalogCategoryRow; items: CatalogProductCard[] 
 
 export function HomeCatalogRails() {
   const baseId = useId().replace(/:/g, "");
-  const [roots, setRoots] = useState<CatalogCategoryRow[] | null>(null);
+  /** Browse tiles (subcategories when a single department root exists, else top-level categories). */
+  const [categoryTiles, setCategoryTiles] = useState<CatalogCategoryRow[] | null>(null);
+  /** Broad "See all" target: department root slug (e.g. `sarees`), not a leaf category. */
+  const [seeAllCatalogSlug, setSeeAllCatalogSlug] = useState<string | null>(null);
   const [categoryRails, setCategoryRails] = useState<CategoryRail[] | null>(null);
   const [recent, setRecent] = useState<CatalogProductCard[] | null>(null);
   const [trending, setTrending] = useState<CatalogProductCard[] | null>(null);
@@ -119,13 +153,12 @@ export function HomeCatalogRails() {
         ]);
         if (cancelled) return;
 
-        const top = cats
-          .filter((c) => c.parentId == null || c.parentId === "")
-          .sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug));
-
-        const slice = top.slice(0, MAX_CATEGORY_RAILS);
+        const deptRoots = rootCategories(cats);
+        const tiles = categoryShowcaseTiles(cats);
+        const broadSlug =
+          deptRoots.find((c) => c.slug === "sarees")?.slug ?? deptRoots[0]?.slug ?? null;
         const railPages = await Promise.all(
-          slice.map((c) =>
+          tiles.map((c) =>
             listCatalogProducts({
               categoryId: c.id,
               includeSubtree: true,
@@ -136,8 +169,9 @@ export function HomeCatalogRails() {
           )
         );
         if (cancelled) return;
-        const rails: CategoryRail[] = slice.map((c, i) => ({ category: c, items: railPages[i]!.items }));
-        setRoots(top);
+        const rails: CategoryRail[] = tiles.map((c, i) => ({ category: c, items: railPages[i]!.items }));
+        setCategoryTiles(tiles);
+        setSeeAllCatalogSlug(broadSlug);
         setTrending(trendingPage.items);
         setRecent(recentPage.items);
         setCategoryRails(rails);
@@ -162,7 +196,7 @@ export function HomeCatalogRails() {
     );
   }
 
-  if (roots === null || recent === null || trending === null || categoryRails === null) {
+  if (categoryTiles === null || recent === null || trending === null || categoryRails === null) {
     return (
       <div className="storefront-wrap">
         <div className="storefront-inner">
@@ -172,25 +206,26 @@ export function HomeCatalogRails() {
     );
   }
 
-  const browseAllHref =
-    roots.find((c) => c.slug === "sarees")?.slug ?? roots[0]?.slug
-      ? `/browse/${encodeURIComponent(roots.find((c) => c.slug === "sarees")?.slug ?? roots[0]!.slug)}`
-      : undefined;
+  const browseAllHref = seeAllCatalogSlug
+    ? `/browse/${encodeURIComponent(seeAllCatalogSlug)}`
+    : undefined;
 
   return (
     <div className="storefront-wrap">
       <div className="storefront-inner">
-        {roots.length > 0 ? (
+        {categoryTiles.length > 0 ? (
           <section className="storefront-categories" aria-labelledby={`${baseId}-cat-heading`}>
             <h2 className="storefront-categories__title" id={`${baseId}-cat-heading`}>
               Shop by category
             </h2>
             <ul className="storefront-category-grid">
-              {roots.map((c) => (
+              {categoryTiles.map((c) => (
                 <li key={c.id}>
                   <Link to={`/browse/${encodeURIComponent(c.slug)}`} className="storefront-category-card">
                     <span className="storefront-category-card__name">{displayTitleFromSlug(c.slug)}</span>
-                    <span className="storefront-category-card__cta">View sarees</span>
+                    <span className="storefront-category-card__cta">
+                      Browse {displayTitleFromSlug(c.slug)}
+                    </span>
                   </Link>
                 </li>
               ))}

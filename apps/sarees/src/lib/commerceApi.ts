@@ -151,6 +151,122 @@ export async function listCatalogCategories(): Promise<CatalogCategoryRow[]> {
   return (await res.json()) as CatalogCategoryRow[];
 }
 
+/** Configurable lookup type (Commerce.Api `lookup_types`). */
+export type CommerceLookupTypeDto = {
+  id: string;
+  title: string;
+  description: string | null;
+  parentLookupTypeId: string | null;
+  parentFieldLabel: string | null;
+  entryIdPrefix: string;
+};
+
+/** One row in `lookup_values` (parent row lives in the type named by `parentLookupTypeId` on the owning type). */
+export type CommerceLookupValueDto = {
+  id: string;
+  lookupTypeId: string;
+  code: string;
+  label: string;
+  sortOrder: number;
+  parentValueId: string | null;
+};
+
+export type CommerceLookupBundleDto = {
+  version: string;
+  types: CommerceLookupTypeDto[];
+  valuesByLookupTypeId: Record<string, CommerceLookupValueDto[]>;
+};
+
+export async function listCommerceLookupTypes(): Promise<CommerceLookupTypeDto[]> {
+  const res = await fetch(`${BASE}/api/v1/lookups/types`, {
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return (await res.json()) as CommerceLookupTypeDto[];
+}
+
+export async function listCommerceLookupValues(lookupTypeId: string): Promise<CommerceLookupValueDto[]> {
+  const res = await fetch(
+    `${BASE}/api/v1/lookups/types/${encodeURIComponent(lookupTypeId.trim())}/values`,
+    { headers: commerceTenantHeaders() }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return (await res.json()) as CommerceLookupValueDto[];
+}
+
+export async function getCommerceLookupBundle(): Promise<CommerceLookupBundleDto> {
+  const res = await fetch(`${BASE}/api/v1/lookups/bundle`, {
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return (await res.json()) as CommerceLookupBundleDto;
+}
+
+export type UpsertCommerceLookupTypeBody = {
+  title: string;
+  description?: string | null;
+  parentLookupTypeId?: string | null;
+  parentFieldLabel?: string | null;
+  entryIdPrefix: string;
+};
+
+export async function upsertCommerceLookupType(
+  accessToken: string,
+  lookupTypeId: string,
+  body: UpsertCommerceLookupTypeBody
+): Promise<CommerceLookupTypeDto> {
+  const res = await fetch(
+    `${BASE}/api/v1/lookups/types/${encodeURIComponent(lookupTypeId.trim())}`,
+    {
+      method: "PUT",
+      headers: commerceAuthorizedHeaders(accessToken),
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return (await res.json()) as CommerceLookupTypeDto;
+}
+
+export async function deleteCommerceLookupType(accessToken: string, lookupTypeId: string): Promise<void> {
+  const res = await fetch(
+    `${BASE}/api/v1/lookups/types/${encodeURIComponent(lookupTypeId.trim())}`,
+    { method: "DELETE", headers: commerceAuthorizedHeaders(accessToken) }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export type CreateCommerceLookupValueBody = {
+  code: string;
+  label: string;
+  sortOrder: number;
+  parentValueId?: string | null;
+};
+
+export async function createCommerceLookupValue(
+  accessToken: string,
+  lookupTypeId: string,
+  body: CreateCommerceLookupValueBody
+): Promise<CommerceLookupValueDto> {
+  const res = await fetch(
+    `${BASE}/api/v1/lookups/types/${encodeURIComponent(lookupTypeId.trim())}/values`,
+    {
+      method: "POST",
+      headers: commerceAuthorizedHeaders(accessToken),
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return (await res.json()) as CommerceLookupValueDto;
+}
+
+export async function deleteCommerceLookupValue(accessToken: string, valueId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/lookups/values/${encodeURIComponent(valueId.trim())}`, {
+    method: "DELETE",
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
 /** Merchandising badges on product images (from API / `commerce.merchandising.imageIndicators`). */
 export type ProductImageIndicator = {
   kind: string;
@@ -175,16 +291,59 @@ export type CatalogProductCard = {
   offerCardText: string | null;
   /** Corner / edge badges on card imagery. */
   imageIndicators: ProductImageIndicator[];
+  /** Storefront vendor code (from commerce JSON or portal id fallback). */
+  vendorCode: string | null;
+  /** Active SKU codes for this product. */
+  skuCodes: string[];
 };
 
 export type CatalogProductGalleryImage = {
   storageKey: string;
   role: string;
   sortOrder: number;
+  /** When set, media is attached to this SKU (colour variant); storefront can filter angles by selected SKU. */
+  skuId?: string | null;
+};
+
+export type SkuGalleryFacet = {
+  skuId: string;
+  skuCode: string;
+  swatchStorageKey: string | null;
 };
 
 export type CatalogProductDetail = CatalogProductCard & {
   gallery: CatalogProductGalleryImage[];
+  /** Angled / variant / hero / gallery roles (excludes colour swatch rail). */
+  angleImages: CatalogProductGalleryImage[];
+  /** Colour / swatch rail (product-level media with role color|colour|swatch). */
+  colorImages: CatalogProductGalleryImage[];
+  /** From commerce JSON or portal vendor id fallback. */
+  vendorCode: string | null;
+  /** From commerce JSON `vendor.displayName` / `businessName` when present. */
+  vendorDisplayName: string | null;
+  /** Primary (or first) category slug for PDP line copy. */
+  primaryCategorySlug: string | null;
+  /** Active SKU codes for this product (storefront). */
+  skuCodes: string[];
+  /** SKUs that have gallery media; when present with skuId on gallery rows, PDP uses colour → angle matrix. */
+  skuGalleryFacets: SkuGalleryFacet[];
+};
+
+export type ProductEngagementComment = {
+  id: string;
+  authorName: string | null;
+  commentText: string;
+  createdAt: string;
+};
+
+export type ProductEngagement = {
+  viewsCount: number;
+  likesCount: number;
+  dislikesCount: number;
+  ratingsCount: number;
+  averageRating: number;
+  commentsCount: number;
+  recentComments: ProductEngagementComment[];
 };
 
 export type CatalogProductsPage = {
@@ -268,24 +427,107 @@ export function normalizeCatalogProductCard(row: Record<string, unknown>): Catal
     offerType: optionalStringField(row, "offerType", "OfferType"),
     offerCardText: optionalStringField(row, "offerCardText", "OfferCardText"),
     imageIndicators: normalizeImageIndicators(row.imageIndicators ?? row.ImageIndicators),
+    vendorCode: optionalStringField(row, "vendorCode", "VendorCode"),
+    skuCodes: normalizeSkuCodes(row.skuCodes ?? row.SkuCodes),
   };
 }
 
 function normalizeGalleryImage(row: Record<string, unknown>): CatalogProductGalleryImage {
+  const skuRaw = row.skuId ?? row.SkuId;
+  const skuId =
+    skuRaw == null || skuRaw === ""
+      ? null
+      : typeof skuRaw === "string"
+        ? skuRaw.trim() || null
+        : String(skuRaw).trim() || null;
   return {
     storageKey: String(row.storageKey ?? row.StorageKey ?? ""),
     role: String(row.role ?? row.Role ?? ""),
     sortOrder: Number(row.sortOrder ?? row.SortOrder ?? 0),
+    skuId,
   };
+}
+
+function isColorGalleryRole(role: string): boolean {
+  const r = role.trim().toLowerCase();
+  return r === "color" || r === "colour" || r === "swatch";
+}
+
+/** Client-side split when API omits angleImages/colorImages (older builds or PLP fallback). */
+export function splitAngleColorFromGallery(gallery: CatalogProductGalleryImage[]): {
+  angleImages: CatalogProductGalleryImage[];
+  colorImages: CatalogProductGalleryImage[];
+} {
+  const colors = gallery.filter((g) => isColorGalleryRole(g.role));
+  const angles = gallery.filter((g) => !isColorGalleryRole(g.role));
+  if (angles.length === 0 && colors.length > 0)
+    return { angleImages: colors, colorImages: [] };
+  return { angleImages: angles, colorImages: colors };
+}
+
+function normalizeGalleryArray(raw: unknown): CatalogProductGalleryImage[] {
+  if (!Array.isArray(raw)) return [];
+  return (raw as Record<string, unknown>[]).map((x) => normalizeGalleryImage(x));
+}
+
+function normalizeSkuGalleryFacets(raw: unknown): SkuGalleryFacet[] {
+  if (!Array.isArray(raw)) return [];
+  const out: SkuGalleryFacet[] = [];
+  for (const el of raw) {
+    if (el == null || typeof el !== "object") continue;
+    const o = el as Record<string, unknown>;
+    const skuId = String(o.skuId ?? o.SkuId ?? "").trim();
+    if (!skuId) continue;
+    const skuCode = String(o.skuCode ?? o.SkuCode ?? "").trim() || skuId;
+    const sw = o.swatchStorageKey ?? o.SwatchStorageKey;
+    const swatchStorageKey =
+      sw == null || sw === "" ? null : typeof sw === "string" ? sw.trim() || null : String(sw).trim() || null;
+    out.push({ skuId, skuCode, swatchStorageKey });
+  }
+  return out;
+}
+
+function normalizeSkuCodes(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const el of raw) {
+    if (typeof el === "string") {
+      const t = el.trim();
+      if (t) out.push(t);
+      continue;
+    }
+    if (el != null && typeof el === "object") {
+      const o = el as Record<string, unknown>;
+      const code = o.skuCode ?? o.SkuCode;
+      if (code != null && String(code).trim()) out.push(String(code).trim());
+    }
+  }
+  return out;
 }
 
 export function normalizeCatalogProductDetail(row: Record<string, unknown>): CatalogProductDetail {
   const base = normalizeCatalogProductCard(row);
-  const gRaw = row.gallery ?? row.Gallery;
-  const gallery: CatalogProductGalleryImage[] = Array.isArray(gRaw)
-    ? (gRaw as Record<string, unknown>[]).map((x) => normalizeGalleryImage(x))
-    : [];
-  return { ...base, gallery };
+  const gallery = normalizeGalleryArray(row.gallery ?? row.Gallery);
+  let angleImages = normalizeGalleryArray(row.angleImages ?? row.AngleImages);
+  let colorImages = normalizeGalleryArray(row.colorImages ?? row.ColorImages);
+
+  if (gallery.length > 0 && angleImages.length === 0 && colorImages.length === 0) {
+    const split = splitAngleColorFromGallery(gallery);
+    angleImages = split.angleImages;
+    colorImages = split.colorImages;
+  }
+
+  return {
+    ...base,
+    gallery,
+    angleImages,
+    colorImages,
+    vendorCode: optionalStringField(row, "vendorCode", "VendorCode"),
+    vendorDisplayName: optionalStringField(row, "vendorDisplayName", "VendorDisplayName"),
+    primaryCategorySlug: optionalStringField(row, "primaryCategorySlug", "PrimaryCategorySlug"),
+    skuCodes: normalizeSkuCodes(row.skuCodes ?? row.SkuCodes),
+    skuGalleryFacets: normalizeSkuGalleryFacets(row.skuGalleryFacets ?? row.SkuGalleryFacets),
+  };
 }
 
 export async function getCatalogProductDetail(params: {
@@ -305,6 +547,248 @@ export async function getCatalogProductDetail(params: {
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
   const raw = (await res.json()) as Record<string, unknown>;
   return normalizeCatalogProductDetail(raw);
+}
+
+export type CommerceSponsoredProductPublic = {
+  id: string;
+  productId: string;
+  slug: string;
+  titleDisplay: string;
+  heroStorageKey: string | null;
+  minPriceMinor: number | null;
+  currency: string | null;
+  label: string | null;
+  sortOrder: number;
+};
+
+export type CommerceSponsoredProductAdmin = {
+  id: string;
+  productId: string;
+  slug: string;
+  titleDisplay: string;
+  status: string;
+  label: string | null;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+function normalizeSponsoredPublic(o: Record<string, unknown>): CommerceSponsoredProductPublic {
+  return {
+    id: String(o.id ?? o.Id ?? ""),
+    productId: String(o.productId ?? o.ProductId ?? ""),
+    slug: String(o.slug ?? o.Slug ?? ""),
+    titleDisplay: String(o.titleDisplay ?? o.TitleDisplay ?? ""),
+    heroStorageKey: (o.heroStorageKey ?? o.HeroStorageKey) == null ? null : String(o.heroStorageKey ?? o.HeroStorageKey),
+    minPriceMinor:
+      o.minPriceMinor == null && o.MinPriceMinor == null
+        ? null
+        : Number(o.minPriceMinor ?? o.MinPriceMinor),
+    currency: (o.currency ?? o.Currency) == null ? null : String(o.currency ?? o.Currency),
+    label: (o.label ?? o.Label) == null ? null : String(o.label ?? o.Label),
+    sortOrder: Number(o.sortOrder ?? o.SortOrder ?? 0),
+  };
+}
+
+function normalizeSponsoredAdmin(o: Record<string, unknown>): CommerceSponsoredProductAdmin {
+  return {
+    id: String(o.id ?? o.Id ?? ""),
+    productId: String(o.productId ?? o.ProductId ?? ""),
+    slug: String(o.slug ?? o.Slug ?? ""),
+    titleDisplay: String(o.titleDisplay ?? o.TitleDisplay ?? ""),
+    status: String(o.status ?? o.Status ?? ""),
+    label: (o.label ?? o.Label) == null ? null : String(o.label ?? o.Label),
+    sortOrder: Number(o.sortOrder ?? o.SortOrder ?? 0),
+    isActive: Boolean(o.isActive ?? o.IsActive ?? false),
+  };
+}
+
+/** Storefront sponsored placements (active products only). */
+export async function listCommerceSponsoredStorefront(): Promise<CommerceSponsoredProductPublic[]> {
+  const res = await fetch(`${BASE}/api/v1/catalog/sponsored-products`, {
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const arr = (await res.json()) as unknown[];
+  if (!Array.isArray(arr)) return [];
+  return arr.map((x) => normalizeSponsoredPublic(x as Record<string, unknown>));
+}
+
+export async function listCommerceSponsoredAdmin(accessToken: string): Promise<CommerceSponsoredProductAdmin[]> {
+  const res = await fetch(`${BASE}/api/v1/admin/storefront-sponsored-products`, {
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const arr = (await res.json()) as unknown[];
+  if (!Array.isArray(arr)) return [];
+  return arr.map((x) => normalizeSponsoredAdmin(x as Record<string, unknown>));
+}
+
+export async function createCommerceSponsoredAdmin(
+  accessToken: string,
+  body: { productId: string; label?: string; sortOrder?: number; isActive?: boolean }
+): Promise<CommerceSponsoredProductAdmin> {
+  const res = await fetch(`${BASE}/api/v1/admin/storefront-sponsored-products`, {
+    method: "POST",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify({
+      productId: body.productId.trim(),
+      label: body.label?.trim() || undefined,
+      sortOrder: body.sortOrder ?? 0,
+      isActive: body.isActive,
+    }),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizeSponsoredAdmin((await res.json()) as Record<string, unknown>);
+}
+
+export async function updateCommerceSponsoredAdmin(
+  accessToken: string,
+  sponsoredId: string,
+  body: { label?: string | null; sortOrder?: number; isActive?: boolean }
+): Promise<CommerceSponsoredProductAdmin> {
+  const res = await fetch(
+    `${BASE}/api/v1/admin/storefront-sponsored-products/${encodeURIComponent(sponsoredId.trim())}`,
+    {
+      method: "PUT",
+      headers: commerceAuthorizedHeaders(accessToken),
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizeSponsoredAdmin((await res.json()) as Record<string, unknown>);
+}
+
+export async function deleteCommerceSponsoredAdmin(accessToken: string, sponsoredId: string): Promise<void> {
+  const res = await fetch(
+    `${BASE}/api/v1/admin/storefront-sponsored-products/${encodeURIComponent(sponsoredId.trim())}`,
+    { method: "DELETE", headers: commerceAuthorizedHeaders(accessToken) }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+/**
+ * PDP loader: prefers `GET /catalog/product-detail`, then falls back to `GET /catalog/products?slug=…`
+ * so the storefront still opens PDP when an older Commerce.Api build omits the detail route or returns 404.
+ */
+export async function resolveCatalogProductDetail(lookupKey: string): Promise<CatalogProductDetail | null> {
+  const key = lookupKey.trim();
+  if (!key) return null;
+
+  const direct = (await getCatalogProductDetail({ slug: key })) ?? (await getCatalogProductDetail({ id: key }));
+  if (direct) return direct;
+
+  const page = await listCatalogProducts({ slug: key, pageSize: 1, page: 1 });
+  const card = page.items[0];
+  if (!card) return null;
+
+  const gallery: CatalogProductGalleryImage[] =
+    card.heroStorageKey != null && card.heroStorageKey.length > 0
+      ? [{ storageKey: card.heroStorageKey, role: "hero", sortOrder: 0, skuId: null }]
+      : [];
+  const split = splitAngleColorFromGallery(gallery);
+
+  return {
+    ...card,
+    gallery,
+    angleImages: split.angleImages,
+    colorImages: split.colorImages,
+    vendorCode: card.vendorCode,
+    vendorDisplayName: null,
+    primaryCategorySlug: null,
+    skuCodes: card.skuCodes?.length ? [...card.skuCodes] : [],
+    skuGalleryFacets: [],
+  };
+}
+
+export async function getProductEngagement(productId: string): Promise<ProductEngagement> {
+  const res = await fetch(`${BASE}/api/v1/catalog/products/${encodeURIComponent(productId.trim())}/engagement`, {
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const raw = (await res.json()) as Record<string, unknown>;
+  return {
+    viewsCount: Number(raw.viewsCount ?? raw.ViewsCount ?? 0),
+    likesCount: Number(raw.likesCount ?? raw.LikesCount ?? 0),
+    dislikesCount: Number(raw.dislikesCount ?? raw.DislikesCount ?? 0),
+    ratingsCount: Number(raw.ratingsCount ?? raw.RatingsCount ?? 0),
+    averageRating: Number(raw.averageRating ?? raw.AverageRating ?? 0),
+    commentsCount: Number(raw.commentsCount ?? raw.CommentsCount ?? 0),
+    recentComments: Array.isArray(raw.recentComments ?? raw.RecentComments)
+      ? (raw.recentComments ?? raw.RecentComments).map((c: unknown) => {
+          const o = c as Record<string, unknown>;
+          return {
+            id: String(o.id ?? o.Id ?? ""),
+            authorName: (o.authorName ?? o.AuthorName) == null ? null : String(o.authorName ?? o.AuthorName),
+            commentText: String(o.commentText ?? o.CommentText ?? ""),
+            createdAt: String(o.createdAt ?? o.CreatedAt ?? ""),
+          };
+        })
+      : [],
+  };
+}
+
+export async function trackProductView(productId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/catalog/products/${encodeURIComponent(productId.trim())}/view`, {
+    method: "POST",
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export async function incrementProductLike(productId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/catalog/products/${encodeURIComponent(productId.trim())}/like`, {
+    method: "POST",
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export async function incrementProductDislike(productId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/catalog/products/${encodeURIComponent(productId.trim())}/dislike`, {
+    method: "POST",
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export async function addProductRating(params: {
+  productId: string;
+  score: number;
+  authorName?: string;
+  commentText?: string;
+}): Promise<void> {
+  const res = await fetch(
+    `${BASE}/api/v1/catalog/products/${encodeURIComponent(params.productId.trim())}/ratings`,
+    {
+      method: "POST",
+      headers: { ...commerceTenantHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        score: params.score,
+        authorName: params.authorName?.trim() || undefined,
+        commentText: params.commentText?.trim() || undefined,
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export async function addProductComment(params: {
+  productId: string;
+  commentText: string;
+  authorName?: string;
+}): Promise<void> {
+  const res = await fetch(
+    `${BASE}/api/v1/catalog/products/${encodeURIComponent(params.productId.trim())}/comments`,
+    {
+      method: "POST",
+      headers: { ...commerceTenantHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        commentText: params.commentText.trim(),
+        authorName: params.authorName?.trim() || undefined,
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
 }
 
 export async function listCatalogProducts(params?: ListCatalogProductsParams): Promise<CatalogProductsPage> {
@@ -349,6 +833,8 @@ export type VendorProductListItem = {
   offerType: string | null;
   offerCardText: string | null;
   imageIndicators: ProductImageIndicator[];
+  vendorCode: string | null;
+  skuCodes: string[];
 };
 
 export type VendorProductsPage = {
@@ -379,6 +865,8 @@ function normalizeVendorListItem(row: Record<string, unknown>): VendorProductLis
     offerType: optionalStringField(row, "offerType", "OfferType"),
     offerCardText: optionalStringField(row, "offerCardText", "OfferCardText"),
     imageIndicators: normalizeImageIndicators(row.imageIndicators ?? row.ImageIndicators),
+    vendorCode: optionalStringField(row, "vendorCode", "VendorCode"),
+    skuCodes: normalizeSkuCodes(row.skuCodes ?? row.SkuCodes),
   };
 }
 
@@ -429,6 +917,23 @@ export async function getVendorProduct(
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
   return (await res.json()) as VendorProductDetail;
+}
+
+/** Same payload as public catalog product-detail, including angle/colour gallery split (drafts allowed for owner). */
+export async function getVendorProductStorefrontDetail(
+  accessToken: string,
+  productId: string
+): Promise<CatalogProductDetail | null> {
+  const res = await fetch(
+    `${BASE}/api/v1/vendor/products/${encodeURIComponent(productId)}/storefront`,
+    {
+      headers: commerceAuthorizedHeaders(accessToken),
+    }
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const raw = (await res.json()) as Record<string, unknown>;
+  return normalizeCatalogProductDetail(raw);
 }
 
 export type VendorProductWrite = {

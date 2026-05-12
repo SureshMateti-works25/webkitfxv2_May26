@@ -1,0 +1,22 @@
+{
+  "id": "chrome-notice",
+  "title": "Chrome notice bar",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0",
+    "children": [{ "type": "field", "fieldId": "noticeMessage" }]
+  },
+  "fields": {
+    "noticeMessage": {
+      "binding": "notice.message",
+      "widget": "marqueeNotice",
+      "label": "Notice",
+      "default": "Free shipping over INR 1,999 · New festival collections live now · GST-ready invoices for every order",
+      "props": {
+        "ariaLabel": "Store announcements",
+        "repeatCount": 2
+      }
+    }
+  }
+}

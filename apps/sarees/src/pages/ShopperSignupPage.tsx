@@ -38,7 +38,8 @@ export function ShopperSignupPage() {
           setSubmitting(true);
           try {
             const auth = await registerAccount({ email, password, role: "shopper", profile: v });
-            const role = auth.role === "vendor" ? "vendor" : "shopper";
+            const role =
+              auth.role === "vendor" || auth.role === "admin" ? auth.role : "shopper";
             const session = {
               accessToken: auth.accessToken,
               role,

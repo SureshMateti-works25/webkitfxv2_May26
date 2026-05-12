@@ -21,6 +21,12 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
     public DbSet<InventoryPosition> InventoryPositions => Set<InventoryPosition>();
     public DbSet<PortalUser> PortalUsers => Set<PortalUser>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<LookupType> LookupTypes => Set<LookupType>();
+    public DbSet<LookupValue> LookupValues => Set<LookupValue>();
+    public DbSet<ProductEngagementSummary> ProductEngagementSummaries => Set<ProductEngagementSummary>();
+    public DbSet<ProductRating> ProductRatings => Set<ProductRating>();
+    public DbSet<ProductComment> ProductComments => Set<ProductComment>();
+    public DbSet<StorefrontSponsoredProduct> StorefrontSponsoredProducts => Set<StorefrontSponsoredProduct>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -221,6 +227,93 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.Property(x => x.Role).HasMaxLength(32).IsRequired();
             e.Property(x => x.ProfileJson);
             e.HasIndex(x => new { x.TenantId, x.NormalizedEmail }).IsUnique();
+        });
+
+        modelBuilder.Entity<ProductEngagementSummary>(e =>
+        {
+            e.ToTable("product_engagement_summaries");
+            e.HasKey(x => new { x.TenantId, x.ProductId });
+            e.Property(x => x.TenantId).HasMaxLength(64);
+            e.Property(x => x.ProductId).HasMaxLength(64);
+            e.HasIndex(x => x.ProductId);
+        });
+
+        modelBuilder.Entity<ProductRating>(e =>
+        {
+            e.ToTable("product_ratings");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ProductId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.AuthorName).HasMaxLength(128);
+            e.Property(x => x.CommentText).HasMaxLength(2048);
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.CreatedAt });
+        });
+
+        modelBuilder.Entity<ProductComment>(e =>
+        {
+            e.ToTable("product_comments");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ProductId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.AuthorName).HasMaxLength(128);
+            e.Property(x => x.CommentText).HasMaxLength(2048).IsRequired();
+            e.HasIndex(x => new { x.TenantId, x.ProductId, x.CreatedAt });
+        });
+
+        modelBuilder.Entity<LookupType>(e =>
+        {
+            e.ToTable("lookup_types");
+            e.HasKey(x => new { x.TenantId, x.Id });
+            e.Property(x => x.TenantId).HasMaxLength(64);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.Title).HasMaxLength(256).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(1024);
+            e.Property(x => x.ParentLookupTypeId).HasMaxLength(64);
+            e.Property(x => x.ParentFieldLabel).HasMaxLength(128);
+            e.Property(x => x.EntryIdPrefix).HasMaxLength(32).IsRequired();
+            e.HasOne<LookupType>()
+                .WithMany()
+                .HasForeignKey(x => new { x.TenantId, x.ParentLookupTypeId })
+                .HasPrincipalKey(x => new { x.TenantId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LookupValue>(e =>
+        {
+            e.ToTable("lookup_values");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.LookupTypeId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Code).HasMaxLength(128).IsRequired();
+            e.Property(x => x.Label).HasMaxLength(512).IsRequired();
+            e.Property(x => x.ParentValueId).HasMaxLength(64);
+            e.HasIndex(x => new { x.TenantId, x.LookupTypeId, x.Code }).IsUnique();
+            e.HasIndex(x => x.ParentValueId);
+            e.HasOne(x => x.LookupType)
+                .WithMany()
+                .HasForeignKey(x => new { x.TenantId, x.LookupTypeId })
+                .HasPrincipalKey(x => new { x.TenantId, x.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.ParentValue)
+                .WithMany()
+                .HasForeignKey(x => x.ParentValueId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StorefrontSponsoredProduct>(e =>
+        {
+            e.ToTable("storefront_sponsored_products");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ProductId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Label).HasMaxLength(160);
+            e.HasIndex(x => new { x.TenantId, x.ProductId }).IsUnique();
+            e.HasIndex(x => new { x.TenantId, x.SortOrder });
+            e.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AuditLog>(e =>

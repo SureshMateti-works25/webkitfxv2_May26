@@ -75,7 +75,7 @@ export function CategoryBrowsePage() {
 
   if (!slug) {
     return (
-      <div className="browse-page">
+      <div className="browse-page browse-page--fullwidth">
         <p className="browse-page__error">Missing category.</p>
         <Link to="/">Back to home</Link>
       </div>
@@ -84,7 +84,7 @@ export function CategoryBrowsePage() {
 
   if (error) {
     return (
-      <div className="browse-page">
+      <div className="browse-page browse-page--fullwidth">
         <p className="browse-page__error" role="alert">
           {error}
         </p>
@@ -95,7 +95,7 @@ export function CategoryBrowsePage() {
 
   if (categories !== null && !categories.some((c) => c.slug === slug)) {
     return (
-      <div className="browse-page">
+      <div className="browse-page browse-page--fullwidth">
         <p className="browse-page__error">Category not found.</p>
         <Link to="/">Back to home</Link>
       </div>
@@ -103,7 +103,7 @@ export function CategoryBrowsePage() {
   }
 
   return (
-    <div className="browse-page">
+    <div className="browse-page browse-page--fullwidth">
       <nav className="browse-page__crumb">
         <Link to="/">Home</Link>
         <span aria-hidden="true"> / </span>
@@ -125,7 +125,12 @@ export function CategoryBrowsePage() {
               <li key={p.id}>
                 <Link to={`/p/${encodeURIComponent(p.slug)}`} className="browse-product-card">
                   <div className="browse-product-card__media">
-                    <CatalogProductVisual storageKey={p.heroStorageKey} imageIndicators={p.imageIndicators} />
+                    <CatalogProductVisual
+                      storageKey={p.heroStorageKey}
+                      imageIndicators={p.imageIndicators}
+                      vendorCode={p.vendorCode}
+                      skuCodes={p.skuCodes}
+                    />
                   </div>
                   <div className="browse-product-card__body">
                     <h2 className="browse-product-card__title">{p.titleDisplay}</h2>

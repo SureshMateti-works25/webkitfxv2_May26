@@ -1,3 +1,4 @@
+using System.Globalization;
 using Commerce.Api.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -92,7 +93,7 @@ public static class CommerceDevDataSeeder
             MinPriceMinor = 2499900,
             Currency = "INR",
             CommerceJson =
-                """{"pricing":{"offerType":"percent","offerCardText":"Pongal season — 10% off list price","offerLabel":"Pongal 10%","promoEndsAt":"","listPriceMinor":2799900},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}"""
+                """{"pricing":{"offerType":"percent","offerCardText":"Pongal season — 10% off list price","offerLabel":"Pongal 10%","promoEndsAt":"","listPriceMinor":2799900},"vendor":{"vendorCode":"NISTTA-DEMO","outletCode":"OUT-MUM-01","displayName":"NISTTA"},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}"""
         });
 
         db.ProductCategories.AddRange(
@@ -216,7 +217,282 @@ public static class CommerceDevDataSeeder
             return;
 
         p.CommerceJson =
-            """{"pricing":{"offerType":"percent","offerCardText":"Pongal season — 10% off list price","offerLabel":"Pongal 10%","promoEndsAt":"","listPriceMinor":2799900},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}""";
+            """{"pricing":{"offerType":"percent","offerCardText":"Pongal season — 10% off list price","offerLabel":"Pongal 10%","promoEndsAt":"","listPriceMinor":2799900},"vendor":{"vendorCode":"NISTTA-DEMO","outletCode":"OUT-MUM-01","displayName":"NISTTA"},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"enquiries":{"note":"Customer enquiries will appear when wired.","openCount":0},"orders":{"note":"Orders will appear when wired.","recentIds":[]},"typeAttributes":{}}""";
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Adds product-level media with role <c>color</c> for demo PDP (bottom colour rail). Reuses an existing media asset row for the hero storage key. Safe on existing DBs.
+    /// </summary>
+    public static async Task EnsureDemoProductColorGalleryAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        if (!await db.Products.AnyAsync(p => p.Id == "p_kj001", ct))
+            return;
+        if (await db.ProductMedia.AnyAsync(pm => pm.Id == "pm_kj_color", ct))
+            return;
+
+        // Reuse an existing asset for the same blob path — tenant+storage_key is unique on media_assets.
+        var reuseAssetId = await db.MediaAssets.AsNoTracking()
+            .Where(ma => ma.TenantId == "t1" && ma.StorageKey == "t1/p_kj001/hero_01.jpg")
+            .OrderBy(ma => ma.Id)
+            .Select(ma => ma.Id)
+            .FirstOrDefaultAsync(ct);
+        if (string.IsNullOrEmpty(reuseAssetId))
+            return;
+
+        db.ProductMedia.Add(new ProductMediaRow
+        {
+            Id = "pm_kj_color",
+            ProductId = "p_kj001",
+            MediaAssetId = reuseAssetId,
+            Role = "color",
+            SortOrder = 2,
+            Locale = "en-IN"
+        });
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Configurable lookups (types + sample values) aligned with apps/sarees lookup registry — idempotent per tenant.
+    /// </summary>
+    public static async Task EnsureConfigurableLookupSeedAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        if (await db.LookupTypes.AnyAsync(t => t.TenantId == tid, ct))
+            return;
+
+        db.LookupTypes.AddRange(
+            new LookupType
+            {
+                TenantId = tid,
+                Id = "regions",
+                Title = "Regions",
+                Description = "Top-level geography (no parent).",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "reg_"
+            },
+            new LookupType
+            {
+                TenantId = tid,
+                Id = "cities",
+                Title = "Cities",
+                Description = "Cities belong to a region.",
+                ParentLookupTypeId = "regions",
+                ParentFieldLabel = "Region",
+                EntryIdPrefix = "city_"
+            },
+            new LookupType
+            {
+                TenantId = tid,
+                Id = "payment_methods",
+                Title = "Payment methods",
+                Description = "Standalone lookup with no parent.",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "pay_"
+            },
+            new LookupType
+            {
+                TenantId = tid,
+                Id = "product_categories",
+                Title = "Product categories",
+                Description = "Merchandising categories; code doubles as storefront slug where applicable.",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "cat_"
+            });
+
+        db.LookupValues.AddRange(
+            new LookupValue
+            {
+                Id = "reg_south",
+                TenantId = tid,
+                LookupTypeId = "regions",
+                Code = "south",
+                Label = "South India",
+                SortOrder = 10,
+                ParentValueId = null
+            },
+            new LookupValue
+            {
+                Id = "reg_north",
+                TenantId = tid,
+                LookupTypeId = "regions",
+                Code = "north",
+                Label = "North India",
+                SortOrder = 20,
+                ParentValueId = null
+            },
+            new LookupValue
+            {
+                Id = "city_che",
+                TenantId = tid,
+                LookupTypeId = "cities",
+                Code = "chennai",
+                Label = "Chennai",
+                SortOrder = 10,
+                ParentValueId = "reg_south"
+            },
+            new LookupValue
+            {
+                Id = "city_blr",
+                TenantId = tid,
+                LookupTypeId = "cities",
+                Code = "bengaluru",
+                Label = "Bengaluru",
+                SortOrder = 20,
+                ParentValueId = "reg_south"
+            },
+            new LookupValue
+            {
+                Id = "pay_upi",
+                TenantId = tid,
+                LookupTypeId = "payment_methods",
+                Code = "upi",
+                Label = "UPI",
+                SortOrder = 10,
+                ParentValueId = null
+            },
+            new LookupValue
+            {
+                Id = "cat_silk",
+                TenantId = tid,
+                LookupTypeId = "product_categories",
+                Code = "silk",
+                Label = "Silk sarees",
+                SortOrder = 10,
+                ParentValueId = null
+            },
+            new LookupValue
+            {
+                Id = "cat_kan",
+                TenantId = tid,
+                LookupTypeId = "product_categories",
+                Code = "kanjeevaram",
+                Label = "Kanjeevaram",
+                SortOrder = 20,
+                ParentValueId = null
+            });
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Idempotent: catalog <c>categories</c> row for Kalamkari (vendor primary category dropdown + browse slug).
+    /// Also mirrors a <c>lookup_values</c> row under <c>product_categories</c> when that lookup type exists.
+    /// </summary>
+    public static async Task EnsureKalamkariCategoryAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string id = "pcat_kalamkari";
+        const string slug = "kalamkari";
+
+        if (!await db.Categories.AnyAsync(c => c.TenantId == tid && c.Id == id, ct))
+        {
+            var parentId = await db.Categories.AsNoTracking()
+                .Where(c => c.TenantId == tid && c.Id == "cat_silk")
+                .Select(c => c.Id)
+                .FirstOrDefaultAsync(ct);
+            if (string.IsNullOrEmpty(parentId))
+            {
+                parentId = await db.Categories.AsNoTracking()
+                    .Where(c => c.TenantId == tid && c.Id == "cat_saree")
+                    .Select(c => c.Id)
+                    .FirstOrDefaultAsync(ct);
+            }
+
+            db.Categories.Add(new Category
+            {
+                Id = id,
+                TenantId = tid,
+                ParentId = string.IsNullOrEmpty(parentId) ? null : parentId,
+                Slug = slug,
+                SortOrder = 35
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == "product_categories", ct)
+            && !await db.LookupValues.AnyAsync(
+                v => v.TenantId == tid && v.LookupTypeId == "product_categories" && v.Code == slug, ct))
+        {
+            db.LookupValues.Add(new LookupValue
+            {
+                Id = id,
+                TenantId = tid,
+                LookupTypeId = "product_categories",
+                Code = slug,
+                Label = "Kalamkari",
+                SortOrder = 35,
+                ParentValueId = null
+            });
+            await db.SaveChangesAsync(ct);
+        }
+    }
+
+    /// <summary>
+    /// Idempotent: upserts <c>lookup_values</c> for <c>product_categories</c> from tenant <c>categories</c>
+    /// so storefront / JsonForm can drive dropdowns from <c>GET /api/v1/lookups/types/product_categories/values</c>
+    /// with the same ids as <c>categories.id</c> (vendor primary category save path).
+    /// </summary>
+    public static async Task EnsureProductCategoryLookupMirrorsCatalogAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == "product_categories", ct))
+            return;
+
+        var ti = CultureInfo.InvariantCulture.TextInfo;
+        var cats = await db.Categories.AsNoTracking().Where(c => c.TenantId == tid).OrderBy(c => c.SortOrder).ToListAsync(ct);
+        foreach (var cat in cats)
+        {
+            var code = cat.Slug.Trim().ToLowerInvariant();
+            var label = ti.ToTitleCase(cat.Slug.Replace('-', ' ').Replace('_', ' '));
+            var row = await db.LookupValues.FirstOrDefaultAsync(
+                v => v.TenantId == tid && v.LookupTypeId == "product_categories" && v.Id == cat.Id, ct);
+            if (row is null)
+            {
+                db.LookupValues.Add(new LookupValue
+                {
+                    Id = cat.Id,
+                    TenantId = tid,
+                    LookupTypeId = "product_categories",
+                    Code = code,
+                    Label = label.Length > 0 ? label : code,
+                    SortOrder = cat.SortOrder,
+                    ParentValueId = null
+                });
+            }
+            else
+            {
+                row.Code = code;
+                row.Label = label.Length > 0 ? label : code;
+                row.SortOrder = cat.SortOrder;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Idempotent dev row so the storefront sponsored rail has one sample placement.</summary>
+    public static async Task EnsureStorefrontSponsoredDevSeedAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        if (await db.StorefrontSponsoredProducts.AnyAsync(s => s.TenantId == tid, ct))
+            return;
+        if (!await db.Products.AnyAsync(p => p.TenantId == tid && p.Id == "p_kj001", ct))
+            return;
+
+        db.StorefrontSponsoredProducts.Add(new StorefrontSponsoredProduct
+        {
+            Id = "ssp_seed_kj001",
+            TenantId = tid,
+            ProductId = "p_kj001",
+            Label = "Festive spotlight",
+            SortOrder = 0,
+            IsActive = true
+        });
         await db.SaveChangesAsync(ct);
     }
 }

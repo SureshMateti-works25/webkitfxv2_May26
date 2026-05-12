@@ -2,7 +2,11 @@ namespace Commerce.Api.Catalog;
 
 public sealed record ProductImageIndicatorDto(string Kind, string? Label, string Placement);
 
-public sealed record ProductGalleryImageDto(string StorageKey, string Role, int SortOrder);
+/// <param name="SkuId">When set, this image is attached to that SKU (e.g. colour variant); null = product-level.</param>
+public sealed record ProductGalleryImageDto(string StorageKey, string Role, int SortOrder, string? SkuId);
+
+/// <summary>One colour / variant option in the PDP matrix: pick SKU → show that SKU’s angle rail.</summary>
+public sealed record SkuGalleryFacetDto(string SkuId, string SkuCode, string? SwatchStorageKey);
 
 public sealed record ProductCardDto(
     string Id,
@@ -16,7 +20,9 @@ public sealed record ProductCardDto(
     string? OfferType,
     string? OfferCardText,
     long? OfferPriceMinor,
-    IReadOnlyList<ProductImageIndicatorDto> ImageIndicators);
+    IReadOnlyList<ProductImageIndicatorDto> ImageIndicators,
+    string? VendorCode,
+    IReadOnlyList<string> SkuCodes);
 
 public sealed record ProductDetailDto(
     string Id,
@@ -31,7 +37,32 @@ public sealed record ProductDetailDto(
     string? OfferCardText,
     long? OfferPriceMinor,
     IReadOnlyList<ProductImageIndicatorDto> ImageIndicators,
-    IReadOnlyList<ProductGalleryImageDto> Gallery);
+    /// <summary>All storefront images: product-level rows first, then per-SKU rows (by SKU code, then sort order).</summary>
+    IReadOnlyList<ProductGalleryImageDto> Gallery,
+    /// <summary>Angled / variant / hero / gallery roles (excludes color swatch rail).</summary>
+    IReadOnlyList<ProductGalleryImageDto> AngleImages,
+    /// <summary>Color / swatch rail (product-level media with role color|colour|swatch).</summary>
+    IReadOnlyList<ProductGalleryImageDto> ColorImages,
+    string? VendorCode,
+    string? VendorDisplayName,
+    string? PrimaryCategorySlug,
+    IReadOnlyList<string> SkuCodes,
+    IReadOnlyList<SkuGalleryFacetDto> SkuGalleryFacets);
+
+public sealed record ProductCommentDto(
+    string Id,
+    string? AuthorName,
+    string CommentText,
+    DateTimeOffset CreatedAt);
+
+public sealed record ProductEngagementDto(
+    long ViewsCount,
+    long LikesCount,
+    long DislikesCount,
+    int RatingsCount,
+    decimal AverageRating,
+    int CommentsCount,
+    IReadOnlyList<ProductCommentDto> RecentComments);
 
 public sealed record PagedProductsResponse(
     string View,

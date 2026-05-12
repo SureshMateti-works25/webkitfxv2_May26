@@ -97,12 +97,21 @@ export function VendorProductsPage() {
         <ul className="vendor-product-grid">
           {items.map((p) => (
             <li key={p.id}>
-              <Link to={`/vendor/products/${p.id}`} className="vendor-product-card">
-                <div className="vendor-product-card__media" aria-hidden="true">
-                  <CatalogProductVisual storageKey={p.heroStorageKey} imageIndicators={p.imageIndicators} />
-                </div>
+              <article className="vendor-product-card">
+                <Link to={`/vendor/products/${p.id}/storefront`} className="vendor-product-card__media-link">
+                  <div className="vendor-product-card__media" aria-hidden="true">
+                    <CatalogProductVisual
+                      storageKey={p.heroStorageKey}
+                      imageIndicators={p.imageIndicators}
+                      vendorCode={p.vendorCode}
+                      skuCodes={p.skuCodes}
+                    />
+                  </div>
+                </Link>
                 <div className="vendor-product-card__body">
-                  <h2 className="vendor-product-card__title">{p.titleDisplay}</h2>
+                  <h2 className="vendor-product-card__title">
+                    <Link to={`/vendor/products/${p.id}/storefront`}>{p.titleDisplay}</Link>
+                  </h2>
                   <p className="vendor-product-card__meta">
                     <span className={`vendor-product-card__status vendor-product-card__status--${p.status}`}>
                       {p.status}
@@ -118,8 +127,13 @@ export function VendorProductsPage() {
                     offerCardText={p.offerCardText}
                   />
                   <p className="vendor-product-card__slug">{p.slug}</p>
+                  <p className="vendor-product-card__actions">
+                    <Link to={`/vendor/products/${p.id}/storefront`}>Storefront</Link>
+                    <span aria-hidden="true"> · </span>
+                    <Link to={`/vendor/products/${p.id}`}>Edit</Link>
+                  </p>
                 </div>
-              </Link>
+              </article>
             </li>
           ))}
         </ul>

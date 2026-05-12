@@ -7,6 +7,99 @@
     "logoAlt": "NISTTA",
     "logoSrc": "/logo-nistta.svg"
   },
+  "storefront": {
+    "whatsapp": {
+      "enabled": true,
+      "phoneDigits": "917816058810",
+      "messageTemplate": "Hi — I'm interested in *{{title}}* (SKU: {{sku}}). Vendor: {{vendor}}. Page: {{url}}"
+    }
+  },
+  "edgeChrome": {
+    "enabled": true,
+    "floatingStack": {
+      "enabled": true,
+      "ariaLabel": "Quick help and booking",
+      "items": [
+        {
+          "id": "cta-whatsapp",
+          "kind": "whatsapp",
+          "label": "WhatsApp",
+          "shortLabel": "WA",
+          "phoneDigits": "",
+          "messageTemplate": "Hi — I’m browsing {{url}} and would like help.",
+          "icon": "whatsapp",
+          "audiences": ["anonymous", "guest", "shopper", "vendor", "admin"],
+          "pathPrefixesExclude": ["/login"]
+        },
+        {
+          "id": "cta-book-demo",
+          "kind": "link",
+          "label": "Book demo",
+          "shortLabel": "Demo",
+          "href": "https://cal.com/",
+          "icon": "demo",
+          "audiences": ["anonymous", "guest", "shopper", "vendor"],
+          "pathPrefixesExclude": ["/login", "/signup/vendor", "/signup/shopper"]
+        },
+        {
+          "id": "cta-support",
+          "kind": "link",
+          "label": "Support",
+          "shortLabel": "Help",
+          "href": "/support",
+          "icon": "support",
+          "audiences": ["anonymous", "guest", "shopper", "vendor", "admin"]
+        }
+      ]
+    },
+    "promotionRail": {
+      "enabled": true,
+      "title": "Offers & promotions",
+      "mobileToggleLabel": "Offers",
+      "cards": [
+        {
+          "id": "promo-ship",
+          "title": "Free shipping",
+          "body": "Orders over INR 1,999 ship free this week — GST invoice included.",
+          "ctaLabel": "Browse catalogue",
+          "ctaHref": "/search",
+          "variant": "accent",
+          "audiences": ["anonymous", "guest", "shopper"],
+          "pathPrefixes": ["/", "/search", "/p", "/browse", "/cart"]
+        },
+        {
+          "id": "promo-vendor",
+          "title": "Vendor tools",
+          "body": "Preview storefront layout and SKUs before you publish.",
+          "ctaLabel": "My products",
+          "ctaHref": "/vendor/products",
+          "variant": "highlight",
+          "audiences": ["vendor"],
+          "pathPrefixes": ["/vendor"]
+        },
+        {
+          "id": "promo-admin",
+          "title": "Admin",
+          "body": "Lookups and directory screens stay JSON-driven — extend packs without redeploying the host.",
+          "ctaLabel": "Lookups",
+          "ctaHref": "/admin/lookups",
+          "variant": "neutral",
+          "audiences": ["admin"],
+          "pathPrefixes": ["/admin"]
+        },
+        {
+          "id": "promo-admin-sponsored",
+          "title": "Sponsored picks",
+          "body": "Choose which catalogue products appear in the storefront right rail as sponsored vendor placements.",
+          "ctaLabel": "Configure ads",
+          "ctaHref": "/admin/storefront-ads",
+          "variant": "highlight",
+          "audiences": ["admin"],
+          "pathPrefixes": ["/admin"]
+        }
+      ]
+    }
+  },
   "header": {
     "sessionLabels": {
       "guest": "Guest session",
@@ -14,28 +107,58 @@
       "logout": "Log out",
       "login": "Login"
     },
+    "notificationBar": {
+      "message": "Free shipping over INR 1,999 · New festival collections live now · GST-ready invoices for every order",
+      "ariaLabel": "Store announcements"
+    },
+    "navByAuth": {
+      "guest": [
+        { "label": "Home", "path": "/", "icon": "home" },
+        { "label": "Search", "path": "/search", "icon": "search" },
+        { "label": "Cart", "path": "/cart", "icon": "cart" },
+        { "label": "Login", "path": "/login", "icon": "login" }
+      ],
+      "shopper": [
+        { "label": "Home", "path": "/", "icon": "home" },
+        { "label": "Search", "path": "/search", "icon": "search" },
+        { "label": "Cart", "path": "/cart", "icon": "cart" }
+      ],
+      "vendor": [
+        { "label": "Home", "path": "/", "icon": "home" },
+        { "label": "Search", "path": "/search", "icon": "search" },
+        { "label": "Cart", "path": "/cart", "icon": "cart" }
+      ],
+      "admin": [
+        { "label": "Home", "path": "/", "icon": "home" },
+        { "label": "Search", "path": "/search", "icon": "search" }
+      ]
+    },
     "profileMenuAria": "Account menu",
     "profileMenu": {
       "shopper": [
         { "label": "Profile", "path": "/account/profile" },
-        { "label": "Settings", "path": "/settings" },
-        { "label": "Favourites", "path": "/favourites" },
-        { "label": "Orders", "path": "/orders" },
-        { "label": "Communication", "path": "/communication" }
+        { "label": "My favourites", "path": "/favourites" },
+        { "label": "Recent orders", "path": "/orders" }
       ],
       "vendor": [
-        { "label": "My products", "path": "/vendor/products" },
         { "label": "Profile", "path": "/account/profile" },
-        { "label": "Settings", "path": "/settings" },
-        { "label": "Communication", "path": "/communication" }
+        { "label": "My products", "path": "/vendor/products" },
+        { "label": "Settings", "path": "/settings" }
+      ],
+      "admin": [
+        { "label": "Profile", "path": "/account/profile" },
+        { "label": "Vendors", "path": "/admin/vendors" },
+        { "label": "Shoppers", "path": "/admin/shoppers" },
+        { "label": "Orders", "path": "/admin/orders" },
+        { "label": "Admin lookups mgt", "path": "/admin/lookups" },
+        { "label": "Storefront sponsored ads", "path": "/admin/storefront-ads" }
       ]
     },
     "menu": [
       { "label": "Home", "path": "/" },
+      { "label": "Search", "path": "/search" },
       { "label": "Cart", "path": "/cart" },
-      { "label": "Login", "path": "/login" },
-      { "label": "Vendor signup", "path": "/signup/vendor" },
-      { "label": "Shopper profile", "path": "/signup/shopper" }
+      { "label": "Login", "path": "/login" }
     ],
     "settingsMenu": [
       { "label": "Preferences", "path": "/settings" },
@@ -48,6 +171,7 @@
       { "label": "Shop", "path": null }
     ],
     "/cart": [{ "label": "Home", "path": "/" }, { "label": "Cart", "path": null }],
+    "/search": [{ "label": "Home", "path": "/" }, { "label": "Search", "path": null }],
     "/login": [{ "label": "Home", "path": "/" }, { "label": "Sign in", "path": null }],
     "/signup/vendor": [
       { "label": "Home", "path": "/" },
@@ -70,6 +194,26 @@
     "/vendor/products": [
       { "label": "Home", "path": "/" },
       { "label": "My products", "path": null }
+    ],
+    "/admin/lookups": [
+      { "label": "Home", "path": "/" },
+      { "label": "Lookups", "path": null }
+    ],
+    "/admin/storefront-ads": [
+      { "label": "Home", "path": "/" },
+      { "label": "Sponsored storefront", "path": null }
+    ],
+    "/admin/vendors": [
+      { "label": "Home", "path": "/" },
+      { "label": "Vendors", "path": null }
+    ],
+    "/admin/shoppers": [
+      { "label": "Home", "path": "/" },
+      { "label": "Shoppers", "path": null }
+    ],
+    "/admin/orders": [
+      { "label": "Home", "path": "/" },
+      { "label": "Orders", "path": null }
     ],
     "/vendor/products/new": [
       { "label": "Home", "path": "/" },
@@ -214,7 +358,13 @@
     },
     "cart": {
       "title": "Your cart",
-      "body": "Cart line items and checkout will be driven by JSON order forms — this route is a placeholder until the basket pack is wired."
+      "body": "Items stay on this device until checkout is connected to your commerce API. Quantities update below.",
+      "emptyHint": "Browse the catalogue and use Add to cart on a product page.",
+      "lineQtyLabel": "Qty",
+      "removeLineLabel": "Remove",
+      "clearCartLabel": "Clear cart",
+      "continueShoppingLabel": "Continue shopping",
+      "subtotalLabel": "Estimated line total"
     },
     "accountProfile": {
       "title": "Your profile",
@@ -231,6 +381,23 @@
     "communication": {
       "title": "Communication",
       "body": "Messages, alerts, and announcements will be driven from your notifications configuration — placeholder for now."
+    },
+    "search": {
+      "title": "Search catalogue",
+      "body": "Use one or many filters to find products. Filters are configuration-driven and can be extended without changing this page component.",
+      "noResults": "No products matched the selected filters."
+    },
+    "adminVendors": {
+      "title": "Vendors",
+      "body": "Vendor master and lifecycle management screens are configuration-driven placeholders."
+    },
+    "adminShoppers": {
+      "title": "Shoppers",
+      "body": "Shopper directory and lifecycle screens are configuration-driven placeholders."
+    },
+    "adminOrders": {
+      "title": "Orders",
+      "body": "Order operations, workflows, and exception handling screens are configuration-driven placeholders."
     }
   }
 }

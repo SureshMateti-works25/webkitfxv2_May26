@@ -2,6 +2,7 @@ using Commerce.Api.Audit;
 using Commerce.Api.Auth;
 using Commerce.Api.Catalog;
 using Commerce.Api.Data;
+using Commerce.Api.Lookups;
 using Commerce.Api.Entities;
 using Microsoft.AspNetCore.Identity;
 using Commerce.Api.Features;
@@ -89,6 +90,11 @@ if (app.Environment.IsDevelopment())
         await CommerceDevDataSeeder.SeedAsync(db);
         await CommerceDevDataSeeder.EnsureOperationalSeedAsync(db);
         await CommerceDevDataSeeder.EnsureDemoProductCardPricingAsync(db);
+        await CommerceDevDataSeeder.EnsureDemoProductColorGalleryAsync(db);
+        await CommerceDevDataSeeder.EnsureConfigurableLookupSeedAsync(db);
+        await CommerceDevDataSeeder.EnsureKalamkariCategoryAsync(db);
+        await CommerceDevDataSeeder.EnsureProductCategoryLookupMirrorsCatalogAsync(db);
+        await CommerceDevDataSeeder.EnsureStorefrontSponsoredDevSeedAsync(db);
 
         var mediaRootForSeed = Path.GetFullPath(Path.Combine(
             app.Environment.ContentRootPath,
@@ -131,6 +137,8 @@ app.MapAuthV1();
 app.MapMediaV1();
 app.MapLocationsAndInventoryV1();
 app.MapCatalogV1();
+app.MapStorefrontSponsoredV1();
+app.MapLookupsV1();
 app.MapVendorProductsV1();
 app.MapVendorProductWorkspaceV1();
 
