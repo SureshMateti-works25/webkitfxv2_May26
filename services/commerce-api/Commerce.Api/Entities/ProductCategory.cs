@@ -8,5 +8,5 @@ public sealed class ProductCategory
     public int SortOrder { get; set; }
 
     public Product? Product { get; set; }
-    public Category? Category { get; set; }
+    public LookupValue? CategoryLookup { get; set; }
 }

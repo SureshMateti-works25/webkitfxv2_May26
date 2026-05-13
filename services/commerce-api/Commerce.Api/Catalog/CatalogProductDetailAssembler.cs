@@ -13,7 +13,8 @@ internal sealed record ProductDetailSource(
     string? Currency,
     DateTimeOffset? PublishedAt,
     string? CommerceJson,
-    string? VendorPortalUserId);
+    string? VendorPortalUserId,
+    string? ProductTypeId);
 
 public static class CatalogProductDetailAssembler
 {
@@ -22,14 +23,23 @@ public static class CatalogProductDetailAssembler
         string tenantId,
         string? id,
         string? slug,
+        string? requiredProductTypeId,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(id) && string.IsNullOrWhiteSpace(slug))
             return null;
 
-        var row = await db.Products.AsNoTracking()
+        var tid = string.IsNullOrWhiteSpace(requiredProductTypeId) ? null : requiredProductTypeId.Trim();
+        if (tid is { Length: > 64 })
+            tid = tid[..64];
+
+        var q = db.Products.AsNoTracking()
             .Where(p => p.TenantId == tenantId && p.Status == "active")
-            .Where(p => !string.IsNullOrWhiteSpace(id) ? p.Id == id : p.Slug == slug)
+            .Where(p => !string.IsNullOrWhiteSpace(id) ? p.Id == id : p.Slug == slug);
+        if (tid is not null)
+            q = q.Where(p => p.ProductTypeId == tid);
+
+        var row = await q
             .Select(p => new ProductDetailSource(
                 p.Id,
                 p.Slug,
@@ -39,7 +49,8 @@ public static class CatalogProductDetailAssembler
                 p.Currency,
                 p.PublishedAt,
                 p.CommerceJson,
-                p.VendorPortalUserId))
+                p.VendorPortalUserId,
+                p.ProductTypeId))
             .FirstOrDefaultAsync(ct);
 
         if (row is null)
@@ -47,6 +58,14 @@ public static class CatalogProductDetailAssembler
 
         return await BuildDtoAsync(db, tenantId, row, ct);
     }
+
+    public static async Task<ProductDetailDto?> BuildForActiveCatalogAsync(
+        CommerceDbContext db,
+        string tenantId,
+        string? id,
+        string? slug,
+        CancellationToken ct)
+        => await BuildForActiveCatalogAsync(db, tenantId, id, slug, null, ct);
 
     public static async Task<ProductDetailDto?> BuildForVendorOwnedProductAsync(
         CommerceDbContext db,
@@ -66,7 +85,8 @@ public static class CatalogProductDetailAssembler
                 p.Currency,
                 p.PublishedAt,
                 p.CommerceJson,
-                p.VendorPortalUserId))
+                p.VendorPortalUserId,
+                p.ProductTypeId))
             .FirstOrDefaultAsync(ct);
 
         if (row is null)
@@ -131,9 +151,9 @@ public static class CatalogProductDetailAssembler
         var primarySlug = await (
                 from pc in db.ProductCategories.AsNoTracking()
                 where pc.ProductId == row.Id && pc.IsPrimary
-                join c in db.Categories.AsNoTracking() on pc.CategoryId equals c.Id
-                where c.TenantId == tenantId
-                select c.Slug)
+                join c in db.LookupValues.AsNoTracking() on pc.CategoryId equals c.Id
+                where c.TenantId == tenantId && c.LookupTypeId == ProductCategoryLookup.LookupTypeId
+                select c.Code)
             .FirstOrDefaultAsync(ct);
 
         if (string.IsNullOrWhiteSpace(primarySlug))
@@ -142,9 +162,9 @@ public static class CatalogProductDetailAssembler
                     from pc in db.ProductCategories.AsNoTracking()
                     where pc.ProductId == row.Id
                     orderby pc.SortOrder, pc.CategoryId
-                    join c in db.Categories.AsNoTracking() on pc.CategoryId equals c.Id
-                    where c.TenantId == tenantId
-                    select c.Slug)
+                    join c in db.LookupValues.AsNoTracking() on pc.CategoryId equals c.Id
+                    where c.TenantId == tenantId && c.LookupTypeId == ProductCategoryLookup.LookupTypeId
+                    select c.Code)
                 .FirstOrDefaultAsync(ct);
         }
 
@@ -186,6 +206,7 @@ public static class CatalogProductDetailAssembler
             vendorDisplayName,
             primarySlug,
             skuCodes,
-            skuGalleryFacets);
+            skuGalleryFacets,
+            row.ProductTypeId);
     }
 }

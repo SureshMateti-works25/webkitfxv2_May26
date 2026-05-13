@@ -39,8 +39,20 @@ dotnet run
 | POST | `/api/v1/auth/register` | No | `{ "email", "password", "role": "shopper"\|"vendor", "profile"?: object }` → JWT + user |
 | POST | `/api/v1/auth/login` | No | `{ "email", "password" }` → JWT |
 
-Responses use camelCase: `accessToken`, `tokenType`, `expiresIn`, `userId`, `email`, `role`.  
-Users are stored in **`portal_users`** (tenant **`t1`** for now) with ASP.NET Core **password hashing**.
+**Responses (register/login):** camelCase `accessToken`, `tokenType`, `expiresIn`, `userId`, `email`, `role`. Users are stored in **`portal_users`** (tenant **`t1`**) with ASP.NET Core **password hashing**. Optional **`loginDisabled`** (admin-set) blocks password login with HTTP **403** and a support message until cleared.
+
+**Roles:** self-service registration allows **`shopper`** and **`vendor`** only. **`admin`** accounts are not created through the public register API; use Development seeding (below), database operations, or your own provisioning pipeline.
+
+### Development: seeded site administrator
+
+When **`DevSeed:AdminEmail`** and **`DevSeed:AdminPassword`** are set (see `appsettings.Development.json`), startup creates one **`portal_users`** row with **`role`: `admin`** if that email is not already registered. Remove or clear those keys to skip. Rotate the password before any shared environment.
+
+### Admin API (JWT role `admin`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/admin/portal-users` | Bearer, `Admin` policy | Optional query `role=shopper\|vendor\|admin`; returns `id`, `email`, `role`, `createdAt`, `loginDisabled` for `X-Tenant-Id` |
+| PATCH | `/api/v1/admin/portal-users/{userId}` | Bearer, `Admin` policy | Body `{ "loginDisabled": true \| false }` toggles password login; cannot target your own user id |
 
 **CORS:** configured for `http://localhost:5175` (Sarees Vite dev). Add origins under **`Cors:Origins`**.
 

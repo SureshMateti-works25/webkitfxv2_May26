@@ -10,7 +10,8 @@ For backend service boundaries only, see [`services/ARCHITECTURE.md`](../service
 
 | Path | Role |
 |------|------|
-| `apps/sarees` | SareeCart host: routes, shell chrome, JSON-driven forms & copy |
+| `apps/sarees` | Nistta storefront host: routes, shell chrome, JSON-driven forms & copy |
+| `apps/groceries` | Second storefront (groceries) on the same stack: Vite + shared `Commerce.Api` catalog |
 | `apps/demo` | Small Vite demo for `JsonForm` |
 | `packages/core-engine` | **`@webkitfxv2/core-engine`** — form model, paths, validation, conditions, engine |
 | `packages/react-renderer` | **`@webkitfxv2/react-renderer`** — `JsonForm`, layout renderer, default widgets |

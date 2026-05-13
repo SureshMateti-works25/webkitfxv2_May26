@@ -4,12 +4,21 @@
   "bindings": [
     {
       "formId": "vendor-product-core",
+      "fieldId": "productTypeId",
+      "lookupTypeId": "product_types",
+      "optionValueKey": "id",
+      "placeholderOption": "— None —",
+      "label": "Product type",
+      "description": "From Commerce.Api lookup `product_types` (value id is stored on the product as product_type_id)."
+    },
+    {
+      "formId": "vendor-product-core",
       "fieldId": "primaryCategoryId",
       "lookupTypeId": "product_categories",
       "optionValueKey": "id",
       "placeholderOption": "— None —",
       "label": "Primary category",
-      "description": "Mirrored from Commerce.Api catalog categories into lookup type product_categories (ids align with categories.id)."
+      "description": "Mirrored from Commerce.Api catalog categories into lookup type product_categories (ids align with categories.id). Each value’s parent_value_id should reference product_types so the vendor Product form filters categories when a product type is selected."
     }
   ]
 }

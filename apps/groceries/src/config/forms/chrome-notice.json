@@ -1,0 +1,22 @@
+{
+  "id": "chrome-notice",
+  "title": "Chrome notice bar",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0",
+    "children": [{ "type": "field", "fieldId": "noticeMessage" }]
+  },
+  "fields": {
+    "noticeMessage": {
+      "binding": "notice.message",
+      "widget": "marqueeNotice",
+      "label": "Notice",
+      "default": "Same-day slots in select pincodes · Weekly produce & pantry deals · GST-ready invoices",
+      "props": {
+        "ariaLabel": "Store announcements",
+        "repeatCount": 2
+      }
+    }
+  }
+}

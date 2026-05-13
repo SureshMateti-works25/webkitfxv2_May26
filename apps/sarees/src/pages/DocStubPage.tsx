@@ -12,8 +12,6 @@ type StubScreenKey = keyof Pick<
   | "favourites"
   | "orders"
   | "communication"
-  | "adminVendors"
-  | "adminShoppers"
   | "adminOrders"
 >;
 
@@ -27,8 +25,6 @@ const ROUTE_TO_SCREEN: Record<string, StubScreenKey> = {
   "/favourites": "favourites",
   "/orders": "orders",
   "/communication": "communication",
-  "/admin/vendors": "adminVendors",
-  "/admin/shoppers": "adminShoppers",
   "/admin/orders": "adminOrders"
 };
 

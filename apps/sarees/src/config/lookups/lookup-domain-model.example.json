@@ -16,6 +16,15 @@
     "bindings": [
       {
         "formId": "vendor-product-core",
+        "fieldId": "productTypeId",
+        "lookupTypeId": "product_types",
+        "optionValueKey": "id",
+        "placeholderOption": "— None —",
+        "label": "Product type",
+        "description": "Values from Commerce.Api lookup_types product_types (ids stored as products.product_type_id)."
+      },
+      {
+        "formId": "vendor-product-core",
         "fieldId": "primaryCategoryId",
         "lookupTypeId": "product_categories",
         "optionValueKey": "id",
@@ -51,15 +60,27 @@
         "entryIdPrefix": "pay_"
       },
       {
+        "id": "product_types",
+        "title": "Product types",
+        "description": "Catalog vertical (saree, grocery, …).",
+        "parentLookupId": null,
+        "entryIdPrefix": "pt_"
+      },
+      {
         "id": "product_categories",
         "title": "Product categories",
         "description": "Merchandising categories; code often doubles as storefront slug.",
-        "parentLookupId": null,
+        "parentLookupId": "product_types",
+        "parentFieldLabel": "Product type",
         "entryIdPrefix": "cat_"
       }
     ]
   },
   "valuesByLookupTypeId": {
+    "product_types": [
+      { "id": "pt_saree", "code": "pt_saree", "label": "Saree", "sortOrder": 10, "parentId": null },
+      { "id": "pt_grocery", "code": "pt_grocery", "label": "Grocery", "sortOrder": 20, "parentId": null }
+    ],
     "regions": [
       { "id": "reg_south", "code": "south", "label": "South India", "sortOrder": 10, "parentId": null },
       { "id": "reg_north", "code": "north", "label": "North India", "sortOrder": 20, "parentId": null }

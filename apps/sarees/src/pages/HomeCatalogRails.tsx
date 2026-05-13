@@ -6,46 +6,62 @@ import {
   formatCommerceApiError,
   listCatalogCategories,
   listCatalogProducts,
+  mediaAssetUrl,
   type CatalogCategoryRow,
   type CatalogProductCard,
 } from "../lib/commerceApi.js";
 import { readRecentVisits, RECENT_VISITS_EVENT } from "../lib/recentVisits.js";
 
-const MAX_CATEGORY_RAILS = 8;
+const MAX_CATEGORY_RAILS = 24;
 const RAIL_PAGE_SIZE = 12;
 
-function displayTitleFromSlug(slug: string): string {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
-}
-
-/** Root categories (department-level). */
+/** Merchandising tree roots (treated as departments on the landing page). */
 function rootCategories(cats: CatalogCategoryRow[]): CatalogCategoryRow[] {
   return cats
     .filter((c) => c.parentId == null || c.parentId === "")
     .sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug));
 }
 
+function directChildren(cats: CatalogCategoryRow[], parentId: string): CatalogCategoryRow[] {
+  return cats
+    .filter((c) => c.parentId === parentId)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug));
+}
+
+type DepartmentBrowseGroup = {
+  department: CatalogCategoryRow;
+  categories: CatalogCategoryRow[];
+};
+
+/** One group per root: list direct child categories, or the root alone if it has no children. */
+function departmentBrowseGroups(cats: CatalogCategoryRow[]): DepartmentBrowseGroup[] {
+  return rootCategories(cats).map((department) => {
+    const children = directChildren(cats, department.id);
+    return {
+      department,
+      categories: children.length > 0 ? children : [department],
+    };
+  });
+}
+
 /**
- * Tiles for "Shop by category" and per-category rails.
- * When there is a single root (e.g. "Sarees"), show real browse categories (children / descendants),
- * not only that one department node.
+ * Product rails: one per “aisle” (direct child of a department). If a root has no children, rail for the root.
  */
-function categoryShowcaseTiles(cats: CatalogCategoryRow[]): CatalogCategoryRow[] {
+function categoriesForProductRails(cats: CatalogCategoryRow[]): CatalogCategoryRow[] {
   const roots = rootCategories(cats);
-  if (roots.length === 0) return [];
-
-  if (roots.length === 1) {
-    const descendants = cats
-      .filter((c) => c.parentId != null && c.parentId !== "")
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug));
-    if (descendants.length > 0) return descendants.slice(0, MAX_CATEGORY_RAILS);
+  const out: CatalogCategoryRow[] = [];
+  const seen = new Set<string>();
+  for (const r of roots) {
+    const ch = directChildren(cats, r.id);
+    const targets = ch.length > 0 ? ch : [r];
+    for (const c of targets) {
+      if (seen.has(c.id)) continue;
+      seen.add(c.id);
+      out.push(c);
+      if (out.length >= MAX_CATEGORY_RAILS) return out;
+    }
   }
-
-  return roots.slice(0, MAX_CATEGORY_RAILS);
+  return out;
 }
 
 function StorefrontProductCard({ product }: { product: CatalogProductCard }) {
@@ -124,9 +140,7 @@ type CategoryRail = { category: CatalogCategoryRow; items: CatalogProductCard[] 
 
 export function HomeCatalogRails() {
   const baseId = useId().replace(/:/g, "");
-  /** Browse tiles (subcategories when a single department root exists, else top-level categories). */
-  const [categoryTiles, setCategoryTiles] = useState<CatalogCategoryRow[] | null>(null);
-  /** Broad "See all" target: department root slug (e.g. `sarees`), not a leaf category. */
+  const [departmentGroups, setDepartmentGroups] = useState<DepartmentBrowseGroup[] | null>(null);
   const [seeAllCatalogSlug, setSeeAllCatalogSlug] = useState<string | null>(null);
   const [categoryRails, setCategoryRails] = useState<CategoryRail[] | null>(null);
   const [recent, setRecent] = useState<CatalogProductCard[] | null>(null);
@@ -153,12 +167,13 @@ export function HomeCatalogRails() {
         ]);
         if (cancelled) return;
 
+        const groups = departmentBrowseGroups(cats);
         const deptRoots = rootCategories(cats);
-        const tiles = categoryShowcaseTiles(cats);
         const broadSlug =
           deptRoots.find((c) => c.slug === "sarees")?.slug ?? deptRoots[0]?.slug ?? null;
+        const railCategories = categoriesForProductRails(cats);
         const railPages = await Promise.all(
-          tiles.map((c) =>
+          railCategories.map((c) =>
             listCatalogProducts({
               categoryId: c.id,
               includeSubtree: true,
@@ -169,8 +184,8 @@ export function HomeCatalogRails() {
           )
         );
         if (cancelled) return;
-        const rails: CategoryRail[] = tiles.map((c, i) => ({ category: c, items: railPages[i]!.items }));
-        setCategoryTiles(tiles);
+        const rails: CategoryRail[] = railCategories.map((c, i) => ({ category: c, items: railPages[i]!.items }));
+        setDepartmentGroups(groups);
         setSeeAllCatalogSlug(broadSlug);
         setTrending(trendingPage.items);
         setRecent(recentPage.items);
@@ -196,7 +211,7 @@ export function HomeCatalogRails() {
     );
   }
 
-  if (categoryTiles === null || recent === null || trending === null || categoryRails === null) {
+  if (departmentGroups === null || recent === null || trending === null || categoryRails === null) {
     return (
       <div className="storefront-wrap">
         <div className="storefront-inner">
@@ -213,25 +228,59 @@ export function HomeCatalogRails() {
   return (
     <div className="storefront-wrap">
       <div className="storefront-inner">
-        {categoryTiles.length > 0 ? (
-          <section className="storefront-categories" aria-labelledby={`${baseId}-cat-heading`}>
-            <h2 className="storefront-categories__title" id={`${baseId}-cat-heading`}>
-              Shop by category
+        {departmentGroups.length > 0 ? (
+          <section
+            className="storefront-landing-by-dept"
+            aria-labelledby={`${baseId}-dept-heading`}
+          >
+            <h2 className="storefront-landing-by-dept__page-title" id={`${baseId}-dept-heading`}>
+              Shop by department
             </h2>
-            <ul className="storefront-category-grid">
-              {categoryTiles.map((c) => (
-                <li key={c.id}>
-                  <Link to={`/browse/${encodeURIComponent(c.slug)}`} className="storefront-category-card">
-                    <span className="storefront-category-card__name">{displayTitleFromSlug(c.slug)}</span>
-                    <span className="storefront-category-card__cta">
-                      Browse {displayTitleFromSlug(c.slug)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            {departmentGroups.map(({ department, categories }) => (
+              <div key={department.id} className="storefront-landing-dept">
+                <h3 className="storefront-landing-dept__title">{department.label}</h3>
+                <ul className="storefront-landing-dept__categories">
+                  {categories.map((c) => (
+                    <li key={c.id} className="storefront-landing-dept__cat-item">
+                      <Link
+                        to={`/browse/${encodeURIComponent(c.slug)}`}
+                        className="storefront-landing-dept__cat-link"
+                      >
+                        <span className="storefront-landing-dept__cat-visual" aria-hidden="true">
+                          {c.imageStorageKey ? (
+                            <img
+                              src={mediaAssetUrl(c.imageStorageKey)}
+                              alt=""
+                              className="storefront-landing-dept__cat-img"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <span className="storefront-landing-dept__cat-placeholder">
+                              {c.label.trim().charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </span>
+                        <span className="storefront-landing-dept__cat-label">{c.label}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </section>
         ) : null}
+
+        {categoryRails.map(({ category, items }) => (
+          <ProductRail
+            key={category.id}
+            titleId={`${baseId}-cat-${category.id}`}
+            title={category.label}
+            products={items}
+            seeAllHref={`/browse/${encodeURIComponent(category.slug)}`}
+            emptyHint={`No listings in ${category.label} yet.`}
+          />
+        ))}
 
         <ProductRail
           titleId={`${baseId}-trending`}
@@ -256,17 +305,6 @@ export function HomeCatalogRails() {
           products={visited}
           emptyHint="Open a product page to build your history here."
         />
-
-        {categoryRails.map(({ category, items }) => (
-          <ProductRail
-            key={category.id}
-            titleId={`${baseId}-cat-${category.id}`}
-            title={displayTitleFromSlug(category.slug)}
-            products={items}
-            seeAllHref={`/browse/${encodeURIComponent(category.slug)}`}
-            emptyHint={`No listings in ${displayTitleFromSlug(category.slug)} yet.`}
-          />
-        ))}
       </div>
     </div>
   );

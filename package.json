@@ -3,13 +3,21 @@
   "private": true,
   "version": "0.1.0",
   "description": "webkitfxv2 — JSON layout, validation, and condition engine workspace",
-  "workspaces": ["packages/core-engine", "packages/react-renderer", "apps/demo", "apps/sarees"],
+  "workspaces": [
+    "packages/core-engine",
+    "packages/react-renderer",
+    "apps/demo",
+    "apps/sarees",
+    "apps/groceries"
+  ],
   "scripts": {
     "build": "npm run build -w @webkitfxv2/core-engine && npm run build -w @webkitfxv2/react-renderer",
     "build:demo": "npm run build && npm run build -w webkitfxv2-demo",
     "build:sarees": "npm run build && npm run build -w sarees-market",
+    "build:groceries": "npm run build && npm run build -w groceries-market",
     "dev": "npm run build && npm run dev -w webkitfxv2-demo",
     "dev:sarees": "npm run build && npm run dev -w sarees-market",
+    "dev:groceries": "npm run build && npm run dev -w groceries-market",
     "dev:sarees:stack": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-sarees-stack.ps1",
     "dev:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-sarees-stack.ps1",
     "stop:commerce-api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-commerce-api.ps1",

@@ -4,6 +4,8 @@ import { CartProvider } from "./cart/CartContext.js";
 import { AppChrome } from "./shell/AppChrome.js";
 import { HomePage } from "./pages/HomePage.js";
 import { LoginPage } from "./pages/LoginPage.js";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage.js";
+import { ChangePasswordPage } from "./pages/ChangePasswordPage.js";
 import { ShopperSignupPage } from "./pages/ShopperSignupPage.js";
 import { VendorSignupPage } from "./pages/VendorSignupPage.js";
 import { CartPage } from "./pages/CartPage.js";
@@ -16,6 +18,7 @@ import { VendorProductEditPage } from "./pages/VendorProductEditPage.js";
 import { VendorProductStorefrontPage } from "./pages/VendorProductStorefrontPage.js";
 import { LookupAdminPage } from "./pages/LookupAdminPage.js";
 import { StorefrontSponsoredAdsAdminPage } from "./pages/StorefrontSponsoredAdsAdminPage.js";
+import { AdminPortalUsersPage } from "./pages/AdminPortalUsersPage.js";
 import { SearchPage } from "./pages/SearchPage.js";
 import { DevApiPing } from "./dev/DevApiPing.js";
 
@@ -37,6 +40,8 @@ export function App() {
               <Route path="/cart" element={<CartPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/account/change-password" element={<ChangePasswordPage />} />
               <Route path="/signup/vendor" element={<VendorSignupPage />} />
               <Route path="/signup/shopper" element={<ShopperSignupPage />} />
               <Route path="/settings" element={<DocStubPage />} />
@@ -47,8 +52,8 @@ export function App() {
               <Route path="/vendor/products/:productId" element={<VendorProductEditPage />} />
               <Route path="/admin/lookups" element={<LookupAdminPage />} />
               <Route path="/admin/storefront-ads" element={<StorefrontSponsoredAdsAdminPage />} />
-              <Route path="/admin/vendors" element={<DocStubPage />} />
-              <Route path="/admin/shoppers" element={<DocStubPage />} />
+              <Route path="/admin/vendors" element={<AdminPortalUsersPage directory="vendors" />} />
+              <Route path="/admin/shoppers" element={<AdminPortalUsersPage directory="shoppers" />} />
               <Route path="/admin/orders" element={<DocStubPage />} />
               <Route path="/favourites" element={<DocStubPage />} />
               <Route path="/orders" element={<DocStubPage />} />

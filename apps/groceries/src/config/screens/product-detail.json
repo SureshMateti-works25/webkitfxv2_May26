@@ -1,0 +1,13 @@
+{
+  "version": "1",
+  "copy": {
+    "screenTitle": "Product details",
+    "screenDescription": "Review images, pricing, SKU, vendor, and category details for this item.",
+    "backLink": "Back to home",
+    "backPrevious": "Back to previous",
+    "loading": "Loading product…",
+    "notFound": "This product is unavailable or the link may have changed.",
+    "trustNote": "Prices reflect current offers on the catalogue. Checkout and delivery will connect here next."
+  },
+  "sections": ["gallery", "title", "prices", "addToCart", "meta"]
+}

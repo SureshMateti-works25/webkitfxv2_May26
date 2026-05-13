@@ -24,7 +24,7 @@ npm run test
 
 **Demo UI:** `npm run dev` builds the libraries, then starts Vite for `apps/demo` (sample `JsonForm` in the browser).
 
-**SareeCart app:** `npm run dev:sarees` builds libraries then runs `apps/sarees` (vendor/shopper signup, login, guest, JSON-driven shell).
+**Nistta storefront app:** `npm run dev:sarees` builds libraries then runs `apps/sarees` (vendor/shopper signup, login, guest, JSON-driven shell).
 
 ### Reliable local stack (Windows): Sarees + Commerce.Api + Postgres
 

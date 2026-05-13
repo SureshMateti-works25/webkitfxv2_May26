@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "SareeCart",
+    "name": "Nistta",
     "tagline": "Sarees today — groceries & gas tomorrow. One account, many storefronts."
   },
   "brand": {
@@ -234,7 +234,7 @@
     "blurb": "Multi-vertical commerce (sarees, groceries, LPG) — configuration-driven UI.",
     "contact": {
       "label": "Contact",
-      "email": "hello@sareecart.example",
+      "email": "hello@nistta.example",
       "hours": "Mon–Sat, 9:00–18:00 IST"
     },
     "support": {
@@ -248,7 +248,7 @@
       { "label": "Terms", "path": "/legal/terms" },
       { "label": "Vendors", "path": "/signup/vendor" }
     ],
-    "copyright": "© SareeCart"
+    "copyright": "© Nistta"
   },
   "landing": {
     "sections": [
@@ -306,7 +306,7 @@
       "enterprise": {
         "eyebrow": "Enterprise retail · India",
         "headline": "Run sarees today, groceries and LPG tomorrow on one rails",
-        "intro": "Operators are consolidating storefronts, dark stores, and route logistics onto unified order and identity stacks. SareeCart is built as configuration-first commerce so you can swap vertical packs without rewriting screens — ideal when categories expand from high-touch apparel to repeat grocery baskets and regulated cylinder fulfilment.",
+        "intro": "Operators are consolidating storefronts, dark stores, and route logistics onto unified order and identity stacks. Nistta is built as configuration-first commerce so you can swap vertical packs without rewriting screens — ideal when categories expand from high-touch apparel to repeat grocery baskets and regulated cylinder fulfilment.",
         "trendsTitle": "What the market expects now",
         "trends": [
           {

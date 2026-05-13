@@ -70,6 +70,34 @@ export async function registerAccount(params: RegisterParams): Promise<AuthSucce
   return parseAuthResponse(res);
 }
 
+export async function changePassword(accessToken: string, currentPassword: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/auth/password/change`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+}
+
+export async function forgotPassword(email: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/auth/password/forgot`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ email, newPassword }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+}
+
 export function getCommerceApiBase(): string {
   return BASE;
 }
@@ -90,6 +118,19 @@ export function mediaAssetUrl(storageKey: string): string {
 /** Default tenant for Commerce.Api (header `X-Tenant-Id`). */
 export const DEFAULT_COMMERCE_TENANT_ID =
   (import.meta.env.VITE_COMMERCE_TENANT_ID as string | undefined)?.trim() || "t1";
+
+/**
+ * Storefront catalog calls send `excludeProductTypeId` so the grocery product type (`pt_grocery`)
+ * does not appear in Nistta browse/search/PDP (Commerce.Api supports this query param).
+ */
+export const STOREFRONT_EXCLUDE_CATALOG_PRODUCT_TYPE_ID =
+  (import.meta.env.VITE_STOREFRONT_EXCLUDE_CATALOG_PRODUCT_TYPE_ID as string | undefined)?.trim() ||
+  "pt_grocery";
+
+function appendStorefrontCatalogExcludeParam(qs: URLSearchParams): void {
+  const ex = STOREFRONT_EXCLUDE_CATALOG_PRODUCT_TYPE_ID.trim();
+  if (ex) qs.set("excludeProductTypeId", ex);
+}
 
 export function commerceAuthorizedHeaders(accessToken: string): HeadersInit {
   return {
@@ -139,16 +180,42 @@ async function readCommerceErrorMessage(res: Response): Promise<string> {
 export type CatalogCategoryRow = {
   id: string;
   parentId: string | null;
+  parentValueId: string | null;
   slug: string;
+  label: string;
+  imageStorageKey: string | null;
   sortOrder: number;
 };
 
 export async function listCatalogCategories(): Promise<CatalogCategoryRow[]> {
-  const res = await fetch(`${BASE}/api/v1/catalog/categories`, {
+  const qs = new URLSearchParams();
+  appendStorefrontCatalogExcludeParam(qs);
+  qs.set("includeAllProductCategories", "true");
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const res = await fetch(`${BASE}/api/v1/catalog/categories${suffix}`, {
     headers: commerceTenantHeaders(),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return (await res.json()) as CatalogCategoryRow[];
+  const raw = (await res.json()) as Array<{
+    id: string;
+    parentId: string | null;
+    parentValueId?: string | null;
+    slug: string;
+    label?: string;
+    imageStorageKey?: string | null;
+    sortOrder: number;
+  }>;
+  return raw.map((r) => ({
+    id: r.id,
+    parentId: r.parentId,
+    parentValueId:
+      typeof r.parentValueId === "string" && r.parentValueId.trim().length > 0 ? r.parentValueId.trim() : null,
+    slug: r.slug,
+    label: (typeof r.label === "string" && r.label.trim().length > 0 ? r.label : r.slug).trim(),
+    imageStorageKey:
+      typeof r.imageStorageKey === "string" && r.imageStorageKey.trim().length > 0 ? r.imageStorageKey.trim() : null,
+    sortOrder: r.sortOrder,
+  }));
 }
 
 /** Configurable lookup type (Commerce.Api `lookup_types`). */
@@ -169,6 +236,7 @@ export type CommerceLookupValueDto = {
   label: string;
   sortOrder: number;
   parentValueId: string | null;
+  imageStorageKey: string | null;
 };
 
 export type CommerceLookupBundleDto = {
@@ -191,7 +259,16 @@ export async function listCommerceLookupValues(lookupTypeId: string): Promise<Co
     { headers: commerceTenantHeaders() }
   );
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return (await res.json()) as CommerceLookupValueDto[];
+  const raw = (await res.json()) as Array<Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string }>;
+  return raw.map((v) => ({
+    id: v.id,
+    lookupTypeId: v.lookupTypeId,
+    code: String(v.code ?? ""),
+    label: String(v.label ?? ""),
+    sortOrder: typeof v.sortOrder === "number" ? v.sortOrder : 0,
+    parentValueId: v.parentValueId ?? null,
+    imageStorageKey: v.imageStorageKey?.trim() || null,
+  }));
 }
 
 export async function getCommerceLookupBundle(): Promise<CommerceLookupBundleDto> {
@@ -240,6 +317,7 @@ export type CreateCommerceLookupValueBody = {
   label: string;
   sortOrder: number;
   parentValueId?: string | null;
+  imageStorageKey?: string | null;
 };
 
 export async function createCommerceLookupValue(
@@ -255,6 +333,28 @@ export async function createCommerceLookupValue(
       body: JSON.stringify(body),
     }
   );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return (await res.json()) as CommerceLookupValueDto;
+}
+
+export type UpdateCommerceLookupValueBody = {
+  code: string;
+  label: string;
+  sortOrder: number;
+  parentValueId?: string | null;
+  imageStorageKey?: string | null;
+};
+
+export async function updateCommerceLookupValue(
+  accessToken: string,
+  valueId: string,
+  body: UpdateCommerceLookupValueBody
+): Promise<CommerceLookupValueDto> {
+  const res = await fetch(`${BASE}/api/v1/lookups/values/${encodeURIComponent(valueId.trim())}`, {
+    method: "PUT",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify(body),
+  });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
   return (await res.json()) as CommerceLookupValueDto;
 }
@@ -295,6 +395,8 @@ export type CatalogProductCard = {
   vendorCode: string | null;
   /** Active SKU codes for this product. */
   skuCodes: string[];
+  /** Commerce.Api `ProductTypeId` when returned on cards (e.g. `pt_saree`, `pt_grocery`). */
+  productTypeId: string | null;
 };
 
 export type CatalogProductGalleryImage = {
@@ -429,6 +531,7 @@ export function normalizeCatalogProductCard(row: Record<string, unknown>): Catal
     imageIndicators: normalizeImageIndicators(row.imageIndicators ?? row.ImageIndicators),
     vendorCode: optionalStringField(row, "vendorCode", "VendorCode"),
     skuCodes: normalizeSkuCodes(row.skuCodes ?? row.SkuCodes),
+    productTypeId: optionalStringField(row, "productTypeId", "ProductTypeId"),
   };
 }
 
@@ -540,6 +643,7 @@ export async function getCatalogProductDetail(params: {
   const qs = new URLSearchParams();
   if (id) qs.set("id", id);
   else if (slug) qs.set("slug", slug);
+  appendStorefrontCatalogExcludeParam(qs);
   const res = await fetch(`${BASE}/api/v1/catalog/product-detail?${qs}`, {
     headers: commerceTenantHeaders(),
   });
@@ -664,6 +768,56 @@ export async function deleteCommerceSponsoredAdmin(accessToken: string, sponsore
     { method: "DELETE", headers: commerceAuthorizedHeaders(accessToken) }
   );
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export type CommercePortalUserDirectoryRow = {
+  id: string;
+  email: string;
+  role: string;
+  createdAt: string;
+  loginDisabled: boolean;
+};
+
+function normalizePortalUserDirectoryRow(o: Record<string, unknown>): CommercePortalUserDirectoryRow {
+  return {
+    id: String(o.id ?? o.Id ?? ""),
+    email: String(o.email ?? o.Email ?? ""),
+    role: String(o.role ?? o.Role ?? ""),
+    createdAt: String(o.createdAt ?? o.CreatedAt ?? ""),
+    loginDisabled: Boolean(o.loginDisabled ?? o.LoginDisabled ?? false),
+  };
+}
+
+/** Admin directory: portal accounts for the tenant (filter by role). */
+export async function listAdminPortalUsers(
+  accessToken: string,
+  params?: { role?: "vendor" | "shopper" | "admin" }
+): Promise<CommercePortalUserDirectoryRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.role) qs.set("role", params.role);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const res = await fetch(`${BASE}/api/v1/admin/portal-users${suffix}`, {
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const arr = (await res.json()) as unknown[];
+  if (!Array.isArray(arr)) return [];
+  return arr.map((x) => normalizePortalUserDirectoryRow(x as Record<string, unknown>));
+}
+
+/** Admin: enable or disable password login for a portal user (not yourself). */
+export async function patchAdminPortalUserLogin(
+  accessToken: string,
+  userId: string,
+  loginDisabled: boolean
+): Promise<CommercePortalUserDirectoryRow> {
+  const res = await fetch(`${BASE}/api/v1/admin/portal-users/${encodeURIComponent(userId.trim())}`, {
+    method: "PATCH",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify({ loginDisabled }),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizePortalUserDirectoryRow((await res.json()) as Record<string, unknown>);
 }
 
 /**
@@ -794,6 +948,7 @@ export async function addProductComment(params: {
 export async function listCatalogProducts(params?: ListCatalogProductsParams): Promise<CatalogProductsPage> {
   const qs = new URLSearchParams();
   qs.set("view", "card");
+  appendStorefrontCatalogExcludeParam(qs);
   if (params?.page != null) qs.set("page", String(params.page));
   if (params?.pageSize != null) qs.set("pageSize", String(params.pageSize));
   if (params?.sort?.trim()) qs.set("sort", params.sort.trim());
@@ -956,9 +1111,14 @@ export async function createVendorProduct(
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  const data = (await res.json()) as { id?: string };
-  if (!data.id) throw new Error("Create succeeded but no product id returned.");
-  return { id: data.id };
+  const data = (await res.json()) as Record<string, unknown>;
+  const idRaw = data.id ?? data.Id;
+  const id = typeof idRaw === "string" && idRaw.trim().length > 0 ? idRaw.trim() : "";
+  if (id) return { id };
+  const loc = res.headers.get("Location") ?? "";
+  const m = /\/vendor\/products\/([^/?#]+)/.exec(loc);
+  if (m?.[1]) return { id: decodeURIComponent(m[1]) };
+  throw new Error("Create succeeded but no product id returned.");
 }
 
 export async function updateVendorProduct(
@@ -1101,6 +1261,19 @@ export async function putVendorProductWorkspace(
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
 }
 
+/** Removes one gallery / variant image link from the product (does not delete the blob if reused elsewhere). */
+export async function deleteVendorProductWorkspaceMedia(
+  accessToken: string,
+  productId: string,
+  productMediaId: string
+): Promise<void> {
+  const res = await fetch(
+    `${BASE}/api/v1/vendor/products/${encodeURIComponent(productId)}/workspace/media/${encodeURIComponent(productMediaId)}`,
+    { method: "DELETE", headers: commerceAuthorizedHeaders(accessToken) }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
 export type UploadProductMediaResult = {
   id: string;
   storageKey: string;
@@ -1121,6 +1294,40 @@ export async function uploadVendorProductMedia(
   if (role) fd.append("role", role);
   const sid = options?.skuId?.trim();
   if (sid) fd.append("skuId", sid);
+
+  const headers: HeadersInit = {
+    Accept: "application/json",
+    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    Authorization: `Bearer ${accessToken}`,
+  };
+
+  const res = await fetch(`${BASE}/api/v1/media/assets`, {
+    method: "POST",
+    headers,
+    body: fd,
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const data = (await res.json()) as {
+    id?: string;
+    storageKey?: string;
+    PublicUrl?: string;
+    publicUrl?: string;
+  };
+  const id = data.id ?? "";
+  const storageKey = data.storageKey ?? "";
+  const publicUrl = data.publicUrl ?? data.PublicUrl ?? `/media/${storageKey}`;
+  if (!id || !storageKey) throw new Error("Upload succeeded but response was incomplete.");
+  return { id, storageKey, publicUrl };
+}
+
+/**
+ * Uploads an image to tenant media storage without attaching it to a product.
+ * The API returns a **storage key** (e.g. `t1/202605/abc….jpg`); storefront URLs use `/media/{storageKey}`.
+ * Requires a JWT for **vendor** or **admin** (not shopper).
+ */
+export async function uploadTenantMediaAsset(accessToken: string, file: File): Promise<UploadProductMediaResult> {
+  const fd = new FormData();
+  fd.append("file", file);
 
   const headers: HeadersInit = {
     Accept: "application/json",

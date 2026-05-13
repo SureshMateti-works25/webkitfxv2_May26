@@ -14,12 +14,16 @@ export function getLookupBindingsForForm(formId: string): LookupFormDropdownBind
   return file.bindings.filter((b) => b.formId === formId);
 }
 
+export function sortedCommerceLookupValues(rows: CommerceLookupValueDto[]): CommerceLookupValueDto[] {
+  return [...rows].sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code));
+}
+
 /** Build JsonForm select options from Commerce lookup value rows. */
 export function lookupValuesToFieldOptions(
   rows: CommerceLookupValueDto[],
   optionValueKey: LookupFormDropdownBinding["optionValueKey"]
 ): FieldOptionRow[] {
-  const sorted = [...rows].sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code));
+  const sorted = sortedCommerceLookupValues(rows);
   return sorted.map((r) => ({
     value: optionValueKey === "code" ? r.code : r.id,
     label: `${r.label} · ${r.code}`,
@@ -45,6 +49,9 @@ export type ResolvedLookupSelectPatch = {
   label?: string;
   description?: string;
   placeholderOption?: string;
+  /** Same sort order as `options` when `optionValueKey` is `id` (used to filter categories by product type). */
+  lookupRows?: CommerceLookupValueDto[];
+  optionValueKey?: "id" | "code";
 };
 
 /** Load Commerce.Api values for every binding targeting `formId`. */
@@ -54,13 +61,19 @@ export async function fetchResolvedLookupFieldOptions(
   const out: Record<string, ResolvedLookupSelectPatch> = {};
   for (const b of getLookupBindingsForForm(formId)) {
     const rows = await listCommerceLookupValues(b.lookupTypeId);
-    const optionValueKey = b.optionValueKey ?? "id";
-    const options = lookupValuesToFieldOptions(rows, optionValueKey);
+    const optionValueKey = (b.optionValueKey ?? "id") as "id" | "code";
+    const sorted = sortedCommerceLookupValues(rows);
+    const options = sorted.map((r) => ({
+      value: optionValueKey === "code" ? r.code : r.id,
+      label: `${r.label} · ${r.code}`,
+    }));
     out[b.fieldId] = {
       options,
       label: b.label,
       description: b.description,
       placeholderOption: b.placeholderOption,
+      lookupRows: sorted,
+      optionValueKey,
     };
   }
   return out;

@@ -1,0 +1,47 @@
+{
+  "id": "vendor-product-tax",
+  "title": "Tax controls",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "GST / HSN",
+        "children": [
+          { "type": "field", "fieldId": "hsnCode" },
+          { "type": "field", "fieldId": "gstPercent" },
+          { "type": "field", "fieldId": "taxCategoryId" },
+          { "type": "field", "fieldId": "gstState" }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "hsnCode": {
+      "binding": "commerce.tax.hsnCode",
+      "widget": "text",
+      "label": "HSN code",
+      "default": ""
+    },
+    "gstPercent": {
+      "binding": "commerce.tax.gstPercent",
+      "widget": "text",
+      "label": "GST % (display)",
+      "default": ""
+    },
+    "taxCategoryId": {
+      "binding": "commerce.tax.taxCategoryId",
+      "widget": "text",
+      "label": "Tax category id",
+      "default": ""
+    },
+    "gstState": {
+      "binding": "commerce.tax.gstState",
+      "widget": "text",
+      "label": "Default GST state code",
+      "default": ""
+    }
+  }
+}

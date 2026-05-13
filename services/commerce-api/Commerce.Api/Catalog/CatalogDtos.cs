@@ -22,7 +22,8 @@ public sealed record ProductCardDto(
     long? OfferPriceMinor,
     IReadOnlyList<ProductImageIndicatorDto> ImageIndicators,
     string? VendorCode,
-    IReadOnlyList<string> SkuCodes);
+    IReadOnlyList<string> SkuCodes,
+    string? ProductTypeId);
 
 public sealed record ProductDetailDto(
     string Id,
@@ -47,7 +48,8 @@ public sealed record ProductDetailDto(
     string? VendorDisplayName,
     string? PrimaryCategorySlug,
     IReadOnlyList<string> SkuCodes,
-    IReadOnlyList<SkuGalleryFacetDto> SkuGalleryFacets);
+    IReadOnlyList<SkuGalleryFacetDto> SkuGalleryFacets,
+    string? ProductTypeId);
 
 public sealed record ProductCommentDto(
     string Id,

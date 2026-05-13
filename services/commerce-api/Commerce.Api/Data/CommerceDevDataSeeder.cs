@@ -1,6 +1,9 @@
-using System.Globalization;
+using Commerce.Api.Catalog;
 using Commerce.Api.Entities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Commerce.Api.Data;
 
@@ -45,15 +48,36 @@ public static class CommerceDevDataSeeder
         File.WriteAllBytes(dest, Convert.FromBase64String(TinyJpegBase64));
     }
 
-    public static async Task SeedAsync(CommerceDbContext db, CancellationToken ct = default)
+    /// <summary>
+    /// Writes a tiny JPEG at <paramref name="storageKey"/> under <paramref name="mediaRootAbsolute"/> so
+    /// <c>/media/…</c> returns 200 in dev (e.g. grocery category tile keys). Does not clone arbitrary tenant uploads:
+    /// cloning the first <c>.jpg</c> found caused every missing key to get the same unrelated image (e.g. saree hero).
+    /// </summary>
+    public static void EnsureSeedMediaBlobExists(string mediaRootAbsolute, string storageKey)
     {
-        if (await db.Categories.AnyAsync(ct))
+        var trimmed = storageKey.Trim().Replace('\\', '/').TrimStart('/');
+        if (trimmed.Length == 0)
             return;
 
-        db.Categories.AddRange(
-            new Category { Id = "cat_saree", TenantId = "t1", ParentId = null, Slug = "sarees", SortOrder = 10 },
-            new Category { Id = "cat_silk", TenantId = "t1", ParentId = "cat_saree", Slug = "silk", SortOrder = 20 },
-            new Category { Id = "cat_kan", TenantId = "t1", ParentId = "cat_silk", Slug = "kanjeevaram", SortOrder = 30 });
+        var segments = trimmed.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0)
+            return;
+
+        var dest = Path.Combine(new[] { mediaRootAbsolute }.Concat(segments).ToArray());
+        if (File.Exists(dest))
+            return;
+
+        var dir = Path.GetDirectoryName(dest);
+        if (dir is not null)
+            Directory.CreateDirectory(dir);
+
+        File.WriteAllBytes(dest, Convert.FromBase64String(TinyJpegBase64));
+    }
+
+    public static async Task SeedAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        if (await db.Products.AnyAsync(p => p.Id == "p_kj001", ct))
+            return;
 
         db.AttributeDefs.AddRange(
             new AttributeDef
@@ -357,13 +381,25 @@ public static class CommerceDevDataSeeder
             },
             new LookupValue
             {
+                Id = "cat_saree",
+                TenantId = tid,
+                LookupTypeId = "product_categories",
+                Code = "sarees",
+                Label = "Sarees",
+                SortOrder = 10,
+                ParentValueId = null,
+                MerchandisingParentId = null
+            },
+            new LookupValue
+            {
                 Id = "cat_silk",
                 TenantId = tid,
                 LookupTypeId = "product_categories",
                 Code = "silk",
                 Label = "Silk sarees",
-                SortOrder = 10,
-                ParentValueId = null
+                SortOrder = 20,
+                ParentValueId = null,
+                MerchandisingParentId = "cat_saree"
             },
             new LookupValue
             {
@@ -372,107 +408,482 @@ public static class CommerceDevDataSeeder
                 LookupTypeId = "product_categories",
                 Code = "kanjeevaram",
                 Label = "Kanjeevaram",
-                SortOrder = 20,
-                ParentValueId = null
+                SortOrder = 30,
+                ParentValueId = null,
+                MerchandisingParentId = "cat_silk"
             });
 
         await db.SaveChangesAsync(ct);
     }
 
     /// <summary>
-    /// Idempotent: catalog <c>categories</c> row for Kalamkari (vendor primary category dropdown + browse slug).
-    /// Also mirrors a <c>lookup_values</c> row under <c>product_categories</c> when that lookup type exists.
+    /// Idempotent: adds a <c>product_categories</c> lookup row for Kalamkari (vendor primary category + browse slug).
     /// </summary>
     public static async Task EnsureKalamkariCategoryAsync(CommerceDbContext db, CancellationToken ct = default)
     {
         const string tid = "t1";
         const string id = "pcat_kalamkari";
         const string slug = "kalamkari";
+        const string lt = "product_categories";
 
-        if (!await db.Categories.AnyAsync(c => c.TenantId == tid && c.Id == id, ct))
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == lt, ct))
+            return;
+        if (await db.LookupValues.AnyAsync(v => v.TenantId == tid && v.LookupTypeId == lt && v.Id == id, ct))
+            return;
+
+        var merchParent = await db.LookupValues.AsNoTracking()
+            .Where(v => v.TenantId == tid && v.LookupTypeId == lt && v.Id == "cat_silk")
+            .Select(v => v.Id)
+            .FirstOrDefaultAsync(ct);
+        if (string.IsNullOrEmpty(merchParent))
         {
-            var parentId = await db.Categories.AsNoTracking()
-                .Where(c => c.TenantId == tid && c.Id == "cat_silk")
-                .Select(c => c.Id)
+            merchParent = await db.LookupValues.AsNoTracking()
+                .Where(v => v.TenantId == tid && v.LookupTypeId == lt && v.Id == "cat_saree")
+                .Select(v => v.Id)
                 .FirstOrDefaultAsync(ct);
-            if (string.IsNullOrEmpty(parentId))
-            {
-                parentId = await db.Categories.AsNoTracking()
-                    .Where(c => c.TenantId == tid && c.Id == "cat_saree")
-                    .Select(c => c.Id)
-                    .FirstOrDefaultAsync(ct);
-            }
-
-            db.Categories.Add(new Category
-            {
-                Id = id,
-                TenantId = tid,
-                ParentId = string.IsNullOrEmpty(parentId) ? null : parentId,
-                Slug = slug,
-                SortOrder = 35
-            });
-            await db.SaveChangesAsync(ct);
         }
 
-        if (await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == "product_categories", ct)
-            && !await db.LookupValues.AnyAsync(
-                v => v.TenantId == tid && v.LookupTypeId == "product_categories" && v.Code == slug, ct))
+        db.LookupValues.Add(new LookupValue
+        {
+            Id = id,
+            TenantId = tid,
+            LookupTypeId = lt,
+            Code = slug,
+            Label = "Kalamkari",
+            SortOrder = 35,
+            ParentValueId = null,
+            MerchandisingParentId = string.IsNullOrEmpty(merchParent) ? null : merchParent
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Maps <c>product_categories</c> lookup value ids to <c>product_departments</c> value ids when the category lookup
+    /// type parents on <c>product_departments</c>. Saree/grocery demo categories rely on merchandising and admin-set
+    /// <c>parent_value_id</c>; no hard-coded grocery department ids here.
+    /// </summary>
+    private static string? ResolveCategoryDepartmentParentValueId(string categoryId)
+    {
+        _ = categoryId;
+        return null;
+    }
+
+    /// <summary>Idempotent: demo saree merchandising rows under <c>product_categories</c> for tenant <c>t1</c>.</summary>
+    public static async Task EnsureDevSareeProductCategoryLookupsAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string lt = "product_categories";
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == lt, ct))
+            return;
+
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_saree", "sarees", "Sarees", 10, null, "t1/p_kj001/hero_01.jpg", ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_silk", "silk", "Silk sarees", 20, "cat_saree", "t1/p_kj001/hero_01.jpg", ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_kan", "kanjeevaram", "Kanjeevaram", 30, "cat_silk", "t1/p_kj001/hero_01.jpg", ct);
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task UpsertProductCategoryLookupAsync(
+        CommerceDbContext db,
+        string tenantId,
+        string id,
+        string code,
+        string label,
+        int sortOrder,
+        string? merchandisingParentId,
+        string? imageStorageKey,
+        CancellationToken ct)
+    {
+        const string lt = "product_categories";
+        var row = await db.LookupValues.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == id, ct);
+        if (row is null)
         {
             db.LookupValues.Add(new LookupValue
             {
                 Id = id,
-                TenantId = tid,
-                LookupTypeId = "product_categories",
-                Code = slug,
-                Label = "Kalamkari",
-                SortOrder = 35,
-                ParentValueId = null
+                TenantId = tenantId,
+                LookupTypeId = lt,
+                Code = code,
+                Label = label,
+                SortOrder = sortOrder,
+                ParentValueId = null,
+                MerchandisingParentId = merchandisingParentId,
+                ImageStorageKey = imageStorageKey
             });
-            await db.SaveChangesAsync(ct);
+        }
+        else if (string.Equals(row.LookupTypeId, lt, StringComparison.Ordinal))
+        {
+            row.Code = code;
+            row.Label = label;
+            row.SortOrder = sortOrder;
+            row.MerchandisingParentId = merchandisingParentId;
+            if (imageStorageKey is not null)
+                row.ImageStorageKey = imageStorageKey;
         }
     }
 
     /// <summary>
-    /// Idempotent: upserts <c>lookup_values</c> for <c>product_categories</c> from tenant <c>categories</c>
-    /// so storefront / JsonForm can drive dropdowns from <c>GET /api/v1/lookups/types/product_categories/values</c>
-    /// with the same ids as <c>categories.id</c> (vendor primary category save path).
+    /// Sets <c>parent_value_id</c> on all <c>product_categories</c> values from <see cref="ResolveCategoryDepartmentParentValueId"/>
+    /// when the category lookup type parents on <c>product_departments</c>.
     /// </summary>
-    public static async Task EnsureProductCategoryLookupMirrorsCatalogAsync(CommerceDbContext db, CancellationToken ct = default)
+    public static async Task EnsureProductCategoryLookupParentTypesAsync(CommerceDbContext db, CancellationToken ct = default)
     {
-        const string tid = "t1";
-        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == "product_categories", ct))
+        const string lt = "product_categories";
+        var tenantIds = await db.LookupTypes.AsNoTracking()
+            .Where(t => t.Id == lt && t.ParentLookupTypeId == "product_departments")
+            .Select(t => t.TenantId)
+            .Distinct()
+            .ToListAsync(ct);
+        if (tenantIds.Count == 0)
             return;
 
-        var ti = CultureInfo.InvariantCulture.TextInfo;
-        var cats = await db.Categories.AsNoTracking().Where(c => c.TenantId == tid).OrderBy(c => c.SortOrder).ToListAsync(ct);
-        foreach (var cat in cats)
+        var rows = await db.LookupValues
+            .Where(v => v.LookupTypeId == lt && tenantIds.Contains(v.TenantId))
+            .ToListAsync(ct);
+        foreach (var v in rows)
         {
-            var code = cat.Slug.Trim().ToLowerInvariant();
-            var label = ti.ToTitleCase(cat.Slug.Replace('-', ' ').Replace('_', ' '));
-            var row = await db.LookupValues.FirstOrDefaultAsync(
-                v => v.TenantId == tid && v.LookupTypeId == "product_categories" && v.Id == cat.Id, ct);
-            if (row is null)
+            var dept = ResolveCategoryDepartmentParentValueId(v.Id);
+            if (dept is not null)
+                v.ParentValueId = dept;
+            else if (string.Equals(v.ParentValueId, "dept_saree", StringComparison.Ordinal))
+                v.ParentValueId = null;
+            else if (string.Equals(v.ParentValueId, "dept_grocery", StringComparison.Ordinal))
+                v.ParentValueId = null;
+            else if (string.Equals(v.ParentValueId, "dept_grocery_produce", StringComparison.Ordinal))
+                v.ParentValueId = null;
+            else if (string.Equals(v.ParentValueId, "dept_grocery_dairy", StringComparison.Ordinal))
+                v.ParentValueId = null;
+        }
+
+        if (rows.Count > 0)
+            await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Idempotent: ensures <c>product_types</c> and <c>product_departments</c> lookups exist, drops legacy singular
+    /// <c>product_department</c> if present, and sets <c>product_categories</c> <c>ParentLookupTypeId</c> to
+    /// <c>product_departments</c>. Use <see cref="EnsureProductCategoryLookupParentTypesAsync"/> to align
+    /// <c>parent_value_id</c> on category values to department rows.
+    /// </summary>
+    public static async Task EnsureProductTypesLookupAndLinkCategoriesParentAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string deptPlural = "product_departments";
+        const string deptLegacySingular = "product_department";
+
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == "product_types", ct))
+        {
+            db.LookupTypes.Add(new LookupType
             {
-                db.LookupValues.Add(new LookupValue
-                {
-                    Id = cat.Id,
-                    TenantId = tid,
-                    LookupTypeId = "product_categories",
-                    Code = code,
-                    Label = label.Length > 0 ? label : code,
-                    SortOrder = cat.SortOrder,
-                    ParentValueId = null
-                });
-            }
-            else
+                TenantId = tid,
+                Id = "product_types",
+                Title = "Product types",
+                Description = "Shop assortment (Saree, Grocery, …); aligns with products.product_type_id.",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "pt_"
+            });
+        }
+
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == deptPlural, ct))
+        {
+            db.LookupTypes.Add(new LookupType
             {
-                row.Code = code;
-                row.Label = label.Length > 0 ? label : code;
-                row.SortOrder = cat.SortOrder;
+                TenantId = tid,
+                Id = deptPlural,
+                Title = "Product departments",
+                Description = "Storefront departments; product_categories.parent_value_id references these rows.",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "dept_"
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        var legacyDeptType = await db.LookupTypes.FirstOrDefaultAsync(t => t.TenantId == tid && t.Id == deptLegacySingular, ct);
+        if (legacyDeptType is not null)
+        {
+            var legacyVals = await db.LookupValues.Where(v => v.TenantId == tid && v.LookupTypeId == deptLegacySingular).ToListAsync(ct);
+            foreach (var v in legacyVals)
+                v.LookupTypeId = deptPlural;
+
+            var catForLegacy = await db.LookupTypes.FirstOrDefaultAsync(t => t.TenantId == tid && t.Id == "product_categories", ct);
+            if (catForLegacy is not null
+                && string.Equals(catForLegacy.ParentLookupTypeId, deptLegacySingular, StringComparison.Ordinal))
+            {
+                catForLegacy.ParentLookupTypeId = deptPlural;
             }
+
+            await db.SaveChangesAsync(ct);
+            db.LookupTypes.Remove(legacyDeptType);
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (!await db.LookupValues.AnyAsync(v => v.TenantId == tid && v.Id == "pt_saree", ct))
+        {
+            db.LookupValues.Add(new LookupValue
+            {
+                Id = "pt_saree",
+                TenantId = tid,
+                LookupTypeId = "product_types",
+                Code = "pt_saree",
+                Label = "Saree",
+                SortOrder = 10,
+                ParentValueId = null
+            });
+        }
+
+        if (!await db.LookupValues.AnyAsync(v => v.TenantId == tid && v.Id == "pt_grocery", ct))
+        {
+            db.LookupValues.Add(new LookupValue
+            {
+                Id = "pt_grocery",
+                TenantId = tid,
+                LookupTypeId = "product_types",
+                Code = "pt_grocery",
+                Label = "Grocery",
+                SortOrder = 20,
+                ParentValueId = null
+            });
         }
 
         await db.SaveChangesAsync(ct);
+
+        var catType = await db.LookupTypes.FirstOrDefaultAsync(t => t.TenantId == tid && t.Id == "product_categories", ct);
+        if (catType is null)
+            return;
+
+        if (!string.Equals(catType.ParentLookupTypeId, deptPlural, StringComparison.Ordinal))
+        {
+            catType.ParentLookupTypeId = deptPlural;
+            catType.ParentFieldLabel = "Department";
+            await db.SaveChangesAsync(ct);
+        }
+
+        // Root lookup: departments must not declare a parent lookup type (otherwise admin shows e.g. "Product type: (not set)" on each row).
+        var deptTypesWithParent = await db.LookupTypes.Where(t => t.Id == deptPlural && t.ParentLookupTypeId != null).ToListAsync(ct);
+        foreach (var dRow in deptTypesWithParent)
+        {
+            dRow.ParentLookupTypeId = null;
+            dRow.ParentFieldLabel = null;
+        }
+
+        if (deptTypesWithParent.Count > 0)
+            await db.SaveChangesAsync(ct);
+
+        await RemoveDeptSareeLookupValueIfPresentAsync(db, ct);
+        await RemoveDeptGroceryLookupValueIfPresentAsync(db, ct);
+    }
+
+    /// <summary>
+    /// Drops seeded <c>dept_grocery</c> and clears any <c>parent_value_id</c> pointing at it (groceries vertical no longer uses this department row).
+    /// </summary>
+    private static async Task RemoveDeptGroceryLookupValueIfPresentAsync(CommerceDbContext db, CancellationToken ct)
+    {
+        const string id = "dept_grocery";
+        var referencing = await db.LookupValues.Where(v => v.ParentValueId == id).ToListAsync(ct);
+        foreach (var v in referencing)
+            v.ParentValueId = null;
+        if (referencing.Count > 0)
+            await db.SaveChangesAsync(ct);
+
+        var row = await db.LookupValues.FirstOrDefaultAsync(v => v.Id == id, ct);
+        if (row is null)
+            return;
+        db.LookupValues.Remove(row);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Drops demo <c>dept_saree</c> and clears any <c>parent_value_id</c> pointing at it (sarees vertical does not use department rows).
+    /// </summary>
+    private static async Task RemoveDeptSareeLookupValueIfPresentAsync(CommerceDbContext db, CancellationToken ct)
+    {
+        const string id = "dept_saree";
+        var referencing = await db.LookupValues.Where(v => v.ParentValueId == id).ToListAsync(ct);
+        foreach (var v in referencing)
+            v.ParentValueId = null;
+        if (referencing.Count > 0)
+            await db.SaveChangesAsync(ct);
+
+        var row = await db.LookupValues.FirstOrDefaultAsync(v => v.Id == id, ct);
+        if (row is null)
+            return;
+        db.LookupValues.Remove(row);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Idempotent: mark the legacy Kanjeevaram seed as <c>pt_saree</c> so storefronts can filter by product type.
+    /// </summary>
+    public static async Task EnsureLegacySareeProductTypeAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string sareeType = "pt_saree";
+        var p = await db.Products.FirstOrDefaultAsync(x => x.Id == "p_kj001", ct);
+        if (p is null)
+            return;
+        if (string.Equals(p.ProductTypeId, sareeType, StringComparison.Ordinal))
+            return;
+        p.ProductTypeId = sareeType;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Idempotent: removes demo <c>product_departments</c> rows <c>dept_grocery_produce</c> and <c>dept_grocery_dairy</c>
+    /// and clears any <c>product_categories.parent_value_id</c> pointing at them (FK-safe).
+    /// </summary>
+    public static async Task RemoveGroceryProduceDairyDemoDepartmentValuesAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string produce = "dept_grocery_produce";
+        const string dairy = "dept_grocery_dairy";
+        const string catLt = "product_categories";
+
+        var referencing = await db.LookupValues
+            .Where(v => v.LookupTypeId == catLt && (v.ParentValueId == produce || v.ParentValueId == dairy))
+            .ToListAsync(ct);
+        foreach (var v in referencing)
+            v.ParentValueId = null;
+        if (referencing.Count > 0)
+            await db.SaveChangesAsync(ct);
+
+        foreach (var id in new[] { produce, dairy })
+        {
+            var row = await db.LookupValues.FirstOrDefaultAsync(v => v.Id == id, ct);
+            if (row is null)
+                continue;
+            db.LookupValues.Remove(row);
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Idempotent: sample grocery <c>product_categories</c> + <c>pt_grocery</c> products for the Groceries storefront (tenant <c>t1</c>).
+    /// When <paramref name="mediaRootForBlobWrites"/> is set, writes tiny JPEG blobs for demo hero paths.
+    /// </summary>
+    public static async Task EnsureGroceryCatalogDevSeedAsync(
+        CommerceDbContext db,
+        string? mediaRootForBlobWrites = null,
+        CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string typeGrocery = "pt_grocery";
+
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_grocery_dept", "groceries", "Groceries", 5, null, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_grocery_produce", "produce", "Produce", 10, "cat_grocery_dept", "t1/p_gr_demo_produce/hero.jpg", ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_grocery_dairy", "dairy", "Dairy", 20, "cat_grocery_dept", "t1/p_gr_demo_dairy/hero.jpg", ct);
+        await db.SaveChangesAsync(ct);
+
+        var published = new DateTimeOffset(2026, 5, 10, 12, 0, 0, TimeSpan.Zero);
+        if (!await db.Products.AnyAsync(p => p.TenantId == tid && p.Id == "p_gr_demo_produce", ct))
+        {
+            db.Products.Add(new Product
+            {
+                Id = "p_gr_demo_produce",
+                TenantId = tid,
+                ProductTypeId = typeGrocery,
+                Slug = "organic-tomatoes-500g",
+                TitleDisplay = "Organic Tomatoes (500g)",
+                SearchText = "organic tomatoes produce fresh",
+                Status = "active",
+                PublishedAt = published,
+                HeroStorageKey = "t1/p_gr_demo_produce/hero.jpg",
+                MinPriceMinor = 3500,
+                Currency = "INR",
+                CommerceJson =
+                    """{"pricing":{},"vendor":{"vendorCode":"NISTTA-GROCERY","displayName":"Nistta Groceries"},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"typeAttributes":{}}"""
+            });
+            db.ProductCategories.Add(new ProductCategory
+            {
+                ProductId = "p_gr_demo_produce",
+                CategoryId = "cat_grocery_produce",
+                IsPrimary = true,
+                SortOrder = 0
+            });
+        }
+
+        if (!await db.Products.AnyAsync(p => p.TenantId == tid && p.Id == "p_gr_demo_dairy", ct))
+        {
+            db.Products.Add(new Product
+            {
+                Id = "p_gr_demo_dairy",
+                TenantId = tid,
+                ProductTypeId = typeGrocery,
+                Slug = "whole-milk-1l",
+                TitleDisplay = "Whole Milk (1 L)",
+                SearchText = "whole milk dairy 1l",
+                Status = "active",
+                PublishedAt = published,
+                HeroStorageKey = "t1/p_gr_demo_dairy/hero.jpg",
+                MinPriceMinor = 7200,
+                Currency = "INR",
+                CommerceJson =
+                    """{"pricing":{},"vendor":{"vendorCode":"NISTTA-GROCERY","displayName":"Nistta Groceries"},"tax":{"hsnCode":"","gstPercent":"","taxCategoryId":"","gstState":""},"typeAttributes":{}}"""
+            });
+            db.ProductCategories.Add(new ProductCategory
+            {
+                ProductId = "p_gr_demo_dairy",
+                CategoryId = "cat_grocery_dairy",
+                IsPrimary = true,
+                SortOrder = 0
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        var now = DateTimeOffset.UtcNow;
+        await EnsureGroceryProductHeroMediaAsync(db, tid, "p_gr_demo_produce", "m_gr_hero_produce", "pm_gr_hero_produce", "t1/p_gr_demo_produce/hero.jpg", now, ct);
+        await EnsureGroceryProductHeroMediaAsync(db, tid, "p_gr_demo_dairy", "m_gr_hero_dairy", "pm_gr_hero_dairy", "t1/p_gr_demo_dairy/hero.jpg", now, ct);
+
+        if (!string.IsNullOrWhiteSpace(mediaRootForBlobWrites))
+        {
+            EnsureSeedMediaBlobExists(mediaRootForBlobWrites, "t1/p_gr_demo_produce/hero.jpg");
+            EnsureSeedMediaBlobExists(mediaRootForBlobWrites, "t1/p_gr_demo_dairy/hero.jpg");
+        }
+    }
+
+    private static async Task EnsureGroceryProductHeroMediaAsync(
+        CommerceDbContext db,
+        string tenantId,
+        string productId,
+        string mediaAssetId,
+        string productMediaId,
+        string storageKey,
+        DateTimeOffset now,
+        CancellationToken ct)
+    {
+        if (!await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Id == productId, ct))
+            return;
+
+        var asset = await db.MediaAssets.FirstOrDefaultAsync(m => m.TenantId == tenantId && m.StorageKey == storageKey, ct);
+        if (asset is null)
+        {
+            asset = new MediaAsset
+            {
+                Id = mediaAssetId,
+                TenantId = tenantId,
+                StorageKey = storageKey,
+                MimeType = "image/jpeg",
+                Bytes = 0,
+                Checksum = null,
+                UploadedAt = now
+            };
+            db.MediaAssets.Add(asset);
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (!await db.ProductMedia.AnyAsync(pm => pm.Id == productMediaId, ct))
+        {
+            db.ProductMedia.Add(new ProductMediaRow
+            {
+                Id = productMediaId,
+                ProductId = productId,
+                MediaAssetId = asset.Id,
+                Role = "hero",
+                SortOrder = 0,
+                Locale = "en-IN"
+            });
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     /// <summary>Idempotent dev row so the storefront sponsored rail has one sample placement.</summary>
@@ -494,5 +905,48 @@ public static class CommerceDevDataSeeder
             IsActive = true
         });
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Optional dev site administrator: set <c>DevSeed:AdminEmail</c> and <c>DevSeed:AdminPassword</c> in configuration
+    /// (e.g. appsettings.Development.json). Skips when either is missing or the email already exists for tenant <c>t1</c>.
+    /// </summary>
+    public static async Task EnsureDevSiteAdminAsync(
+        CommerceDbContext db,
+        IPasswordHasher<PortalUser> passwordHasher,
+        IConfiguration configuration,
+        ILogger logger,
+        CancellationToken ct = default)
+    {
+        var email = configuration["DevSeed:AdminEmail"]?.Trim();
+        var password = configuration["DevSeed:AdminPassword"];
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            logger.LogDebug("Dev site admin seed skipped (DevSeed:AdminEmail / DevSeed:AdminPassword not set).");
+            return;
+        }
+
+        const string tid = "t1";
+        var norm = email.Trim().ToUpperInvariant();
+        if (await db.PortalUsers.AnyAsync(u => u.TenantId == tid && u.NormalizedEmail == norm, ct))
+            return;
+
+        var id = "u_" + Guid.NewGuid().ToString("N")[..12];
+        var user = new PortalUser
+        {
+            Id = id,
+            TenantId = tid,
+            Email = email,
+            NormalizedEmail = norm,
+            PasswordHash = "",
+            Role = "admin",
+            ProfileJson = null,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LoginDisabled = false
+        };
+        user.PasswordHash = passwordHasher.HashPassword(user, password);
+        db.PortalUsers.Add(user);
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Seeded dev site admin portal user {Email} (role admin).", email);
     }
 }

@@ -1,4 +1,4 @@
-# SareeCart (`sarees-market`)
+# Nistta storefront (`sarees-market`)
 
 Configuration-first commerce shell (sarees first; groceries & LPG later).
 

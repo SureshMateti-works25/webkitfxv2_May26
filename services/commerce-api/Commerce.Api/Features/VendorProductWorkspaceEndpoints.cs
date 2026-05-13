@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Commerce.Api.Audit;
+using Commerce.Api.Catalog;
 using Commerce.Api.Data;
 using Commerce.Api.Entities;
 using Commerce.Api.Infrastructure;
@@ -27,6 +28,11 @@ public static class VendorProductWorkspaceEndpoints
             .RequireAuthorization(Auth)
             .WithTags(Tag)
             .WithName("VendorPutProductWorkspace");
+
+        app.MapDelete("/api/v1/vendor/products/{productId}/workspace/media/{productMediaId}", DeleteWorkspaceMedia)
+            .RequireAuthorization(Auth)
+            .WithTags(Tag)
+            .WithName("VendorDeleteProductWorkspaceMedia");
     }
 
     private static string? PortalUserId(ClaimsPrincipal user) =>
@@ -245,7 +251,8 @@ public static class VendorProductWorkspaceEndpoints
                     db.ProductCategories.RemoveRange(old);
                     if (cid.Length > 0)
                     {
-                        var ok = await db.Categories.AsNoTracking().AnyAsync(c => c.Id == cid && c.TenantId == tenantId, ct);
+                        var ok = await db.LookupValues.AsNoTracking().AnyAsync(
+                            c => c.Id == cid && c.TenantId == tenantId && c.LookupTypeId == ProductCategoryLookup.LookupTypeId, ct);
                         if (!ok)
                             return Results.BadRequest(new { error = "Unknown categoryId" });
                         db.ProductCategories.Add(new ProductCategory
@@ -403,6 +410,89 @@ public static class VendorProductWorkspaceEndpoints
             "product",
             productId,
             new { action = "workspace_put" },
+            request.HttpContext,
+            ct);
+
+        return Results.NoContent();
+    }
+
+    private static bool IsHeroishMediaRole(string role) =>
+        role.Equals("front", StringComparison.OrdinalIgnoreCase)
+        || role.Equals("hero", StringComparison.OrdinalIgnoreCase)
+        || role.Equals("primary", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Pick PLP/card hero from remaining gallery rows (same rules as upload).</summary>
+    private static string? PickHeroStorageKeyFromMediaRows(IReadOnlyList<(string Role, string StorageKey)> rows)
+    {
+        if (rows.Count == 0)
+            return null;
+        foreach (var (role, key) in rows)
+        {
+            if (IsHeroishMediaRole(role))
+                return key;
+        }
+
+        return rows[0].StorageKey;
+    }
+
+    private static async Task<IResult> DeleteWorkspaceMedia(
+        string productId,
+        string productMediaId,
+        HttpRequest request,
+        ClaimsPrincipal user,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(request.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = request.ResolveTenantId(tenantContext)!;
+        var uid = PortalUserId(user);
+        if (string.IsNullOrEmpty(uid))
+            return Results.Unauthorized();
+
+        var product = await db.Products
+            .FirstOrDefaultAsync(x => x.Id == productId && x.TenantId == tenantId && x.VendorPortalUserId == uid, ct);
+        if (product is null)
+            return Results.NotFound();
+
+        var row = await db.ProductMedia
+            .Include(pm => pm.MediaAsset)
+            .FirstOrDefaultAsync(pm => pm.Id == productMediaId && pm.ProductId == productId, ct);
+        if (row is null)
+            return Results.NotFound();
+
+        var remaining = await (
+            from pm in db.ProductMedia.AsNoTracking()
+            join ma in db.MediaAssets.AsNoTracking() on pm.MediaAssetId equals ma.Id
+            where pm.ProductId == productId && pm.Id != productMediaId
+            orderby pm.SortOrder, pm.Id
+            select new { pm.Role, ma.StorageKey }
+        ).ToListAsync(ct);
+
+        db.ProductMedia.Remove(row);
+        product.HeroStorageKey = PickHeroStorageKeyFromMediaRows(
+            remaining.Select(r => (r.Role, r.StorageKey)).ToList());
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            return Results.Conflict(new { error = "Could not remove media" });
+        }
+
+        await audit.RecordAsync(
+            AuditActions.MediaDelete,
+            "success",
+            tenantId,
+            uid,
+            "product_media",
+            productMediaId,
+            new { productId, mediaAssetId = row.MediaAssetId },
             request.HttpContext,
             ct);
 

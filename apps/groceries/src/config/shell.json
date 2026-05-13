@@ -1,0 +1,403 @@
+{
+  "app": {
+    "name": "Nistta Groceries",
+    "tagline": "Same Nistta shell as fashion — fresh aisles, search, cart, and account chrome for the grocery vertical."
+  },
+  "brand": {
+    "logoAlt": "NISTTA",
+    "logoSrc": "/logo-nistta.svg"
+  },
+  "storefront": {
+    "whatsapp": {
+      "enabled": true,
+      "phoneDigits": "917816058810",
+      "messageTemplate": "Hi — I'm interested in *{{title}}* (SKU: {{sku}}). Vendor: {{vendor}}. Page: {{url}}"
+    }
+  },
+  "edgeChrome": {
+    "enabled": true,
+    "floatingStack": {
+      "enabled": true,
+      "ariaLabel": "Quick help and booking",
+      "items": [
+        {
+          "id": "cta-whatsapp",
+          "kind": "whatsapp",
+          "label": "WhatsApp",
+          "shortLabel": "WA",
+          "phoneDigits": "",
+          "messageTemplate": "Hi — I’m browsing {{url}} and would like help.",
+          "icon": "whatsapp",
+          "audiences": ["anonymous", "guest", "shopper", "vendor", "admin"],
+          "pathPrefixesExclude": ["/login"]
+        },
+        {
+          "id": "cta-book-demo",
+          "kind": "link",
+          "label": "Book demo",
+          "shortLabel": "Demo",
+          "href": "https://cal.com/",
+          "icon": "demo",
+          "audiences": ["anonymous", "guest", "shopper", "vendor"],
+          "pathPrefixesExclude": ["/login", "/signup/vendor", "/signup/shopper"]
+        },
+        {
+          "id": "cta-support",
+          "kind": "link",
+          "label": "Support",
+          "shortLabel": "Help",
+          "href": "/support",
+          "icon": "support",
+          "audiences": ["anonymous", "guest", "shopper", "vendor", "admin"]
+        }
+      ]
+    },
+    "promotionRail": {
+      "enabled": true,
+      "title": "Offers & promotions",
+      "mobileToggleLabel": "Offers",
+      "cards": [
+        {
+          "id": "promo-ship",
+          "title": "Free shipping",
+          "body": "Orders over INR 1,999 ship free this week — GST invoice included.",
+          "ctaLabel": "Browse catalogue",
+          "ctaHref": "/search",
+          "variant": "accent",
+          "audiences": ["anonymous", "guest", "shopper"],
+          "pathPrefixes": ["/", "/search", "/p", "/browse", "/cart"]
+        },
+        {
+          "id": "promo-vendor",
+          "title": "Vendor tools",
+          "body": "Preview storefront layout and SKUs before you publish.",
+          "ctaLabel": "My products",
+          "ctaHref": "/vendor/products",
+          "variant": "highlight",
+          "audiences": ["vendor"],
+          "pathPrefixes": ["/vendor"]
+        },
+        {
+          "id": "promo-admin",
+          "title": "Admin",
+          "body": "Lookups and directory screens stay JSON-driven — extend packs without redeploying the host.",
+          "ctaLabel": "Lookups",
+          "ctaHref": "/admin/lookups",
+          "variant": "neutral",
+          "audiences": ["admin"],
+          "pathPrefixes": ["/admin"]
+        },
+        {
+          "id": "promo-admin-sponsored",
+          "title": "Sponsored picks",
+          "body": "Choose which catalogue products appear in the storefront right rail as sponsored vendor placements.",
+          "ctaLabel": "Configure ads",
+          "ctaHref": "/admin/storefront-ads",
+          "variant": "highlight",
+          "audiences": ["admin"],
+          "pathPrefixes": ["/admin"]
+        }
+      ]
+    }
+  },
+  "header": {
+    "sessionLabels": {
+      "guest": "Guest session",
+      "member": "Signed in",
+      "logout": "Log out",
+      "login": "Login"
+    },
+    "notificationBar": {
+      "message": "Same-day slots in select pincodes · GST-ready invoices · Weekly produce & pantry deals",
+      "ariaLabel": "Store announcements"
+    },
+    "navByAuth": {
+      "guest": [
+        { "label": "Home", "path": "/", "icon": "home" },
+        { "label": "Search", "path": "/search", "icon": "search" },
+        { "label": "Cart", "path": "/cart", "icon": "cart" },
+        { "label": "Login", "path": "/login", "icon": "login" }
+      ],
+      "shopper": [
+        { "label": "Home", "path": "/", "icon": "home" },
+        { "label": "Search", "path": "/search", "icon": "search" },
+        { "label": "Cart", "path": "/cart", "icon": "cart" }
+      ],
+      "vendor": [
+        { "label": "Home", "path": "/", "icon": "home" },
+        { "label": "Search", "path": "/search", "icon": "search" },
+        { "label": "Cart", "path": "/cart", "icon": "cart" }
+      ],
+      "admin": [
+        { "label": "Home", "path": "/", "icon": "home" },
+        { "label": "Search", "path": "/search", "icon": "search" }
+      ]
+    },
+    "profileMenuAria": "Account menu",
+    "profileMenu": {
+      "shopper": [
+        { "label": "Profile", "path": "/account/profile" },
+        { "label": "My favourites", "path": "/favourites" },
+        { "label": "Recent orders", "path": "/orders" }
+      ],
+      "vendor": [
+        { "label": "Profile", "path": "/account/profile" },
+        { "label": "My products", "path": "/vendor/products" },
+        { "label": "Settings", "path": "/settings" }
+      ],
+      "admin": [
+        { "label": "Profile", "path": "/account/profile" },
+        { "label": "Vendors", "path": "/admin/vendors" },
+        { "label": "Shoppers", "path": "/admin/shoppers" },
+        { "label": "Orders", "path": "/admin/orders" },
+        { "label": "Admin lookups mgt", "path": "/admin/lookups" },
+        { "label": "Storefront sponsored ads", "path": "/admin/storefront-ads" }
+      ]
+    },
+    "menu": [
+      { "label": "Home", "path": "/" },
+      { "label": "Search", "path": "/search" },
+      { "label": "Cart", "path": "/cart" },
+      { "label": "Login", "path": "/login" }
+    ],
+    "settingsMenu": [
+      { "label": "Preferences", "path": "/settings" },
+      { "label": "Notifications", "path": "/settings/notifications" }
+    ]
+  },
+  "breadcrumbs": {
+    "/": [
+      { "label": "Home", "path": "/" },
+      { "label": "Shop", "path": null }
+    ],
+    "/cart": [{ "label": "Home", "path": "/" }, { "label": "Cart", "path": null }],
+    "/search": [{ "label": "Home", "path": "/" }, { "label": "Search", "path": null }],
+    "/login": [{ "label": "Home", "path": "/" }, { "label": "Sign in", "path": null }],
+    "/signup/vendor": [
+      { "label": "Home", "path": "/" },
+      { "label": "Vendor signup", "path": null }
+    ],
+    "/signup/shopper": [
+      { "label": "Home", "path": "/" },
+      { "label": "Shopper profile", "path": null }
+    ],
+    "/settings": [{ "label": "Home", "path": "/" }, { "label": "Settings", "path": null }],
+    "/settings/notifications": [
+      { "label": "Home", "path": "/" },
+      { "label": "Settings", "path": "/settings" },
+      { "label": "Notifications", "path": null }
+    ],
+    "/account/profile": [
+      { "label": "Home", "path": "/" },
+      { "label": "Profile", "path": null }
+    ],
+    "/vendor/products": [
+      { "label": "Home", "path": "/" },
+      { "label": "My products", "path": null }
+    ],
+    "/admin/lookups": [
+      { "label": "Home", "path": "/" },
+      { "label": "Lookups", "path": null }
+    ],
+    "/admin/storefront-ads": [
+      { "label": "Home", "path": "/" },
+      { "label": "Sponsored storefront", "path": null }
+    ],
+    "/admin/vendors": [
+      { "label": "Home", "path": "/" },
+      { "label": "Vendors", "path": null }
+    ],
+    "/admin/shoppers": [
+      { "label": "Home", "path": "/" },
+      { "label": "Shoppers", "path": null }
+    ],
+    "/admin/orders": [
+      { "label": "Home", "path": "/" },
+      { "label": "Orders", "path": null }
+    ],
+    "/vendor/products/new": [
+      { "label": "Home", "path": "/" },
+      { "label": "My products", "path": "/vendor/products" },
+      { "label": "New product", "path": null }
+    ],
+    "/favourites": [{ "label": "Home", "path": "/" }, { "label": "Favourites", "path": null }],
+    "/orders": [{ "label": "Home", "path": "/" }, { "label": "Orders", "path": null }],
+    "/communication": [
+      { "label": "Home", "path": "/" },
+      { "label": "Communication", "path": null }
+    ],
+    "/support": [{ "label": "Home", "path": "/" }, { "label": "Help centre", "path": null }],
+    "/legal/privacy": [{ "label": "Home", "path": "/" }, { "label": "Privacy", "path": null }],
+    "/legal/terms": [{ "label": "Home", "path": "/" }, { "label": "Terms", "path": null }]
+  },
+  "footer": {
+    "blurb": "Grocery storefront on the same Commerce.Api and chrome as Nistta fashion — swap tenant and product type to tune aisles.",
+    "contact": {
+      "label": "Contact",
+      "email": "hello@nistta.example",
+      "hours": "Mon–Sat, 9:00–18:00 IST"
+    },
+    "support": {
+      "label": "Support",
+      "phone": "+91 1800-000-0000",
+      "linkLabel": "Help centre",
+      "linkPath": "/support"
+    },
+    "links": [
+      { "label": "Privacy", "path": "/legal/privacy" },
+      { "label": "Terms", "path": "/legal/terms" },
+      { "label": "Vendors", "path": "/signup/vendor" }
+    ],
+    "copyright": "© Nistta"
+  },
+  "landing": {
+    "sections": [
+      {
+        "type": "strap",
+        "message": "Available · Need help? Chat on WhatsApp · 100% quality-checked dispatch"
+      },
+      {
+        "type": "hero",
+        "surface": "cream",
+        "eyebrow": "Weekly essentials",
+        "kicker": "Produce, pantry & household",
+        "title": "Fill your basket",
+        "subtitle": "Browse aisles powered by the same catalogue APIs as the sarees storefront — headers, rails, offers column, and footers stay JSON-driven.",
+        "trustLine": "Guest-friendly browse · Search & cart match the fashion app · One identity stack across verticals",
+        "actions": [
+          { "label": "Login", "path": "/login", "variant": "primary" },
+          { "label": "Cart", "path": "/cart", "variant": "secondary" },
+          { "label": "Vendors", "path": "/signup/vendor", "variant": "ghost" },
+          { "label": "Shoppers", "path": "/signup/shopper", "variant": "ghost" }
+        ]
+      },
+      {
+        "type": "highlights",
+        "title": "Built for scale",
+        "items": [
+          {
+            "title": "Configuration-first",
+            "body": "Forms, validation, and layout live in JSON consumed by @webkitfxv2/core-engine."
+          },
+          {
+            "title": "Roadmap",
+            "body": "Same shell supports groceries and gas-cylinder distribution — swap form packs per vertical."
+          },
+          {
+            "title": "Guests welcome",
+            "body": "Browse and checkout flows can start as guest; upgrade to a full profile anytime."
+          }
+        ]
+      }
+    ]
+  },
+  "screens": {
+    "login": {
+      "title": "Login",
+      "ribbon": "Trusted supplier & shopper portal · Configuration-driven screens (demo)",
+      "cardTitle": "Welcome back",
+      "lede": "Sign in with the verified email and password for your account. Your role (shopper or vendor) is determined from that account — not chosen here.",
+      "guestCta": "Continue as guest",
+      "submitMember": "Login",
+      "signupLinks": [
+        { "label": "New vendor account", "path": "/signup/vendor" },
+        { "label": "New shopper profile", "path": "/signup/shopper" }
+      ],
+      "enterprise": {
+        "eyebrow": "Enterprise retail · India",
+        "headline": "Run sarees today, groceries and LPG tomorrow on one rails",
+        "intro": "Operators are consolidating storefronts, dark stores, and route logistics onto unified order and identity stacks. Nistta is built as configuration-first commerce so you can swap vertical packs without rewriting screens — ideal when categories expand from high-touch apparel to repeat grocery baskets and regulated cylinder fulfilment.",
+        "trendsTitle": "What the market expects now",
+        "trends": [
+          {
+            "title": "Omnichannel truth, not slides",
+            "body": "Buyers research on mobile, pay with UPI, and expect the same profile whether they checkout as a guest or sign in later. Your stack should treat identity and consent as shared services."
+          },
+          {
+            "title": "Quick commerce discipline",
+            "body": "SLA-driven fulfilment windows, cut-offs, and exception handling are table stakes. JSON-driven forms let you tune capture fields per city or hub without redeploying the host app."
+          },
+          {
+            "title": "Trust & verification",
+            "body": "GST-linked vendors, KYC-light shoppers, and auditable contact roles reduce chargebacks and failed deliveries — capture them once at onboarding, re-use everywhere."
+          }
+        ],
+        "metrics": [
+          { "label": "Repeat purchase lift", "value": "9–15%" },
+          { "label": "Support cost drop", "value": "18–24%" },
+          { "label": "Time-to-launch new vertical", "value": "days, not months" }
+        ],
+        "footerNote": "Roadmap: plug grocery catalogues and LPG subscription cycles into the same shell — business rules stay in JSON packs per vertical."
+      }
+    },
+    "vendorSignup": {
+      "title": "Vendor registration",
+      "lede": "Create portal credentials first (login name + password), then business, GST, address, and contact rows — those credentials are what you will use on Sign in.",
+      "submitLabel": "Submit vendor application"
+    },
+    "shopperSignup": {
+      "title": "Shopper profile",
+      "lede": "Set portal login name and password, then profile and delivery details — reuse them on Sign in.",
+      "submitLabel": "Save profile"
+    },
+    "settings": {
+      "title": "Settings",
+      "body": "Preference screens will be driven by JSON packs per vertical (sarees, groceries, LPG) — wire forms here the same way as signup."
+    },
+    "support": {
+      "title": "Help centre",
+      "body": "Support content and ticketing will load from your operations JSON — no hardcoded FAQs in the app bundle."
+    },
+    "legalPrivacy": {
+      "title": "Privacy",
+      "body": "Privacy policy text will be supplied as markdown or HTML from configuration per tenant."
+    },
+    "legalTerms": {
+      "title": "Terms of use",
+      "body": "Terms will be versioned in configuration alongside rollout of groceries and LPG modules."
+    },
+    "cart": {
+      "title": "Your cart",
+      "body": "Items stay on this device until checkout is connected to your commerce API. Quantities update below.",
+      "emptyHint": "Browse the catalogue and use Add to cart on a product page.",
+      "lineQtyLabel": "Qty",
+      "removeLineLabel": "Remove",
+      "clearCartLabel": "Clear cart",
+      "continueShoppingLabel": "Continue shopping",
+      "subtotalLabel": "Estimated line total"
+    },
+    "accountProfile": {
+      "title": "Your profile",
+      "body": "You are signed in with the account below. Details combine your registration data and the last successful sign-in."
+    },
+    "favourites": {
+      "title": "Favourites",
+      "body": "Saved items and lists will appear here once the catalogue pack is wired."
+    },
+    "orders": {
+      "title": "Orders",
+      "body": "Order history and tracking will load from your commerce services — this route is a placeholder."
+    },
+    "communication": {
+      "title": "Communication",
+      "body": "Messages, alerts, and announcements will be driven from your notifications configuration — placeholder for now."
+    },
+    "search": {
+      "title": "Search catalogue",
+      "body": "Use one or many filters to find products. Filters are configuration-driven and can be extended without changing this page component.",
+      "noResults": "No products matched the selected filters."
+    },
+    "adminVendors": {
+      "title": "Vendors",
+      "body": "Vendor master and lifecycle management screens are configuration-driven placeholders."
+    },
+    "adminShoppers": {
+      "title": "Shoppers",
+      "body": "Shopper directory and lifecycle screens are configuration-driven placeholders."
+    },
+    "adminOrders": {
+      "title": "Orders",
+      "body": "Order operations, workflows, and exception handling screens are configuration-driven placeholders."
+    }
+  }
+}

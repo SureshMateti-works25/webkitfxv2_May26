@@ -17,13 +17,13 @@ export function DevApiPing() {
       })
         .then((res) => {
           console.info(
-            `[SareeCart dev] GET /api/v1/catalog/categories → ${res.status}. You should see this in the Network tab (type: fetch or xhr).`
+            `[Nistta dev] GET /api/v1/catalog/categories → ${res.status}. You should see this in the Network tab (type: fetch or xhr).`
           );
         })
         .catch((err: unknown) => {
           if ((err as Error)?.name === "AbortError") return;
           console.warn(
-            "[SareeCart dev] API ping failed. Start Commerce.Api on :5055 and use the Vite dev URL (http://localhost:…), not file://.",
+            "[Nistta dev] API ping failed. Start Commerce.Api on :5055 and use the Vite dev URL (http://localhost:…), not file://.",
             err
           );
         });

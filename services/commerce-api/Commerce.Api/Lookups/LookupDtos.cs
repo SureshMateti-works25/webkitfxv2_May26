@@ -14,7 +14,8 @@ public sealed record LookupValueResponse(
     string Code,
     string Label,
     int SortOrder,
-    string? ParentValueId);
+    string? ParentValueId,
+    string? ImageStorageKey);
 
 public sealed record LookupBundleResponse(
     string Version,
@@ -32,4 +33,13 @@ public sealed record CreateLookupValueRequest(
     string Code,
     string Label,
     int SortOrder,
-    string? ParentValueId);
+    string? ParentValueId,
+    string? ImageStorageKey);
+
+/// <summary>Replace mutable fields on an existing <c>lookup_values</c> row (e.g. parent product type for a category).</summary>
+public sealed record UpdateLookupValueRequest(
+    string Code,
+    string Label,
+    int SortOrder,
+    string? ParentValueId,
+    string? ImageStorageKey);

@@ -24,10 +24,18 @@
       "entryIdPrefix": "pay_"
     },
     {
+      "id": "product_types",
+      "title": "Product types",
+      "description": "Vertical / catalogue family (e.g. saree, grocery). Product rows store the value id as product_type_id; vendor Product tab binds to this lookup.",
+      "parentLookupId": null,
+      "entryIdPrefix": "pt_"
+    },
+    {
       "id": "product_categories",
       "title": "Product categories",
       "description": "Merchandising categories for the storefront. Use Code as the URL slug (e.g. kanjivaram) and Label as the shopper-facing name. Browse uses /browse/:categorySlug — keep Code unique and slug-safe.",
-      "parentLookupId": null,
+      "parentLookupId": "product_types",
+      "parentFieldLabel": "Product type",
       "entryIdPrefix": "cat_"
     }
   ]

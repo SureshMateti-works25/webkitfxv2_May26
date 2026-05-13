@@ -259,8 +259,8 @@ public static class VendorProductEndpoints
         var status = NormalizeStatus(body.Status);
         if (body.CategoryId is { Length: > 0 } cid)
         {
-            var catOk = await db.Categories.AsNoTracking()
-                .AnyAsync(c => c.Id == cid && c.TenantId == tenantId, ct);
+            var catOk = await db.LookupValues.AsNoTracking()
+                .AnyAsync(c => c.Id == cid && c.TenantId == tenantId && c.LookupTypeId == ProductCategoryLookup.LookupTypeId, ct);
             if (!catOk)
                 return Results.BadRequest(new { error = "Unknown categoryId for this tenant." });
         }
@@ -392,8 +392,8 @@ public static class VendorProductEndpoints
             }
             else
             {
-                var catOk = await db.Categories.AsNoTracking()
-                    .AnyAsync(c => c.Id == body.CategoryId && c.TenantId == tenantId, ct);
+                var catOk = await db.LookupValues.AsNoTracking()
+                    .AnyAsync(c => c.Id == body.CategoryId && c.TenantId == tenantId && c.LookupTypeId == ProductCategoryLookup.LookupTypeId, ct);
                 if (!catOk)
                     return Results.BadRequest(new { error = "Unknown categoryId for this tenant." });
 

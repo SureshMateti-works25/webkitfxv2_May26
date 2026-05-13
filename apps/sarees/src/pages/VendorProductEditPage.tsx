@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext.js";
 import {
   createVendorProduct,
   deleteVendorProduct,
+  deleteVendorProductWorkspaceMedia,
   formatCommerceApiError,
   getVendorProductWorkspace,
   mediaAssetUrl,
@@ -143,6 +144,8 @@ export function VendorProductEditPage() {
   const [lookupOptionsError, setLookupOptionsError] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<VendorProductWorkspace | null>(null);
   const [workspaceRev, setWorkspaceRev] = useState(0);
+  /** Drives primary category options: `product_types` id (e.g. pt_grocery) from workspace + live Product form. */
+  const [catalogCategoryScopeTypeId, setCatalogCategoryScopeTypeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("product");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -164,6 +167,7 @@ export function VendorProductEditPage() {
   const [mediaRole, setMediaRole] = useState("gallery");
   const [mediaSkuId, setMediaSkuId] = useState("");
   const [mediaUploading, setMediaUploading] = useState(false);
+  const [mediaDeletingId, setMediaDeletingId] = useState<string | null>(null);
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
 
   const token = getAccessToken();
@@ -201,12 +205,41 @@ export function VendorProductEditPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!workspace?.core) return;
+    const pt = (workspace.core as { productTypeId?: unknown }).productTypeId;
+    const s = typeof pt === "string" ? pt.trim() : "";
+    setCatalogCategoryScopeTypeId(s || null);
+  }, [workspace, workspaceRev]);
+
   const vendorProductCoreFormResolved = useMemo(
-    () => vendorProductCoreFormWithResolvedLookups(vendorCoreLookupResolved),
-    [vendorCoreLookupResolved]
+    () =>
+      vendorProductCoreFormWithResolvedLookups(vendorCoreLookupResolved, {
+        primaryCategoryParentTypeId: catalogCategoryScopeTypeId,
+      }),
+    [vendorCoreLookupResolved, catalogCategoryScopeTypeId]
   );
 
   const primaryCategorySelectOptions = vendorCoreLookupResolved.primaryCategoryId?.options ?? [];
+  const filteredNewPrimaryCategoryOptions = useMemo(() => {
+    const rows = vendorCoreLookupResolved.primaryCategoryId?.lookupRows;
+    const pid = newProductTypeId.trim();
+    if (!pid || !rows?.length) return primaryCategorySelectOptions;
+    const allow = new Set(rows.filter((r) => r.parentValueId === pid).map((r) => r.id));
+    return primaryCategorySelectOptions.filter((o) => allow.has(o.value));
+  }, [newProductTypeId, primaryCategorySelectOptions, vendorCoreLookupResolved.primaryCategoryId?.lookupRows]);
+  const productTypeSelectOptions = vendorCoreLookupResolved.productTypeId?.options ?? [];
+
+  const autoFilledNewProductType = useRef(false);
+  useEffect(() => {
+    if (!isNew || autoFilledNewProductType.current || productTypeSelectOptions.length === 0) return;
+    autoFilledNewProductType.current = true;
+    setNewProductTypeId((prev) => {
+      if (prev.trim()) return prev;
+      const saree = productTypeSelectOptions.find((o) => o.value === "pt_saree");
+      return saree?.value ?? productTypeSelectOptions[0]?.value ?? "";
+    });
+  }, [isNew, productTypeSelectOptions]);
 
   useEffect(() => {
     if (isNew || !token || !productId) return;
@@ -313,18 +346,28 @@ export function VendorProductEditPage() {
             </select>
           </label>
           <label className="vendor-field">
-            <span>Product type id</span>
-            <input
-              value={newProductTypeId}
-              onChange={(e) => setNewProductTypeId(e.target.value)}
-              placeholder="e.g. pt_saree"
-            />
+            <span>Product type</span>
+            <select value={newProductTypeId} onChange={(e) => setNewProductTypeId(e.target.value)}>
+              <option value="">— None —</option>
+              {productTypeSelectOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label ?? o.value}
+                </option>
+              ))}
+            </select>
+            {lookupOptionsError ? (
+              <span className="vendor-field__hint vendor-field__hint--error" role="alert">
+                {lookupOptionsError}
+              </span>
+            ) : productTypeSelectOptions.length === 0 ? (
+              <span className="vendor-field__hint">Loading product types from Commerce.Api lookups…</span>
+            ) : null}
           </label>
           <label className="vendor-field">
             <span>Primary category</span>
             <select value={newCategoryId} onChange={(e) => setNewCategoryId(e.target.value)}>
               <option value="">— None —</option>
-              {primaryCategorySelectOptions.map((o) => (
+              {filteredNewPrimaryCategoryOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label ?? o.value}
                 </option>
@@ -336,6 +379,11 @@ export function VendorProductEditPage() {
               </span>
             ) : primaryCategorySelectOptions.length === 0 ? (
               <span className="vendor-field__hint">Loading categories from Commerce.Api lookups…</span>
+            ) : newProductTypeId.trim() && filteredNewPrimaryCategoryOptions.length === 0 ? (
+              <span className="vendor-field__hint" role="status">
+                No categories for this product type. In Admin → Lookups, set each product_categories row&apos;s parent
+                to the matching product type.
+              </span>
             ) : null}
           </label>
           <div className="vendor-field-row">
@@ -435,6 +483,11 @@ export function VendorProductEditPage() {
             form={vendorProductCoreFormResolved}
             seedValues={formSeed}
             resetKey={workspaceRev}
+            onValuesChange={(values) => {
+              const v = getAtPath(values, "core.productTypeId");
+              const s = typeof v === "string" ? v.trim() : "";
+              setCatalogCategoryScopeTypeId(s || null);
+            }}
             onSubmit={async (values) => {
               if (!productId) return;
               setSaving(true);
@@ -597,7 +650,8 @@ export function VendorProductEditPage() {
             <h2 className="vendor-workspace-section__title">Media</h2>
             <p className="vendor-workspace-section__hint">
               Upload product shots (angles) or variant-specific images. Product-level rows apply to the whole listing;
-              variant rows are tied to one SKU. Save SKUs on the Variants tab before attaching variant images.
+              variant rows are tied to one SKU. Save SKUs on the Variants tab before attaching variant images. Use
+              Remove on a thumbnail to drop a mistaken or duplicate upload.
             </p>
 
             <div className="vendor-media-upload">
@@ -705,6 +759,39 @@ export function VendorProductEditPage() {
                           <span className="vendor-media-card__sku vendor-media-card__sku--product">Product</span>
                         )}
                         <span className="vendor-media-card__mime">{m.mimeType}</span>
+                      </div>
+                      <div className="vendor-media-card__actions">
+                        <button
+                          type="button"
+                          className="vendor-media-card__remove"
+                          disabled={!!mediaDeletingId || mediaUploading || saving}
+                          aria-label={`Remove this ${m.role} image from the product`}
+                          onClick={() => {
+                            if (!productId || !token || !m.id) return;
+                            if (
+                              !window.confirm(
+                                "Remove this image from the product? It will disappear from the storefront for this listing."
+                              )
+                            ) {
+                              return;
+                            }
+                            void (async () => {
+                              setMediaDeletingId(m.id);
+                              setError(null);
+                              try {
+                                await deleteVendorProductWorkspaceMedia(token, productId, m.id);
+                                await loadWorkspace();
+                                flash("Image removed.");
+                              } catch (err) {
+                                setError(formatCommerceApiError(err));
+                              } finally {
+                                setMediaDeletingId(null);
+                              }
+                            })();
+                          }}
+                        >
+                          {mediaDeletingId === m.id ? "Removing…" : "Remove"}
+                        </button>
                       </div>
                     </li>
                   );

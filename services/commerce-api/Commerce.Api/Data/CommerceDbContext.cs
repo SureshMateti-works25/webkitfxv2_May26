@@ -6,7 +6,6 @@ namespace Commerce.Api.Data;
 public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> options) : DbContext(options)
 {
     public DbSet<Tenant> Tenants => Set<Tenant>();
-    public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<Collection> Collections => Set<Collection>();
@@ -40,18 +39,6 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.HasIndex(x => x.Slug).IsUnique();
         });
 
-        modelBuilder.Entity<Category>(e =>
-        {
-            e.ToTable("categories");
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id).HasMaxLength(64);
-            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
-            e.Property(x => x.ParentId).HasMaxLength(64);
-            e.Property(x => x.Slug).HasMaxLength(128).IsRequired();
-            e.HasIndex(x => new { x.TenantId, x.Slug }).IsUnique();
-            e.HasIndex(x => new { x.TenantId, x.ParentId });
-        });
-
         modelBuilder.Entity<Product>(e =>
         {
             e.ToTable("products");
@@ -79,7 +66,7 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.Property(x => x.ProductId).HasMaxLength(64);
             e.Property(x => x.CategoryId).HasMaxLength(64);
             e.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.CategoryLookup).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.CategoryId);
         });
 
@@ -226,6 +213,7 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.Property(x => x.PasswordHash).HasMaxLength(512).IsRequired();
             e.Property(x => x.Role).HasMaxLength(32).IsRequired();
             e.Property(x => x.ProfileJson);
+            e.Property(x => x.LoginDisabled).HasDefaultValue(false);
             e.HasIndex(x => new { x.TenantId, x.NormalizedEmail }).IsUnique();
         });
 
@@ -290,8 +278,11 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.Property(x => x.Code).HasMaxLength(128).IsRequired();
             e.Property(x => x.Label).HasMaxLength(512).IsRequired();
             e.Property(x => x.ParentValueId).HasMaxLength(64);
+            e.Property(x => x.MerchandisingParentId).HasMaxLength(64);
+            e.Property(x => x.ImageStorageKey).HasMaxLength(512);
             e.HasIndex(x => new { x.TenantId, x.LookupTypeId, x.Code }).IsUnique();
             e.HasIndex(x => x.ParentValueId);
+            e.HasIndex(x => x.MerchandisingParentId);
             e.HasOne(x => x.LookupType)
                 .WithMany()
                 .HasForeignKey(x => new { x.TenantId, x.LookupTypeId })
@@ -300,6 +291,10 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.HasOne(x => x.ParentValue)
                 .WithMany()
                 .HasForeignKey(x => x.ParentValueId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.MerchandisingParent)
+                .WithMany()
+                .HasForeignKey(x => x.MerchandisingParentId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

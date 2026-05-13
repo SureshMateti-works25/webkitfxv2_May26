@@ -11,9 +11,11 @@ public static class CatalogListingQueries
         if (string.IsNullOrEmpty(categoryId))
             return new HashSet<string>();
 
-        var all = db.Categories.AsNoTracking().Where(c => c.TenantId == tenantId).ToList();
+        var all = db.LookupValues.AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.LookupTypeId == ProductCategoryLookup.LookupTypeId)
+            .ToList();
         var byParent = all
-            .GroupBy(c => c.ParentId ?? string.Empty)
+            .GroupBy(c => c.MerchandisingParentId ?? string.Empty)
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var set = new HashSet<string> { categoryId };
@@ -70,9 +72,22 @@ public static class CatalogListingQueries
         string? collectionId,
         string? search,
         DateTimeOffset? now,
-        string? slug = null)
+        string? slug = null,
+        string? productTypeId = null,
+        string? excludeProductTypeId = null)
     {
         var q = db.Products.AsNoTracking().Where(p => p.TenantId == tenantId && p.Status == "active");
+
+        if (!string.IsNullOrWhiteSpace(productTypeId))
+        {
+            var tid = productTypeId.Trim();
+            q = q.Where(p => p.ProductTypeId == tid);
+        }
+        else if (!string.IsNullOrWhiteSpace(excludeProductTypeId))
+        {
+            var ex = excludeProductTypeId.Trim();
+            q = q.Where(p => p.ProductTypeId == null || p.ProductTypeId != ex);
+        }
 
         if (!string.IsNullOrWhiteSpace(slug))
         {

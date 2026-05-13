@@ -80,6 +80,30 @@ public static class MediaEndpoints
             return Results.BadRequest(new { error = "productId is required when skuId is set." });
         }
 
+        if (string.IsNullOrWhiteSpace(productIdRaw))
+        {
+            if (!http.User.IsInRole("admin") && !http.User.IsInRole("vendor"))
+            {
+                await audit.RecordAsync(
+                    AuditActions.MediaUpload,
+                    "failure",
+                    tenantId,
+                    actorId,
+                    "media_asset",
+                    null,
+                    new { reason = "tenant_upload_requires_vendor_or_admin" },
+                    http,
+                    ct);
+                return Results.Json(
+                    new
+                    {
+                        error =
+                            "Uploading a standalone image requires a vendor or admin account. Shoppers cannot upload files."
+                    },
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+        }
+
         var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
         if (file is null || file.Length == 0)
         {

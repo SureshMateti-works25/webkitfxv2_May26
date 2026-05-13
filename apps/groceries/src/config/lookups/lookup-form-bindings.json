@@ -1,0 +1,24 @@
+{
+  "version": "1",
+  "description": "Maps JsonForm definitions (formId) + fieldId to a Commerce.Api lookup type whose values populate that select. optionValueKey: form submits id or code; primary category must use id to match categories.id / product_categories FK.",
+  "bindings": [
+    {
+      "formId": "vendor-product-core",
+      "fieldId": "productTypeId",
+      "lookupTypeId": "product_types",
+      "optionValueKey": "id",
+      "placeholderOption": "— None —",
+      "label": "Product type",
+      "description": "From Commerce.Api lookup `product_types` (value id is stored on the product as product_type_id)."
+    },
+    {
+      "formId": "vendor-product-core",
+      "fieldId": "primaryCategoryId",
+      "lookupTypeId": "product_categories",
+      "optionValueKey": "id",
+      "placeholderOption": "— None —",
+      "label": "Primary category",
+      "description": "Mirrored from Commerce.Api catalog categories into lookup type product_categories (ids align with categories.id). Each value’s parent_value_id should reference product_departments so the storefront can group by department; the vendor form shows all categories when none are linked by product type."
+    }
+  ]
+}

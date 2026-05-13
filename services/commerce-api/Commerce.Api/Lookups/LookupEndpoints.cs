@@ -34,6 +34,11 @@ public static class LookupEndpoints
             .WithTags(tag)
             .WithName("LookupsCreateValue");
 
+        app.MapPut($"{basePath}/values/{{valueId}}", UpdateValue)
+            .RequireAuthorization()
+            .WithTags(tag)
+            .WithName("LookupsUpdateValue");
+
         app.MapDelete($"{basePath}/values/{{valueId}}", DeleteValue)
             .RequireAuthorization()
             .WithTags(tag)
@@ -48,7 +53,20 @@ public static class LookupEndpoints
         new(t.Id, t.Title, t.Description, t.ParentLookupTypeId, t.ParentFieldLabel, t.EntryIdPrefix);
 
     private static LookupValueResponse ToDto(LookupValue v) =>
-        new(v.Id, v.LookupTypeId, v.Code, v.Label, v.SortOrder, v.ParentValueId);
+        new(v.Id, v.LookupTypeId, v.Code, v.Label, v.SortOrder, v.ParentValueId, v.ImageStorageKey);
+
+    /// <summary>Sanitize optional media path; rejects traversal.</summary>
+    private static string? NormalizeLookupImageStorageKey(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+        var s = raw.Trim().Replace('\\', '/').TrimStart('/');
+        if (s.Length == 0)
+            return null;
+        if (s.Contains("..", StringComparison.Ordinal))
+            return null;
+        return s.Length > 512 ? s[..512] : s;
+    }
 
     private static async Task<IResult> ListTypes(
         HttpRequest request,
@@ -124,7 +142,7 @@ public static class LookupEndpoints
                 byType[t.Id] = Array.Empty<LookupValueResponse>();
         }
 
-        return Results.Ok(new LookupBundleResponse("1", types.Select(ToDto).ToList(), byType));
+        return Results.Ok(new LookupBundleResponse("2", types.Select(ToDto).ToList(), byType));
     }
 
     private static async Task<IResult> UpsertType(
@@ -301,6 +319,8 @@ public static class LookupEndpoints
         var raw = $"{type.EntryIdPrefix.Trim()}{Guid.NewGuid():N}";
         var id = raw.Length > 64 ? raw[..64] : raw;
 
+        var imageKey = NormalizeLookupImageStorageKey(body.ImageStorageKey);
+
         var entity = new LookupValue
         {
             Id = id,
@@ -309,7 +329,8 @@ public static class LookupEndpoints
             Code = code,
             Label = body.Label.Trim(),
             SortOrder = body.SortOrder,
-            ParentValueId = parentValueId
+            ParentValueId = parentValueId,
+            ImageStorageKey = imageKey
         };
         db.LookupValues.Add(entity);
 
@@ -336,6 +357,91 @@ public static class LookupEndpoints
         var location =
             $"{request.PathBase}/api/v1/lookups/types/{Uri.EscapeDataString(lookupTypeId)}/values?created={Uri.EscapeDataString(entity.Id)}";
         return Results.Created(location, ToDto(entity));
+    }
+
+    private static async Task<IResult> UpdateValue(
+        string valueId,
+        UpdateLookupValueRequest body,
+        HttpRequest request,
+        ClaimsPrincipal user,
+        ITenantContext tenantContext,
+        CommerceDbContext db,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantFail = await TenantGate.RequireTenantAsync(request.HttpContext, tenantContext, audit, ct);
+        if (tenantFail is not null)
+            return tenantFail;
+        var tenantId = request.ResolveTenantId(tenantContext)!;
+        if (string.IsNullOrWhiteSpace(ActorId(user)))
+            return Results.Unauthorized();
+
+        valueId = valueId.Trim();
+        if (string.IsNullOrWhiteSpace(valueId))
+            return Results.BadRequest(new { error = "invalid_value_id" });
+
+        var row = await db.LookupValues.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == valueId, ct);
+        if (row is null)
+            return Results.NotFound();
+
+        var type = await db.LookupTypes.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.Id == row.LookupTypeId, ct);
+        if (type is null)
+            return Results.NotFound(new { error = "unknown_lookup_type", lookupTypeId = row.LookupTypeId });
+
+        var code = body.Code.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(code) || code.Length > 128)
+            return Results.BadRequest(new { error = "invalid_code" });
+        if (string.IsNullOrWhiteSpace(body.Label) || body.Label.Length > 512)
+            return Results.BadRequest(new { error = "invalid_label" });
+
+        if (await db.LookupValues.AnyAsync(
+                v => v.TenantId == tenantId && v.LookupTypeId == row.LookupTypeId && v.Code == code && v.Id != valueId,
+                ct))
+            return Results.Conflict(new { error = "duplicate_code", code });
+
+        string? parentValueId = string.IsNullOrWhiteSpace(body.ParentValueId) ? null : body.ParentValueId.Trim();
+        if (type.ParentLookupTypeId is { Length: > 0 } parentTypeId)
+        {
+            if (string.IsNullOrEmpty(parentValueId))
+                return Results.BadRequest(new { error = "parent_value_required" });
+
+            var parentRow = await db.LookupValues.AsNoTracking()
+                .FirstOrDefaultAsync(
+                    v => v.TenantId == tenantId && v.Id == parentValueId && v.LookupTypeId == parentTypeId, ct);
+            if (parentRow is null)
+                return Results.BadRequest(new { error = "parent_value_not_found", parentLookupTypeId = parentTypeId });
+        }
+        else if (parentValueId is not null)
+            return Results.BadRequest(new { error = "parent_value_not_applicable" });
+
+        row.Code = code;
+        row.Label = body.Label.Trim();
+        row.SortOrder = body.SortOrder;
+        row.ParentValueId = parentValueId;
+        row.ImageStorageKey = NormalizeLookupImageStorageKey(body.ImageStorageKey);
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            return Results.Conflict(new { error = "constraint" });
+        }
+
+        await audit.RecordAsync(
+            AuditActions.LookupMutate,
+            "success",
+            tenantId,
+            ActorId(user),
+            "lookup_value",
+            row.Id,
+            new { op = "update", lookupTypeId = row.LookupTypeId },
+            request.HttpContext,
+            ct);
+
+        return Results.Ok(ToDto(row));
     }
 
     private static async Task<IResult> DeleteValue(

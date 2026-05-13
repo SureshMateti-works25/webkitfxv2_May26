@@ -1246,6 +1246,105 @@
   color: var(--nistta-ink-muted);
 }
 
+/* Landing: merchandising roots as departments + direct child categories (Groceries + Sarees home) */
+.storefront-landing-by-dept {
+  margin-bottom: 2.25rem;
+}
+
+.storefront-landing-by-dept__page-title {
+  margin: 0 0 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--nistta-header-ink);
+}
+
+.storefront-landing-dept {
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(107, 93, 82, 0.12);
+}
+
+.storefront-landing-dept:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.storefront-landing-dept__title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--nistta-header-ink);
+}
+
+.storefront-landing-dept__categories {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+}
+
+.storefront-landing-dept__cat-item {
+  flex: 0 0 auto;
+}
+
+.storefront-landing-dept__cat-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(107, 93, 82, 0.14);
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.storefront-landing-dept__cat-link:hover {
+  border-color: rgba(107, 93, 82, 0.28);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+}
+
+.storefront-landing-dept__cat-visual {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(107, 93, 82, 0.08);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.storefront-landing-dept__cat-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.storefront-landing-dept__cat-placeholder {
+  line-height: 1;
+}
+
+.storefront-landing-dept__cat-label {
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .storefront-landing-dept__categories {
+    gap: 0.75rem 1.25rem;
+  }
+}
+
 .storefront-category-grid {
   list-style: none;
   margin: 0;
@@ -1287,6 +1386,130 @@
   font-family: var(--font-ui);
   font-size: 0.75rem;
   color: var(--nistta-ink-muted);
+}
+
+/* Grocery-style circular category tiles (Groceries home) */
+.storefront-categories--grocery-circles {
+  margin-bottom: 2.25rem;
+}
+
+.storefront-categories__title--section {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--nistta-header-ink, #0f172a);
+}
+
+.storefront-category-grid--circles {
+  gap: 1rem 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 420px) {
+  .storefront-category-grid--circles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 640px) {
+  .storefront-category-grid--circles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .storefront-category-grid--circles {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.storefront-category-card--circle {
+  align-items: center;
+  text-align: center;
+  padding: 0.35rem 0.2rem 0.6rem;
+  min-height: unset;
+  gap: 0.45rem;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.storefront-category-card--circle:hover {
+  border-color: transparent;
+  box-shadow: none;
+  transform: translateY(-2px);
+}
+
+.storefront-category-card--circle:focus-visible {
+  outline: 2px solid var(--nistta-header-ink, #0f172a);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .storefront-category-card--circle {
+    transition: none;
+  }
+
+  .storefront-category-card--circle:hover {
+    transform: none;
+  }
+}
+
+.storefront-category-card__visual {
+  position: relative;
+  width: min(100%, 5.5rem);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+}
+
+.storefront-category-card__visual::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(165deg, #dff7ea 0%, #c5edd8 55%, #b8e6cf 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  z-index: 0;
+}
+
+.storefront-category-card__img {
+  position: relative;
+  z-index: 1;
+  width: 118%;
+  height: 118%;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.12));
+}
+
+.storefront-category-card__placeholder {
+  position: relative;
+  z-index: 1;
+  width: 42%;
+  height: 42%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.45);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.storefront-category-card__name--circle {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0;
+  color: var(--nistta-header-ink, #0f172a);
+  max-width: 10rem;
+  margin: 0 auto;
 }
 
 .storefront-rail-section {
@@ -3915,6 +4138,42 @@
   word-break: break-all;
 }
 
+.vendor-media-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.4rem 0.55rem;
+  border-top: 1px solid rgba(107, 93, 82, 0.12);
+  background: rgba(255, 252, 248, 0.85);
+}
+
+.vendor-media-card__remove {
+  margin: 0;
+  padding: 0.28rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(185, 28, 28, 0.35);
+  background: #fff;
+  color: #b91c1c;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vendor-media-card__remove:hover:not(:disabled) {
+  background: rgba(254, 242, 242, 0.95);
+  border-color: rgba(185, 28, 28, 0.55);
+}
+
+.vendor-media-card__remove:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+.vendor-media-card__remove:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* Lookup admin — Commerce.Api lookup_types / lookup_values */
 .lookup-admin-page {
   width: 100%;
@@ -4047,6 +4306,97 @@
   margin-top: 1rem;
 }
 
+.lookup-admin-page__form-actions--top {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  padding: 0.45rem 0;
+  background: #fff;
+  border-bottom: 1px solid rgba(107, 93, 82, 0.12);
+}
+
+.lookup-admin-page__value-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.lookup-admin-page__value-edit-actions--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 0.35rem 0 0.55rem;
+  margin: -0.1rem 0 0.4rem;
+  background: linear-gradient(180deg, var(--nistta-cream-muted) 88%, rgba(250, 248, 245, 0));
+  border-bottom: 1px solid rgba(107, 93, 82, 0.14);
+}
+
+.lookup-admin-page__details {
+  grid-column: 1 / -1;
+  margin-top: 0.15rem;
+}
+
+.lookup-admin-page__details-summary {
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--nistta-ink-muted);
+  list-style: none;
+}
+
+.lookup-admin-page__details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.lookup-admin-page__details[open] .lookup-admin-page__details-summary {
+  margin-bottom: 0.5rem;
+}
+
+.lookup-category-image-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: flex-start;
+}
+
+.lookup-category-image-upload__file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lookup-category-image-upload__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.lookup-category-image-upload__preview {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(107, 93, 82, 0.15);
+  line-height: 0;
+  background: #fff;
+}
+
+.lookup-category-image-upload__preview img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+}
+
 .lookup-admin-page__sort-controls {
   display: flex;
   flex-wrap: wrap;
@@ -4081,6 +4431,33 @@
   border: 1px solid rgba(107, 93, 82, 0.12);
 }
 
+.lookup-admin-page__list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.lookup-admin-page__value-edit {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.lookup-admin-page__value-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .lookup-admin-page__value-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .lookup-admin-page__list-main {
   display: flex;
   flex-wrap: wrap;
@@ -4110,6 +4487,37 @@
 .lookup-admin-page__sort {
   font-size: 0.75rem;
   color: var(--nistta-ink-muted);
+}
+
+.lookup-admin-page__thumb-hint {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid rgba(107, 93, 82, 0.2);
+  white-space: nowrap;
+}
+
+.lookup-admin-page__thumb-hint--set {
+  color: var(--nistta-header-ink, #0f172a);
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.lookup-admin-page__thumb-hint--empty {
+  color: var(--nistta-ink-muted);
+  background: rgba(107, 93, 82, 0.06);
+  border-color: rgba(107, 93, 82, 0.14);
+  font-weight: 500;
+}
+
+.lookup-admin-page__thumb-hint--na {
+  color: var(--nistta-ink-muted);
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(107, 93, 82, 0.12);
+  font-weight: 500;
 }
 
 .lookup-admin-page__delete {
@@ -4153,6 +4561,17 @@
   .lookup-admin-page__new-type-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.lookup-admin-page__field--span {
+  grid-column: 1 / -1;
+}
+
+.lookup-admin-page__textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  resize: vertical;
+  box-sizing: border-box;
 }
 
 .lookup-admin-page__hint--block {
@@ -4202,6 +4621,14 @@
   text-align: right;
 }
 
+.lookup-admin-page__types-table-actions-inner {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  white-space: normal;
+}
+
 .lookup-admin-page__types-code {
   font-size: 0.8125rem;
 }
@@ -4211,9 +4638,130 @@
   font-size: 0.8125rem;
 }
 
+.lookup-admin-page__types-parent-cell {
+  vertical-align: top;
+  min-width: 10.5rem;
+}
+
+.lookup-admin-page__parent-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.lookup-admin-page__parent-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.45rem;
+  border-radius: 5px;
+  border: 1px solid;
+  line-height: 1.2;
+}
+
+.lookup-admin-page__parent-badge--set {
+  color: #14532d;
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(220, 252, 231, 0.85);
+}
+
+.lookup-admin-page__parent-badge--none {
+  color: #7c2d12;
+  border-color: rgba(251, 146, 60, 0.55);
+  background: rgba(255, 247, 237, 0.98);
+}
+
+.lookup-admin-page__parent-detail {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--nistta-header-ink, #0f172a);
+}
+
 .lookup-admin-page__toolbar-link {
   margin-left: auto;
   align-self: flex-end;
+}
+
+.lookup-admin-page__values-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.lookup-admin-page__values-toolbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.lookup-admin-page__values-toolbar-controls .lookup-admin-page__search-field {
+  flex: 1 1 12rem;
+  max-width: 22rem;
+  min-width: 8rem;
+}
+
+.lookup-admin-page__add-lookup-btn {
+  flex-shrink: 0;
+}
+
+.lookup-admin-page__values-layout-list-only {
+  display: block;
+}
+
+.lookup-admin-page__panel-title--inline {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.lookup-admin-page__search-field {
+  flex: 1 1 14rem;
+  max-width: 22rem;
+  min-width: 10rem;
+}
+
+.lookup-admin-page__search-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.lookup-admin-page__filter-meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--nistta-ink-muted);
+}
+
+.lookup-admin-page__list--scroll {
+  max-height: min(58vh, 28rem);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+  margin: 0;
+  scrollbar-gutter: stable;
+}
+
+.lookup-admin-page__types-table-wrap--scroll {
+  max-height: min(58vh, 28rem);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.lookup-admin-page__types-empty {
+  padding: 0.85rem 0.5rem;
+  text-align: center;
+  color: var(--nistta-ink-muted);
+  font-size: 0.875rem;
 }
 
 .lookup-admin-page__sr-only {

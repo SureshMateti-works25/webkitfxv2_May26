@@ -1,5 +1,6 @@
 using Commerce.Api.Audit;
 using Commerce.Api.Data;
+using Commerce.Api.Entities;
 using Commerce.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using WebkitFx.Platform.Tenancy;
@@ -56,12 +57,234 @@ public static class CatalogEndpoints
             return tenantFail;
         var tenantId = request.ResolveTenantId(tenantContext)!;
 
-        var rows = await db.Categories.AsNoTracking()
-            .Where(c => c.TenantId == tenantId)
-            .OrderBy(c => c.SortOrder).ThenBy(c => c.Slug)
-            .Select(c => new { c.Id, c.ParentId, c.Slug, c.SortOrder })
+        var productTypeFilter = request.Query["productTypeId"].ToString().Trim();
+        if (productTypeFilter.Length > 64)
+            productTypeFilter = productTypeFilter[..64];
+        var excludeTypeFilter = request.Query["excludeProductTypeId"].ToString().Trim();
+        if (excludeTypeFilter.Length > 64)
+            excludeTypeFilter = excludeTypeFilter[..64];
+
+        static bool QueryFlag(IQueryCollection q, string name) =>
+            string.Equals(q[name].ToString(), "true", StringComparison.OrdinalIgnoreCase)
+            || q[name].ToString() == "1";
+
+        var includeAllProductCategories = QueryFlag(request.Query, "includeAllProductCategories");
+
+        const string catType = ProductCategoryLookup.LookupTypeId;
+
+        // Full merchandising tree from lookup_values (even aisles with no active products yet).
+        if (includeAllProductCategories)
+        {
+            if (!string.IsNullOrEmpty(productTypeFilter))
+            {
+                // Legacy: categories used ParentValueId = product_types.id.
+                // When ParentLookupTypeId is product_departments, ParentValueId is a department id instead — still scope
+                // the storefront by categories that have active products of this type (plus legacy parent match,
+                // merchandising ancestors, and other categories under the same lookup parent). Optional
+                // includeDepartmentCategoryShell=true adds every category parented on product_departments (except
+                // dept_pt_saree when filtering pt_grocery) so department browse can list empty aisles.
+                var productCategoryIds = await (
+                    from pc in db.ProductCategories.AsNoTracking()
+                    join p in db.Products.AsNoTracking() on pc.ProductId equals p.Id
+                    where p.TenantId == tenantId
+                          && p.Status == "active"
+                          && p.ProductTypeId == productTypeFilter
+                    select pc.CategoryId).Distinct().ToListAsync(ct);
+
+                var allCatsForFilter = await db.LookupValues.AsNoTracking()
+                    .Where(c => c.TenantId == tenantId && c.LookupTypeId == catType)
+                    .ToListAsync(ct);
+
+                var includedForIncludeAll = new HashSet<string>(productCategoryIds);
+                foreach (var c in allCatsForFilter)
+                {
+                    if (string.Equals(c.ParentValueId, productTypeFilter, StringComparison.Ordinal))
+                        includedForIncludeAll.Add(c.Id);
+                }
+
+                static void AddMerchandisingAncestors(HashSet<string> set, List<LookupValue> all)
+                {
+                    var byId = all.ToDictionary(x => x.Id, StringComparer.Ordinal);
+                    foreach (var startId in set.ToArray())
+                    {
+                        if (!byId.TryGetValue(startId, out var cur))
+                            continue;
+                        while (cur is not null)
+                        {
+                            if (string.IsNullOrEmpty(cur.MerchandisingParentId))
+                                break;
+                            if (!byId.TryGetValue(cur.MerchandisingParentId, out var parent))
+                                break;
+                            if (!set.Add(parent.Id))
+                                break;
+                            cur = parent;
+                        }
+                    }
+                }
+
+                AddMerchandisingAncestors(includedForIncludeAll, allCatsForFilter);
+
+                var parentValueIds = allCatsForFilter
+                    .Where(c => includedForIncludeAll.Contains(c.Id))
+                    .Select(c => c.ParentValueId)
+                    .Where(pid => !string.IsNullOrEmpty(pid))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+                foreach (var pv in parentValueIds)
+                {
+                    foreach (var c in allCatsForFilter)
+                    {
+                        if (string.Equals(c.ParentValueId, pv, StringComparison.Ordinal))
+                            includedForIncludeAll.Add(c.Id);
+                    }
+                }
+
+                // Storefront "browse by department": include every category row parented on product_departments
+                // so empty aisles still appear. Without this, only departments that already have a pt_* listing survive
+                // the productTypeId filter (siblings share one parent, but other departments never enter the set).
+                if (QueryFlag(request.Query, "includeDepartmentCategoryShell"))
+                {
+                    const string productDepartments = "product_departments";
+                    var departmentValueIds = await db.LookupValues.AsNoTracking()
+                        .Where(v => v.TenantId == tenantId && v.LookupTypeId == productDepartments)
+                        .Select(v => v.Id)
+                        .ToListAsync(ct);
+                    var deptParentSet = departmentValueIds.ToHashSet(StringComparer.Ordinal);
+                    var excludedDepartments = new HashSet<string>(StringComparer.Ordinal);
+                    if (string.Equals(productTypeFilter, "pt_grocery", StringComparison.Ordinal))
+                        excludedDepartments.Add("dept_pt_saree");
+
+                    foreach (var c in allCatsForFilter)
+                    {
+                        var pv = c.ParentValueId;
+                        if (string.IsNullOrEmpty(pv) || !deptParentSet.Contains(pv) || excludedDepartments.Contains(pv))
+                            continue;
+                        includedForIncludeAll.Add(c.Id);
+                    }
+                }
+
+                AddMerchandisingAncestors(includedForIncludeAll, allCatsForFilter);
+
+                var rowsByType = allCatsForFilter
+                    .Where(c => includedForIncludeAll.Contains(c.Id))
+                    .OrderBy(c => c.SortOrder).ThenBy(c => c.Code)
+                    .Select(c => new
+                    {
+                        c.Id,
+                        parentId = c.MerchandisingParentId,
+                        parentValueId = c.ParentValueId,
+                        slug = c.Code,
+                        label = c.Label,
+                        imageStorageKey = c.ImageStorageKey,
+                        c.SortOrder
+                    })
+                    .ToList();
+                return Results.Ok(rowsByType);
+            }
+
+            if (!string.IsNullOrEmpty(excludeTypeFilter))
+            {
+                var rowsEx = await db.LookupValues.AsNoTracking()
+                    .Where(c => c.TenantId == tenantId && c.LookupTypeId == catType
+                        && (c.ParentValueId == null || c.ParentValueId != excludeTypeFilter))
+                    .OrderBy(c => c.SortOrder).ThenBy(c => c.Code)
+                    .Select(c => new { c.Id, parentId = c.MerchandisingParentId, parentValueId = c.ParentValueId, slug = c.Code, label = c.Label, imageStorageKey = c.ImageStorageKey, c.SortOrder })
+                    .ToListAsync(ct);
+                return Results.Ok(rowsEx);
+            }
+
+            var rowsAllLookup = await db.LookupValues.AsNoTracking()
+                .Where(c => c.TenantId == tenantId && c.LookupTypeId == catType)
+                .OrderBy(c => c.SortOrder).ThenBy(c => c.Code)
+                .Select(c => new { c.Id, parentId = c.MerchandisingParentId, parentValueId = c.ParentValueId, slug = c.Code, label = c.Label, imageStorageKey = c.ImageStorageKey, c.SortOrder })
+                .ToListAsync(ct);
+            return Results.Ok(rowsAllLookup);
+        }
+
+        if (string.IsNullOrEmpty(productTypeFilter))
+        {
+            if (string.IsNullOrEmpty(excludeTypeFilter))
+            {
+                var rowsAll = await db.LookupValues.AsNoTracking()
+                    .Where(c => c.TenantId == tenantId && c.LookupTypeId == catType)
+                    .OrderBy(c => c.SortOrder).ThenBy(c => c.Code)
+                    .Select(c => new { c.Id, parentId = c.MerchandisingParentId, parentValueId = c.ParentValueId, slug = c.Code, label = c.Label, imageStorageKey = c.ImageStorageKey, c.SortOrder })
+                    .ToListAsync(ct);
+                return Results.Ok(rowsAll);
+            }
+
+            var categoryIdsMatchingExclude = await (
+                from c in db.LookupValues.AsNoTracking()
+                join pc in db.ProductCategories.AsNoTracking() on c.Id equals pc.CategoryId
+                join p in db.Products.AsNoTracking() on pc.ProductId equals p.Id
+                where c.TenantId == tenantId
+                      && c.LookupTypeId == catType
+                      && p.TenantId == tenantId
+                      && p.Status == "active"
+                      && (p.ProductTypeId == null || p.ProductTypeId != excludeTypeFilter)
+                select c.Id).Distinct().ToListAsync(ct);
+
+            var allCatsEx = await db.LookupValues.AsNoTracking()
+                .Where(c => c.TenantId == tenantId && c.LookupTypeId == catType)
+                .ToListAsync(ct);
+
+            var includedEx = new HashSet<string>();
+            foreach (var cid in categoryIdsMatchingExclude)
+            {
+                var cur = allCatsEx.FirstOrDefault(x => x.Id == cid);
+                while (cur is not null)
+                {
+                    if (!includedEx.Add(cur.Id))
+                        break;
+                    cur = string.IsNullOrEmpty(cur.MerchandisingParentId)
+                        ? null
+                        : allCatsEx.FirstOrDefault(x => x.Id == cur.MerchandisingParentId);
+                }
+            }
+
+            var rowsExclude = allCatsEx
+                .Where(c => includedEx.Contains(c.Id))
+                .OrderBy(c => c.SortOrder).ThenBy(c => c.Code)
+                .Select(c => new { c.Id, parentId = c.MerchandisingParentId, parentValueId = c.ParentValueId, slug = c.Code, label = c.Label, imageStorageKey = c.ImageStorageKey, c.SortOrder })
+                .ToList();
+            return Results.Ok(rowsExclude);
+        }
+
+        var categoryIdsWithType = await (
+            from c in db.LookupValues.AsNoTracking()
+            join pc in db.ProductCategories.AsNoTracking() on c.Id equals pc.CategoryId
+            join p in db.Products.AsNoTracking() on pc.ProductId equals p.Id
+            where c.TenantId == tenantId
+                  && c.LookupTypeId == catType
+                  && p.TenantId == tenantId
+                  && p.Status == "active"
+                  && p.ProductTypeId == productTypeFilter
+            select c.Id).Distinct().ToListAsync(ct);
+
+        var allCats = await db.LookupValues.AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.LookupTypeId == catType)
             .ToListAsync(ct);
-        return Results.Ok(rows);
+
+        var included = new HashSet<string>();
+        foreach (var cid in categoryIdsWithType)
+        {
+            var cur = allCats.FirstOrDefault(x => x.Id == cid);
+            while (cur is not null)
+            {
+                if (!included.Add(cur.Id))
+                    break;
+                cur = string.IsNullOrEmpty(cur.MerchandisingParentId)
+                    ? null
+                    : allCats.FirstOrDefault(x => x.Id == cur.MerchandisingParentId);
+            }
+        }
+
+        var rowsFiltered = allCats
+            .Where(c => included.Contains(c.Id))
+            .OrderBy(c => c.SortOrder).ThenBy(c => c.Code)
+            .Select(c => new { c.Id, parentId = c.MerchandisingParentId, parentValueId = c.ParentValueId, slug = c.Code, label = c.Label, imageStorageKey = c.ImageStorageKey, c.SortOrder })
+            .ToList();
+        return Results.Ok(rowsFiltered);
     }
 
     private static async Task<IResult> ListCollections(
@@ -152,11 +375,26 @@ public static class CatalogEndpoints
             pageSize = 24;
         pageSize = Math.Min(pageSize, 100);
 
+        var productTypeId = req.Query["productTypeId"].ToString().Trim();
+        if (string.IsNullOrEmpty(productTypeId))
+            productTypeId = null;
+        else if (productTypeId.Length > 64)
+            productTypeId = productTypeId[..64];
+
+        var excludeProductTypeId = req.Query["excludeProductTypeId"].ToString().Trim();
+        if (string.IsNullOrEmpty(excludeProductTypeId))
+            excludeProductTypeId = null;
+        else if (excludeProductTypeId.Length > 64)
+            excludeProductTypeId = excludeProductTypeId[..64];
+        if (productTypeId is not null)
+            excludeProductTypeId = null;
+
         var scope = CatalogListingQueries.ResolveCategoryScope(db, tenantId, categoryIdQ, includeSubtree);
         var facetPairs = CatalogListingQueries.ParseFacetFilters(filters);
 
         var now = DateTimeOffset.UtcNow;
-        var baseQ = CatalogListingQueries.BaseProductQuery(db, tenantId, scope, collectionIdQ, search, now, slug);
+        var baseQ = CatalogListingQueries.BaseProductQuery(
+            db, tenantId, scope, collectionIdQ, search, now, slug, productTypeId, excludeProductTypeId);
         var filtered = CatalogListingQueries.ApplyFacetFilters(db, baseQ, facetPairs);
         var sorted = CatalogListingQueries.ApplySort(filtered, sort);
 
@@ -174,7 +412,8 @@ public static class CatalogEndpoints
                 p.Currency,
                 p.PublishedAt,
                 p.CommerceJson,
-                p.VendorPortalUserId
+                p.VendorPortalUserId,
+                p.ProductTypeId
             })
             .ToListAsync(ct);
 
@@ -228,7 +467,8 @@ public static class CatalogEndpoints
                 offerMinor,
                 imageIndicators,
                 vendorCode,
-                skuCodes);
+                skuCodes,
+                r.ProductTypeId);
         }).ToList();
 
         return Results.Ok(new PagedProductsResponse(view, page, pageSize, total, items));
@@ -251,8 +491,25 @@ public static class CatalogEndpoints
         if (slug.Length == 0 && id.Length == 0)
             return Results.BadRequest(new { error = "Provide slug or id." });
 
-        var dto = await CatalogProductDetailAssembler.BuildForActiveCatalogAsync(db, tenantId, id, slug, ct);
+        var productTypeId = req.Query["productTypeId"].ToString().Trim();
+        if (string.IsNullOrEmpty(productTypeId))
+            productTypeId = null;
+        else if (productTypeId.Length > 64)
+            productTypeId = productTypeId[..64];
+
+        var excludeProductTypeId = req.Query["excludeProductTypeId"].ToString().Trim();
+        if (string.IsNullOrEmpty(excludeProductTypeId))
+            excludeProductTypeId = null;
+        else if (excludeProductTypeId.Length > 64)
+            excludeProductTypeId = excludeProductTypeId[..64];
+
+        var dto = await CatalogProductDetailAssembler.BuildForActiveCatalogAsync(db, tenantId, id, slug, productTypeId, ct);
         if (dto is null)
+            return Results.NotFound();
+
+        if (excludeProductTypeId is not null
+            && !string.IsNullOrEmpty(dto.ProductTypeId)
+            && string.Equals(dto.ProductTypeId, excludeProductTypeId, StringComparison.Ordinal))
             return Results.NotFound();
 
         return Results.Ok(dto);
@@ -582,7 +839,8 @@ public static class CatalogEndpoints
 
         var scope = CatalogListingQueries.ResolveCategoryScope(db, tenantId, categoryId, includeSubtree);
         var now = DateTimeOffset.UtcNow;
-        var baseQ = CatalogListingQueries.BaseProductQuery(db, tenantId, scope, collectionId, search, now, slug: null);
+        var baseQ = CatalogListingQueries.BaseProductQuery(
+            db, tenantId, scope, collectionId, search, now, slug: null, productTypeId: null, excludeProductTypeId: null);
 
         var defs = await db.AttributeDefs.AsNoTracking()
             .Where(d => d.TenantId == tenantId && d.Filterable)

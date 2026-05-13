@@ -47,7 +47,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:5179", "http://127.0.0.1:5179",
                 "http://localhost:5180", "http://127.0.0.1:5180",
                 "http://localhost:5181", "http://127.0.0.1:5181",
-                "http://localhost:5182", "http://127.0.0.1:5182"
+                "http://localhost:5182", "http://127.0.0.1:5182",
+                "http://localhost:5183", "http://127.0.0.1:5183"
             ];
         policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
     });
@@ -87,18 +88,30 @@ if (app.Environment.IsDevelopment())
             await db.SaveChangesAsync();
         }
 
+        await CommerceDevDataSeeder.EnsureConfigurableLookupSeedAsync(db);
+        await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
+        await CommerceDevDataSeeder.RemoveGroceryProduceDairyDemoDepartmentValuesAsync(db, CancellationToken.None);
+        await CommerceDevDataSeeder.EnsureDevSareeProductCategoryLookupsAsync(db);
+        await CommerceDevDataSeeder.EnsureProductCategoryLookupParentTypesAsync(db);
         await CommerceDevDataSeeder.SeedAsync(db);
         await CommerceDevDataSeeder.EnsureOperationalSeedAsync(db);
         await CommerceDevDataSeeder.EnsureDemoProductCardPricingAsync(db);
         await CommerceDevDataSeeder.EnsureDemoProductColorGalleryAsync(db);
-        await CommerceDevDataSeeder.EnsureConfigurableLookupSeedAsync(db);
         await CommerceDevDataSeeder.EnsureKalamkariCategoryAsync(db);
-        await CommerceDevDataSeeder.EnsureProductCategoryLookupMirrorsCatalogAsync(db);
-        await CommerceDevDataSeeder.EnsureStorefrontSponsoredDevSeedAsync(db);
+        await CommerceDevDataSeeder.EnsureLegacySareeProductTypeAsync(db);
 
         var mediaRootForSeed = Path.GetFullPath(Path.Combine(
             app.Environment.ContentRootPath,
             builder.Configuration.GetSection("Media").Get<LocalMediaStorageOptions>()?.RootPath ?? "uploads/media"));
+        await CommerceDevDataSeeder.EnsureGroceryCatalogDevSeedAsync(db, mediaRootForSeed);
+
+        await CommerceDevDataSeeder.EnsureProductCategoryLookupParentTypesAsync(db);
+        await CommerceDevDataSeeder.EnsureStorefrontSponsoredDevSeedAsync(db);
+
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<PortalUser>>();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        await CommerceDevDataSeeder.EnsureDevSiteAdminAsync(db, passwordHasher, configuration, bootstrapLogger, CancellationToken.None);
+
         CommerceDevDataSeeder.EnsureSeedHeroMediaBlobExists(mediaRootForSeed);
 
         await audit.RecordAsync(
@@ -138,6 +151,7 @@ app.MapMediaV1();
 app.MapLocationsAndInventoryV1();
 app.MapCatalogV1();
 app.MapStorefrontSponsoredV1();
+app.MapAdminPortalV1();
 app.MapLookupsV1();
 app.MapVendorProductsV1();
 app.MapVendorProductWorkspaceV1();

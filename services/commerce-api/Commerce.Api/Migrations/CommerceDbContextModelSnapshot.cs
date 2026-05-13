@@ -163,39 +163,6 @@ namespace Commerce.Api.Migrations
                     b.ToTable("audit_logs", (string)null);
                 });
 
-            modelBuilder.Entity("Commerce.Api.Entities.Category", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("ParentId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("TenantId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId", "ParentId");
-
-                    b.HasIndex("TenantId", "Slug")
-                        .IsUnique();
-
-                    b.ToTable("categories", (string)null);
-                });
-
             modelBuilder.Entity("Commerce.Api.Entities.Collection", b =>
                 {
                     b.Property<string>("Id")
@@ -379,6 +346,10 @@ namespace Commerce.Api.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("ImageStorageKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
                     b.Property<string>("Label")
                         .IsRequired()
                         .HasMaxLength(512)
@@ -386,6 +357,10 @@ namespace Commerce.Api.Migrations
 
                     b.Property<string>("LookupTypeId")
                         .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("MerchandisingParentId")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
@@ -402,6 +377,8 @@ namespace Commerce.Api.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MerchandisingParentId");
 
                     b.HasIndex("ParentValueId");
 
@@ -463,6 +440,11 @@ namespace Commerce.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("LoginDisabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("NormalizedEmail")
                         .IsRequired()
@@ -926,6 +908,11 @@ namespace Commerce.Api.Migrations
 
             modelBuilder.Entity("Commerce.Api.Entities.LookupValue", b =>
                 {
+                    b.HasOne("Commerce.Api.Entities.LookupValue", "MerchandisingParent")
+                        .WithMany()
+                        .HasForeignKey("MerchandisingParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Commerce.Api.Entities.LookupValue", "ParentValue")
                         .WithMany()
                         .HasForeignKey("ParentValueId")
@@ -939,12 +926,14 @@ namespace Commerce.Api.Migrations
 
                     b.Navigation("LookupType");
 
+                    b.Navigation("MerchandisingParent");
+
                     b.Navigation("ParentValue");
                 });
 
             modelBuilder.Entity("Commerce.Api.Entities.ProductCategory", b =>
                 {
-                    b.HasOne("Commerce.Api.Entities.Category", "Category")
+                    b.HasOne("Commerce.Api.Entities.LookupValue", "CategoryLookup")
                         .WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -956,7 +945,7 @@ namespace Commerce.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Category");
+                    b.Navigation("CategoryLookup");
 
                     b.Navigation("Product");
                 });
