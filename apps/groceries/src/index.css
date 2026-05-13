@@ -930,3 +930,116 @@ code {
     transform: none;
   }
 }
+
+/* Category browse + search results (shared product grid) */
+.browse-page--fullwidth {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2.5rem;
+}
+
+.browse-page__crumb {
+  font-size: 0.8125rem;
+  margin-bottom: 1rem;
+  color: var(--g-muted);
+}
+
+.browse-page__crumb a {
+  color: var(--g-accent);
+  text-decoration: none;
+}
+
+.browse-page__crumb a:hover {
+  text-decoration: underline;
+}
+
+.browse-page__header {
+  margin-bottom: 1.25rem;
+}
+
+.browse-page__title {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.35rem, 3.2vw, 1.65rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--g-ink);
+}
+
+.browse-page__lede {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--g-muted);
+}
+
+.browse-page__loading,
+.browse-page__empty,
+.browse-page__error {
+  font-size: 0.9rem;
+  color: var(--g-muted);
+}
+
+.browse-page__error {
+  color: #b00020;
+}
+
+.browse-product-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+}
+
+.browse-product-grid__cell {
+  min-width: 0;
+  display: flex;
+}
+
+.browse-product-grid__cell > .grocery-landing-product-card {
+  flex: 1;
+  width: 100%;
+}
+
+/* Room for full “Add to cart” label on wider grid cells */
+.browse-product-grid .grocery-landing-product-card__add {
+  font-size: 0.78rem;
+  padding: 0.48rem 0.45rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.search-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2.5rem;
+}
+
+.search-page .browse-product-grid {
+  margin-top: 1.25rem;
+}
+
+.search-page__form-panel {
+  margin-bottom: 1rem;
+}
+
+.search-page__active-filters {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: var(--g-muted);
+}
+
+.search-page__error {
+  color: #b00020;
+  font-size: 0.9rem;
+}
+
+.search-page__empty {
+  color: var(--g-muted);
+  font-size: 0.9rem;
+}

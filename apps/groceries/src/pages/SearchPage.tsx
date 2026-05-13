@@ -1,9 +1,7 @@
 import { JsonForm } from "@webkitfxv2/react-renderer";
 import { getAtPath, type FormDefinition } from "@webkitfxv2/core-engine";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { CatalogProductVisual } from "../components/CatalogProductVisual.js";
-import { ProductCardPrices } from "../components/ProductCardPrices.js";
+import { CatalogGridProductCard } from "../components/CatalogGridProductCard.js";
 import { searchFiltersForm } from "../config/forms/index.js";
 import { getShell } from "../config/getShell.js";
 import { listCatalogProducts, type CatalogProductCard } from "../lib/commerceApi.js";
@@ -103,29 +101,8 @@ export function SearchPage() {
       {items.length > 0 ? (
         <ul className="browse-product-grid">
           {items.map((item) => (
-            <li key={item.id}>
-              <Link className="browse-product-card" to={`/p/${encodeURIComponent(item.slug || item.id)}`}>
-                <div className="browse-product-card__media">
-                  <CatalogProductVisual
-                    storageKey={item.heroStorageKey}
-                    alt={item.titleDisplay}
-                    imageIndicators={item.imageIndicators}
-                    vendorCode={item.vendorCode}
-                    skuCodes={item.skuCodes}
-                  />
-                </div>
-                <div className="browse-product-card__body">
-                  <h3 className="browse-product-card__title">{item.titleDisplay}</h3>
-                  <ProductCardPrices
-                    minPriceMinor={item.minPriceMinor}
-                    currency={item.currency}
-                    listPriceMinor={item.listPriceMinor}
-                    offerPriceMinor={item.offerPriceMinor}
-                    offerType={item.offerType}
-                    offerCardText={item.offerCardText}
-                  />
-                </div>
-              </Link>
+            <li key={item.id} className="browse-product-grid__cell">
+              <CatalogGridProductCard product={item} />
             </li>
           ))}
         </ul>

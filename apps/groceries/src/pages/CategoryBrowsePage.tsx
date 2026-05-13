@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CatalogProductVisual } from "../components/CatalogProductVisual.js";
-import { ProductCardPrices } from "../components/ProductCardPrices.js";
+import { CatalogGridProductCard } from "../components/CatalogGridProductCard.js";
 import {
   formatCommerceApiError,
   listCatalogCategories,
@@ -124,29 +123,8 @@ export function CategoryBrowsePage() {
       ) : (
         <ul className="browse-product-grid">
           {products.map((p) => (
-            <li key={p.id}>
-              <Link to={`/p/${encodeURIComponent(p.slug)}`} className="browse-product-card">
-                <div className="browse-product-card__media">
-                  <CatalogProductVisual
-                    storageKey={p.heroStorageKey}
-                    imageIndicators={p.imageIndicators}
-                    vendorCode={p.vendorCode}
-                    skuCodes={p.skuCodes}
-                  />
-                </div>
-                <div className="browse-product-card__body">
-                  <h2 className="browse-product-card__title">{p.titleDisplay}</h2>
-                  <ProductCardPrices
-                    className="browse-product-card__prices"
-                    minPriceMinor={p.minPriceMinor}
-                    currency={p.currency}
-                    listPriceMinor={p.listPriceMinor}
-                    offerPriceMinor={p.offerPriceMinor}
-                    offerType={p.offerType}
-                    offerCardText={p.offerCardText}
-                  />
-                </div>
-              </Link>
+            <li key={p.id} className="browse-product-grid__cell">
+              <CatalogGridProductCard product={p} />
             </li>
           ))}
         </ul>

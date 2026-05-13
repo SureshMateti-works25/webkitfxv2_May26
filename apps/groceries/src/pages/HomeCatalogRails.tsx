@@ -10,8 +10,7 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import { useCart, type CartLine } from "../cart/CartContext.js";
-import { CatalogProductVisual } from "../components/CatalogProductVisual.js";
-import { ProductCardPrices } from "../components/ProductCardPrices.js";
+import { CatalogGridProductCard } from "../components/CatalogGridProductCard.js";
 import {
   formatCommerceApiError,
   getCommerceLookupBundle,
@@ -27,7 +26,6 @@ import {
 } from "../lib/commerceApi.js";
 import { sortedCommerceLookupValues } from "../lib/lookupFormBindings.js";
 import { readRecentVisits, RECENT_VISITS_EVENT } from "../lib/recentVisits.js";
-import { snapshotCardUnitPriceMinor } from "../lib/storefrontCartAccess.js";
 
 const MAX_CATEGORY_RAILS = 24;
 const RAIL_PAGE_SIZE = 16;
@@ -379,74 +377,6 @@ function BrowseCategoryCircleTile({ category }: { category: CatalogCategoryRow }
         else setShowPlaceholder(true);
       }}
     />
-  );
-}
-
-function GroceryLandingProductCard({ product }: { product: CatalogProductCard }) {
-  const { addOrMergeLine } = useCart();
-  const [addedFlash, setAddedFlash] = useState(false);
-  const deal = isDealProduct(product);
-
-  const onAdd = useCallback(
-    (e: MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const codes = (product.skuCodes ?? []).map((c) => c.trim()).filter(Boolean);
-      const skuCode = codes.length > 0 ? codes[0]! : null;
-      addOrMergeLine({
-        productId: product.id,
-        slug: product.slug,
-        titleDisplay: product.titleDisplay,
-        skuId: null,
-        skuCode: skuCode,
-        quantity: 1,
-        unitPriceMinor: snapshotCardUnitPriceMinor(product),
-        currency: product.currency,
-        heroStorageKey: product.heroStorageKey?.trim() || null,
-        vendorCode: product.vendorCode?.trim() || null,
-      });
-      setAddedFlash(true);
-      window.setTimeout(() => setAddedFlash(false), 1400);
-    },
-    [addOrMergeLine, product]
-  );
-
-  return (
-    <div className={`grocery-landing-product-card${deal ? " grocery-landing-product-card--deal" : ""}`}>
-      {deal ? (
-        <span className="grocery-landing-product-card__deal-badge" aria-label="Deal">
-          Deal
-        </span>
-      ) : null}
-      <Link to={`/p/${encodeURIComponent(product.slug)}`} className="grocery-landing-product-card__link">
-        <div className="grocery-landing-product-card__media">
-          <CatalogProductVisual
-            storageKey={product.heroStorageKey}
-            imageIndicators={product.imageIndicators}
-            vendorCode={product.vendorCode}
-            skuCodes={product.skuCodes}
-          />
-        </div>
-        <ProductCardPrices
-          className="grocery-landing-product-card__prices"
-          minPriceMinor={product.minPriceMinor}
-          currency={product.currency}
-          listPriceMinor={product.listPriceMinor}
-          offerPriceMinor={product.offerPriceMinor}
-          offerType={product.offerType}
-          offerCardText={product.offerCardText}
-        />
-        <p className="grocery-landing-product-card__title">{product.titleDisplay}</p>
-      </Link>
-      <button
-        type="button"
-        className="grocery-landing-product-card__add"
-        onClick={onAdd}
-        aria-label={`Add ${product.titleDisplay} to cart`}
-      >
-        {addedFlash ? "Added" : "Add"}
-      </button>
-    </div>
   );
 }
 
@@ -827,7 +757,7 @@ export function HomeCatalogRails() {
           seeAllHref={browseAllHref}
           products={deals}
           emptyHint="No active deals in the catalogue right now."
-          renderProduct={(item) => <GroceryLandingProductCard product={item as CatalogProductCard} />}
+          renderProduct={(item) => <CatalogGridProductCard product={item as CatalogProductCard} compactAddLabel />}
         />
 
         <GroceryCarouselRail
@@ -837,7 +767,7 @@ export function HomeCatalogRails() {
           seeAllHref={browseAllHref}
           products={trending}
           emptyHint="No trending picks yet."
-          renderProduct={(item) => <GroceryLandingProductCard product={item as CatalogProductCard} />}
+          renderProduct={(item) => <CatalogGridProductCard product={item as CatalogProductCard} compactAddLabel />}
         />
 
         <GroceryCarouselRail
@@ -846,7 +776,7 @@ export function HomeCatalogRails() {
           seeAllHref={browseAllHref}
           products={recent}
           emptyHint="No products yet. Check back soon."
-          renderProduct={(item) => <GroceryLandingProductCard product={item as CatalogProductCard} />}
+          renderProduct={(item) => <CatalogGridProductCard product={item as CatalogProductCard} compactAddLabel />}
         />
 
         {departmentBlocks.map(({ department, rails }, blockIdx) => (
@@ -865,7 +795,7 @@ export function HomeCatalogRails() {
                 seeAllHref={`/browse/${encodeURIComponent(category.slug)}`}
                 products={items}
                 emptyHint={`No listings in ${category.label} yet.`}
-                renderProduct={(item) => <GroceryLandingProductCard product={item as CatalogProductCard} />}
+                renderProduct={(item) => <CatalogGridProductCard product={item as CatalogProductCard} compactAddLabel />}
               />
             ))}
           </div>
@@ -878,7 +808,7 @@ export function HomeCatalogRails() {
           seeAllHref={browseAllHref}
           products={visited}
           emptyHint="Open a product page to build your history here."
-          renderProduct={(item) => <GroceryLandingProductCard product={item as CatalogProductCard} />}
+          renderProduct={(item) => <CatalogGridProductCard product={item as CatalogProductCard} compactAddLabel />}
         />
       </div>
     </div>
