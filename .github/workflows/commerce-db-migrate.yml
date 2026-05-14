@@ -38,13 +38,12 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Restore NuGet packages
-        run: dotnet restore services/commerce-api/Commerce.Api/Commerce.Api.csproj
-
       - name: Install EF CLI
         run: dotnet tool install --global dotnet-ef --version 10.0.8
 
-      - name: Apply migrations
+      # Restore + build in the same step as `dotnet ef` so project.assets.json always exists (avoids NETSDK1004
+      # if an older workflow revision omitted a separate restore step or jobs are refactored later).
+      - name: Restore, build, and apply migrations
         env:
           CONNECTION_STRING: ${{ secrets.COMMERCE_DATABASE_CONNECTION_STRING }}
         run: |
@@ -54,12 +53,19 @@ jobs:
             exit 1
           fi
           export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet restore services/WebkitFx.Platform/WebkitFx.Platform.csproj
+          dotnet restore services/commerce-api/Commerce.Api/Commerce.Api.csproj
+          dotnet build services/commerce-api/Commerce.Api/Commerce.Api.csproj -c Release --no-restore
           if [ -n "${{ inputs.target_migration }}" ]; then
             dotnet ef database update "${{ inputs.target_migration }}" \
               --project services/commerce-api/Commerce.Api/Commerce.Api.csproj \
+              --startup-project services/commerce-api/Commerce.Api/Commerce.Api.csproj \
+              --configuration Release \
               --connection "$CONNECTION_STRING"
           else
             dotnet ef database update \
               --project services/commerce-api/Commerce.Api/Commerce.Api.csproj \
+              --startup-project services/commerce-api/Commerce.Api/Commerce.Api.csproj \
+              --configuration Release \
               --connection "$CONNECTION_STRING"
           fi

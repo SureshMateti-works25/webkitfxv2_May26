@@ -30,6 +30,7 @@ jobs:
 
       - name: Restore and publish
         run: |
+          dotnet restore services/WebkitFx.Platform/WebkitFx.Platform.csproj
           dotnet restore services/commerce-api/Commerce.Api/Commerce.Api.csproj
           dotnet publish services/commerce-api/Commerce.Api/Commerce.Api.csproj -c Release --no-restore -o "${{ github.workspace }}/publish"
 

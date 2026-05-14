@@ -25,12 +25,7 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Restore NuGet packages
-        run: |
-          dotnet restore services/commerce-api/Commerce.Api/Commerce.Api.csproj
-          dotnet restore services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj
-
-      - name: Run Commerce.OneTimeSeed
+      - name: Restore, build, and run Commerce.OneTimeSeed
         env:
           ConnectionStrings__Commerce: ${{ secrets.COMMERCE_DATABASE_CONNECTION_STRING }}
           SEED_MEDIA_ROOT: ${{ github.workspace }}/.seed-media
@@ -41,7 +36,12 @@ jobs:
             exit 1
           fi
           mkdir -p .seed-media
-          dotnet run --project services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj -c Release
+          dotnet restore services/WebkitFx.Platform/WebkitFx.Platform.csproj
+          dotnet restore services/commerce-api/Commerce.Api/Commerce.Api.csproj
+          dotnet restore services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj
+          dotnet build services/commerce-api/Commerce.Api/Commerce.Api.csproj -c Release --no-restore
+          dotnet build services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj -c Release --no-restore
+          dotnet run --project services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj -c Release --no-build
 
       - name: Upload media folder for App Service
         uses: actions/upload-artifact@v4
