@@ -81,8 +81,10 @@ public static class CatalogEndpoints
                 // When ParentLookupTypeId is product_departments, ParentValueId is a department id instead — still scope
                 // the storefront by categories that have active products of this type (plus legacy parent match,
                 // merchandising ancestors, and other categories under the same lookup parent). Optional
-                // includeDepartmentCategoryShell=true adds every category parented on product_departments (except
-                // dept_pt_saree when filtering pt_grocery) so department browse can list empty aisles.
+                // includeDepartmentCategoryShell=true adds department-backed category rows. For pt_grocery, every
+                // product_departments parent is included (except dept_pt_saree). For other product types (e.g. pt_saree),
+                // only departments already referenced by the scoped category set are expanded so other verticals
+                // do not appear on the storefront.
                 var productCategoryIds = await (
                     from pc in db.ProductCategories.AsNoTracking()
                     join p in db.Products.AsNoTracking() on pc.ProductId equals p.Id
@@ -154,12 +156,41 @@ public static class CatalogEndpoints
                     if (string.Equals(productTypeFilter, "pt_grocery", StringComparison.Ordinal))
                         excludedDepartments.Add("dept_pt_saree");
 
-                    foreach (var c in allCatsForFilter)
+                    // Grocery Fresh: show every department-backed aisle (minus excluded ids) so empty shelves still appear.
+                    // Other product types (e.g. pt_saree): only expand shells for departments already tied to this scope,
+                    // otherwise unrelated departments (Atta, Bath, …) leak in because their ids do not contain "grocery".
+                    var usePermissiveDepartmentShell =
+                        string.Equals(productTypeFilter, "pt_grocery", StringComparison.Ordinal);
+
+                    if (usePermissiveDepartmentShell)
                     {
-                        var pv = c.ParentValueId;
-                        if (string.IsNullOrEmpty(pv) || !deptParentSet.Contains(pv) || excludedDepartments.Contains(pv))
-                            continue;
-                        includedForIncludeAll.Add(c.Id);
+                        foreach (var c in allCatsForFilter)
+                        {
+                            var pv = c.ParentValueId;
+                            if (string.IsNullOrEmpty(pv) || !deptParentSet.Contains(pv) || excludedDepartments.Contains(pv))
+                                continue;
+                            includedForIncludeAll.Add(c.Id);
+                        }
+                    }
+                    else
+                    {
+                        var deptShellParents = new HashSet<string>(StringComparer.Ordinal);
+                        foreach (var c in allCatsForFilter)
+                        {
+                            if (!includedForIncludeAll.Contains(c.Id))
+                                continue;
+                            var pv = c.ParentValueId;
+                            if (!string.IsNullOrEmpty(pv) && deptParentSet.Contains(pv))
+                                deptShellParents.Add(pv);
+                        }
+
+                        foreach (var c in allCatsForFilter)
+                        {
+                            var pv = c.ParentValueId;
+                            if (string.IsNullOrEmpty(pv) || !deptParentSet.Contains(pv) || !deptShellParents.Contains(pv))
+                                continue;
+                            includedForIncludeAll.Add(c.Id);
+                        }
                     }
                 }
 

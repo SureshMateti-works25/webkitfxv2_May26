@@ -19,9 +19,14 @@ export type CatalogGridProductCardProps = {
   product: CatalogProductCard;
   /** Narrow carousel tiles: shorter button label ("Add"). */
   compactAddLabel?: boolean;
+  /**
+   * `grocery` — groceries landing / grid chrome.
+   * `storefront` — Nistta saree card chrome (`.storefront-product-card--with-actions`).
+   */
+  skin?: "grocery" | "storefront";
 };
 
-export function CatalogGridProductCard({ product, compactAddLabel }: CatalogGridProductCardProps) {
+export function CatalogGridProductCard({ product, compactAddLabel, skin = "grocery" }: CatalogGridProductCardProps) {
   const { addOrMergeLine } = useCart();
   const [addedFlash, setAddedFlash] = useState(false);
   const deal = isDealProduct(product);
@@ -51,6 +56,52 @@ export function CatalogGridProductCard({ product, compactAddLabel }: CatalogGrid
   );
 
   const addLabel = compactAddLabel ? "Add" : "Add to cart";
+
+  if (skin === "storefront") {
+    return (
+      <div
+        className={`storefront-product-card storefront-product-card--with-actions${
+          deal ? " storefront-product-card--deal" : ""
+        }`}
+      >
+        {deal ? (
+          <span className="storefront-product-card__deal-badge" aria-label="Deal">
+            Deal
+          </span>
+        ) : null}
+        <Link to={`/p/${encodeURIComponent(product.slug)}`} className="storefront-product-card__main">
+          <div className="storefront-product-card__media">
+            <CatalogProductVisual
+              storageKey={product.heroStorageKey}
+              alt={product.titleDisplay}
+              imageIndicators={product.imageIndicators}
+              vendorCode={product.vendorCode}
+              skuCodes={product.skuCodes}
+            />
+          </div>
+          <div className="storefront-product-card__body">
+            <h3 className="storefront-product-card__title">{product.titleDisplay}</h3>
+            <ProductCardPrices
+              minPriceMinor={product.minPriceMinor}
+              currency={product.currency}
+              listPriceMinor={product.listPriceMinor}
+              offerPriceMinor={product.offerPriceMinor}
+              offerType={product.offerType}
+              offerCardText={product.offerCardText}
+            />
+          </div>
+        </Link>
+        <button
+          type="button"
+          className="storefront-product-card__add"
+          onClick={onAdd}
+          aria-label={`Add ${product.titleDisplay} to cart`}
+        >
+          {addedFlash ? "Added" : addLabel}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={`grocery-landing-product-card${deal ? " grocery-landing-product-card--deal" : ""}`}>

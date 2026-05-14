@@ -55,6 +55,25 @@ public static class LookupEndpoints
     private static LookupValueResponse ToDto(LookupValue v) =>
         new(v.Id, v.LookupTypeId, v.Code, v.Label, v.SortOrder, v.ParentValueId, v.ImageStorageKey);
 
+    /// <summary>Maps legacy URL segment <c>product_department</c> to <c>product_departments</c> when only the plural type exists.</summary>
+    private static async Task<string> ResolveLegacyProductDepartmentTypeIdAsync(
+        CommerceDbContext db,
+        string tenantId,
+        string lookupTypeId,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(lookupTypeId))
+            return lookupTypeId;
+        var id = lookupTypeId.Trim();
+        if (!string.Equals(id, "product_department", StringComparison.Ordinal))
+            return id;
+        if (await db.LookupTypes.AsNoTracking().AnyAsync(t => t.TenantId == tenantId && t.Id == id, ct))
+            return id;
+        if (await db.LookupTypes.AsNoTracking().AnyAsync(t => t.TenantId == tenantId && t.Id == "product_departments", ct))
+            return "product_departments";
+        return id;
+    }
+
     /// <summary>Sanitize optional media path; rejects traversal.</summary>
     private static string? NormalizeLookupImageStorageKey(string? raw)
     {
@@ -99,6 +118,8 @@ public static class LookupEndpoints
         if (tenantFail is not null)
             return tenantFail;
         var tenantId = request.ResolveTenantId(tenantContext)!;
+
+        lookupTypeId = await ResolveLegacyProductDepartmentTypeIdAsync(db, tenantId, lookupTypeId, ct);
 
         if (!await db.LookupTypes.AsNoTracking().AnyAsync(t => t.TenantId == tenantId && t.Id == lookupTypeId, ct))
             return Results.NotFound(new { error = "unknown_lookup_type", lookupTypeId });
@@ -286,6 +307,8 @@ public static class LookupEndpoints
         var tenantId = request.ResolveTenantId(tenantContext)!;
         if (string.IsNullOrWhiteSpace(ActorId(user)))
             return Results.Unauthorized();
+
+        lookupTypeId = await ResolveLegacyProductDepartmentTypeIdAsync(db, tenantId, lookupTypeId, ct);
 
         var type = await db.LookupTypes.AsNoTracking()
             .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.Id == lookupTypeId, ct);

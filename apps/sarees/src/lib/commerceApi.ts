@@ -176,6 +176,12 @@ async function readCommerceErrorMessage(res: Response): Promise<string> {
   return `Request failed (${res.status})`;
 }
 
+/** Legacy `lookup_types.id`; Commerce.Api uses `product_departments` after seed migration. */
+export function commerceLookupTypeIdForTypePath(lookupTypeId: string): string {
+  const id = lookupTypeId.trim();
+  return id === "product_department" ? "product_departments" : id;
+}
+
 export type CatalogCategoryRow = {
   id: string;
   parentId: string | null;
@@ -256,7 +262,7 @@ export async function listCommerceLookupTypes(): Promise<CommerceLookupTypeDto[]
 
 export async function listCommerceLookupValues(lookupTypeId: string): Promise<CommerceLookupValueDto[]> {
   const res = await fetch(
-    `${BASE}/api/v1/lookups/types/${encodeURIComponent(lookupTypeId.trim())}/values`,
+    `${BASE}/api/v1/lookups/types/${encodeURIComponent(commerceLookupTypeIdForTypePath(lookupTypeId))}/values`,
     { cache: "no-store", headers: commerceTenantHeaders() }
   );
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
@@ -295,7 +301,7 @@ export async function upsertCommerceLookupType(
   body: UpsertCommerceLookupTypeBody
 ): Promise<CommerceLookupTypeDto> {
   const res = await fetch(
-    `${BASE}/api/v1/lookups/types/${encodeURIComponent(lookupTypeId.trim())}`,
+    `${BASE}/api/v1/lookups/types/${encodeURIComponent(commerceLookupTypeIdForTypePath(lookupTypeId))}`,
     {
       method: "PUT",
       headers: commerceAuthorizedHeaders(accessToken),
@@ -308,7 +314,7 @@ export async function upsertCommerceLookupType(
 
 export async function deleteCommerceLookupType(accessToken: string, lookupTypeId: string): Promise<void> {
   const res = await fetch(
-    `${BASE}/api/v1/lookups/types/${encodeURIComponent(lookupTypeId.trim())}`,
+    `${BASE}/api/v1/lookups/types/${encodeURIComponent(commerceLookupTypeIdForTypePath(lookupTypeId))}`,
     { method: "DELETE", headers: commerceAuthorizedHeaders(accessToken) }
   );
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
@@ -328,7 +334,7 @@ export async function createCommerceLookupValue(
   body: CreateCommerceLookupValueBody
 ): Promise<CommerceLookupValueDto> {
   const res = await fetch(
-    `${BASE}/api/v1/lookups/types/${encodeURIComponent(lookupTypeId.trim())}/values`,
+    `${BASE}/api/v1/lookups/types/${encodeURIComponent(commerceLookupTypeIdForTypePath(lookupTypeId))}/values`,
     {
       method: "POST",
       headers: commerceAuthorizedHeaders(accessToken),

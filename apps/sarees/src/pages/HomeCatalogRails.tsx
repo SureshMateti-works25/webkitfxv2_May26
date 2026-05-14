@@ -1,7 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { Link } from "react-router-dom";
-import { CatalogProductVisual } from "../components/CatalogProductVisual.js";
-import { ProductCardPrices } from "../components/ProductCardPrices.js";
+import { CatalogGridProductCard } from "../components/CatalogGridProductCard.js";
 import {
   formatCommerceApiError,
   listCatalogCategories,
@@ -64,33 +63,6 @@ function categoriesForProductRails(cats: CatalogCategoryRow[]): CatalogCategoryR
   return out;
 }
 
-function StorefrontProductCard({ product }: { product: CatalogProductCard }) {
-  return (
-    <Link to={`/p/${encodeURIComponent(product.slug)}`} className="storefront-product-card">
-      <div className="storefront-product-card__media">
-        <CatalogProductVisual
-          storageKey={product.heroStorageKey}
-          imageIndicators={product.imageIndicators}
-          vendorCode={product.vendorCode}
-          skuCodes={product.skuCodes}
-        />
-      </div>
-      <div className="storefront-product-card__body">
-        <h3 className="storefront-product-card__title">{product.titleDisplay}</h3>
-        <ProductCardPrices
-          className="storefront-product-card__prices"
-          minPriceMinor={product.minPriceMinor}
-          currency={product.currency}
-          listPriceMinor={product.listPriceMinor}
-          offerPriceMinor={product.offerPriceMinor}
-          offerType={product.offerType}
-          offerCardText={product.offerCardText}
-        />
-      </div>
-    </Link>
-  );
-}
-
 function ProductRail({
   title,
   subtitle,
@@ -127,7 +99,7 @@ function ProductRail({
         <div className="storefront-rail">
           {products.map((p) => (
             <div key={p.id} className="storefront-rail__cell">
-              <StorefrontProductCard product={p} />
+              <CatalogGridProductCard product={p} compactAddLabel skin="storefront" />
             </div>
           ))}
         </div>

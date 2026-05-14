@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { useCart, type CartLine } from "../cart/CartContext.js";
 import { CatalogGridProductCard } from "../components/CatalogGridProductCard.js";
 import {
+  commerceLookupTypeIdForTypePath,
   formatCommerceApiError,
   getCommerceLookupBundle,
   listCatalogCategories,
@@ -145,9 +146,12 @@ function inferDepartmentRowsFromCategoryParents(
 /** Load `product_departments` rows: values API first, then lookup bundle (legacy type id fallback). */
 async function loadDepartmentRowsForStorefront(): Promise<CommerceLookupValueDto[]> {
   const keys = [
-    PRODUCT_DEPARTMENTS_LOOKUP_TYPE_ID.trim(),
-    "product_department",
-  ].filter((k, i, a) => k.length > 0 && a.indexOf(k) === i);
+    ...new Set(
+      [PRODUCT_DEPARTMENTS_LOOKUP_TYPE_ID.trim(), "product_departments", "product_department"]
+        .filter((k) => k.length > 0)
+        .map((k) => commerceLookupTypeIdForTypePath(k))
+    ),
+  ];
 
   for (const lookupTypeId of keys) {
     try {

@@ -145,6 +145,24 @@ async function testCatalog(accessToken) {
   if (!res.ok) fail("catalog", "locations", res, data);
   log("catalog", `locations: ${Array.isArray(data) ? data.length : "?"} rows`);
 
+  res = await fetch(`${BASE}/api/v1/lookups/types`, { headers: tenantHeaders });
+  data = await json(res);
+  if (!res.ok) fail("catalog", "lookups/types", res, data);
+  log("catalog", `lookups/types: ${Array.isArray(data) ? data.length : "?"} rows`);
+
+  res = await fetch(`${BASE}/api/v1/lookups/types/product_departments/values`, { headers: tenantHeaders });
+  data = await json(res);
+  if (!res.ok) fail("catalog", "lookups product_departments/values", res, data);
+  log("catalog", `lookups product_departments/values: ${Array.isArray(data) ? data.length : "?"} rows`);
+
+  res = await fetch(`${BASE}/api/v1/lookups/types/product_department/values`, { headers: tenantHeaders });
+  data = await json(res);
+  if (!res.ok) {
+    log("catalog", `lookups legacy product_department/values: HTTP ${res.status} (expected 200 after API deploy with alias)`);
+  } else {
+    log("catalog", `lookups legacy product_department/values: ${Array.isArray(data) ? data.length : "?"} rows (alias ok)`);
+  }
+
   if (accessToken) {
     res = await fetch(`${BASE}/api/v1/inventory/positions?skuId=sku_kj_mar_g3`, {
       headers: withBearer,

@@ -184,22 +184,12 @@ public static class CommerceDevDataSeeder
             Locale = "en-IN"
         });
 
-        db.MediaAssets.Add(new MediaAsset
-        {
-            Id = "m_kj_gallery_2",
-            TenantId = "t1",
-            StorageKey = "t1/p_kj001/hero_01.jpg",
-            MimeType = "image/jpeg",
-            Bytes = 0,
-            Checksum = null,
-            UploadedAt = now
-        });
-
+        // Second slot reuses the same blob; media_assets has a unique (TenantId, StorageKey).
         db.ProductMedia.Add(new ProductMediaRow
         {
             Id = "pm2",
             ProductId = "p_kj001",
-            MediaAssetId = "m_kj_gallery_2",
+            MediaAssetId = "m_hero1",
             Role = "gallery",
             SortOrder = 1,
             Locale = "en-IN"

@@ -1,5 +1,5 @@
 import type { AuthState } from "../auth/AuthContext.js";
-import type { CatalogProductDetail } from "./commerceApi.js";
+import type { CatalogProductCard, CatalogProductDetail } from "./commerceApi.js";
 
 /** Guests, anonymous browsers, and signed-in shoppers may use the local cart. */
 export function canUseStorefrontCart(auth: AuthState): boolean {
@@ -9,6 +9,18 @@ export function canUseStorefrontCart(auth: AuthState): boolean {
 }
 
 export function snapshotStorefrontUnitPriceMinor(product: CatalogProductDetail): number | null {
+  const sale =
+    product.offerType &&
+    product.offerType.toLowerCase() !== "none" &&
+    product.offerPriceMinor != null &&
+    Number.isFinite(product.offerPriceMinor)
+      ? product.offerPriceMinor
+      : product.minPriceMinor;
+  return sale != null && Number.isFinite(sale) ? sale : null;
+}
+
+/** Same pricing rule as PDP, for catalogue cards (rails / browse / search). */
+export function snapshotCardUnitPriceMinor(product: CatalogProductCard): number | null {
   const sale =
     product.offerType &&
     product.offerType.toLowerCase() !== "none" &&
