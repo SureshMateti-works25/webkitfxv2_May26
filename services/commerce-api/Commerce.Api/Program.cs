@@ -9,6 +9,7 @@ using Commerce.Api.Features;
 using Commerce.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Npgsql;
 using WebkitFx.Platform;
 using WebkitFx.Platform.Media;
 
@@ -22,12 +23,24 @@ builder.Services.AddScoped<AuditLogWriter>();
 builder.Services.AddExceptionHandler<EfCoreExceptionHandler>();
 builder.Services.AddWebkitFxPlatform();
 
-builder.Services.AddDbContext<CommerceDbContext>(options =>
+var commerceConnectionString = builder.Configuration.GetConnectionString("Commerce")
+    ?? throw new InvalidOperationException(
+        "Connection string 'Commerce' is missing. Use appsettings, User Secrets, or env ConnectionStrings__Commerce.");
+
+if (!builder.Environment.IsDevelopment())
 {
-    var cs = builder.Configuration.GetConnectionString("Commerce")
-        ?? throw new InvalidOperationException("Connection string 'Commerce' is missing. Use appsettings, User Secrets, or env ConnectionStrings__Commerce.");
-    options.UseNpgsql(cs);
-});
+    var csb = new NpgsqlConnectionStringBuilder(commerceConnectionString);
+    if (string.Equals(csb.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(csb.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException(
+            "Commerce API is not configured for this environment: ConnectionStrings__Commerce still points to localhost. "
+            + "In Azure Portal → your App Service → Environment variables, add ConnectionStrings__Commerce with your PostgreSQL "
+            + "connection string (Host=… from Azure Database for PostgreSQL or your server), save, and restart the app.");
+    }
+}
+
+builder.Services.AddDbContext<CommerceDbContext>(options => { options.UseNpgsql(commerceConnectionString); });
 
 builder.Services.AddCommerceJwtAuthentication(builder.Configuration);
 
@@ -62,6 +75,30 @@ builder.Services.AddCors(options =>
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// Production / staging: apply EF migrations when explicitly enabled (e.g. first deploy to private Postgres from the Web App itself).
+if (!app.Environment.IsDevelopment()
+    && string.Equals(app.Configuration["Commerce:ApplyPendingMigrations"], "true", StringComparison.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var migrateLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Commerce.Api.Bootstrap");
+    var dbMigrate = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
+    migrateLogger.LogInformation("Applying EF Core migrations (Commerce:ApplyPendingMigrations=true).");
+    await dbMigrate.Database.MigrateAsync();
+}
+
+// Production: ensure default tenant exists when flag set (empty DB after migrate).
+if (!app.Environment.IsDevelopment()
+    && string.Equals(app.Configuration["Commerce:EnsureDefaultTenant"], "true", StringComparison.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var dbTenant = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
+    if (!await dbTenant.Tenants.AnyAsync())
+    {
+        dbTenant.Tenants.Add(new Tenant { Id = "t1", Name = "Acme Sarees", Slug = "acme" });
+        await dbTenant.SaveChangesAsync();
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
