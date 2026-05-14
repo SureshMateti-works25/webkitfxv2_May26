@@ -1,0 +1,46 @@
+# Runs the same demo catalog + lookup seed as local Development, against the Postgres in COMMERCE_DATABASE_CONNECTION_STRING.
+# Also materializes tiny JPEG blobs under .seed-media/ for /media paths — download the artifact and deploy to App Service
+# (see services/commerce-api/Commerce.Api/README.md and scripts/push-commerce-seed-media-to-azure.ps1).
+#
+# Prerequisite: Postgres reachable from GitHub-hosted runners (public access + firewall), same as commerce-db-migrate.yml.
+name: Commerce one-time demo seed
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commerce-one-time-seed-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Run Commerce.OneTimeSeed
+        env:
+          ConnectionStrings__Commerce: ${{ secrets.COMMERCE_DATABASE_CONNECTION_STRING }}
+          SEED_MEDIA_ROOT: ${{ github.workspace }}/.seed-media
+        run: |
+          set -e
+          if [ -z "${ConnectionStrings__Commerce}" ]; then
+            echo "Missing secret COMMERCE_DATABASE_CONNECTION_STRING"
+            exit 1
+          fi
+          mkdir -p .seed-media
+          dotnet run --project services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj -c Release
+
+      - name: Upload media folder for App Service
+        uses: actions/upload-artifact@v4
+        with:
+          name: commerce-seed-media-for-azure
+          path: .seed-media
+          if-no-files-found: error

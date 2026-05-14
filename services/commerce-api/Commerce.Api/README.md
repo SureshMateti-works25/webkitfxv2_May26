@@ -173,3 +173,33 @@ Open solution: `services/commerce-api/Commerce.slnx`.
 **Rename note:** existing **JWTs** issued before this rename used issuer `webkitfx-catalog`; new default is `webkitfx-commerce`. Re-login after upgrade. Set `Jwt__Issuer` explicitly if you need to keep validating old tokens during a transition.
 
 See also: `services/ARCHITECTURE.md`.
+
+## One-time demo data + media (Azure or any Postgres)
+
+Production **does not** run `CommerceDevDataSeeder` on startup. To copy the **same demo catalog** you get locally (tenant `t1`, saree + grocery rows, lookups, tiny JPEGs for `/media` keys):
+
+1. **Secret** (GitHub or your shell): `COMMERCE_DATABASE_CONNECTION_STRING` or `ConnectionStrings__Commerce` — full Npgsql string to the target DB (must be reachable from where you run the tool).
+2. **From your machine** (writes DB + files under `SEED_MEDIA_ROOT`):
+
+   ```powershell
+   $env:ConnectionStrings__Commerce = "Host=....postgres.database.azure.com;...;Database=catalog;..."
+   $env:SEED_MEDIA_ROOT = "$(Resolve-Path .\services\commerce-api\Commerce.Api\uploads\media)"
+   npm run seed:commerce:remote
+   ```
+
+   If `SEED_MEDIA_ROOT` is omitted, JPEGs go under `%TEMP%\commerce-one-time-seed-media`.
+
+3. **Optional admin user** (same as local): set `DevSeed__AdminEmail` and `DevSeed__AdminPassword` in the environment before running.
+
+4. **Deploy blobs to App Service** so `/media/...` returns 200: from repo root, after seed:
+
+   ```powershell
+   .\scripts\push-commerce-seed-media-to-azure.ps1 `
+     -ResourceGroup rg-nistta-prod `
+     -WebAppName commerce-api-webkitfx-dev `
+     -LocalMediaRoot (Resolve-Path .\services\commerce-api\Commerce.Api\uploads\media)
+   ```
+
+   Or use GitHub **Actions → “Commerce one-time demo seed”**: seeds the DB and uploads an artifact **`commerce-seed-media-for-azure`** — unzip and deploy that tree under site `wwwroot` as `uploads/media` (same layout the script produces).
+
+5. **Restart** the Web App after media deploy.

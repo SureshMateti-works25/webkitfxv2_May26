@@ -35,7 +35,8 @@
     "test:commerce-api:catalog": "node scripts/commerce-api-smoke.mjs catalog",
     "test:catalog-api": "npm run test:commerce-api",
     "test:catalog-api:auth": "npm run test:commerce-api:auth",
-    "test:catalog-api:catalog": "npm run test:commerce-api:catalog"
+    "test:catalog-api:catalog": "npm run test:commerce-api:catalog",
+    "seed:commerce:remote": "dotnet run --project services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj -c Release"
   },
   "engines": {
     "node": ">=18"
