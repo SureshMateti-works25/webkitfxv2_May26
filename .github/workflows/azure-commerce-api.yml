@@ -1,0 +1,41 @@
+# Deploy Commerce.Api to Azure App Service (Linux).
+# Prerequisites in Azure: App Service (Linux), .NET 10 stack, connection strings / env vars for DB + JWT.
+# GitHub → Settings → Secrets → Actions:
+#   AZURE_WEBAPP_COMMERCE_NAME          App Service name (e.g. commerce-api-prod)
+#   AZURE_WEBAPP_PUBLISH_PROFILE_COMMERCE  Full contents of the *.PublishSettings file (download from Azure Portal → Get publish profile)
+name: Deploy Commerce.Api (Azure App Service)
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "services/commerce-api/**"
+      - "services/WebkitFx.Platform/**"
+      - ".github/workflows/azure-commerce-api.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: azure-commerce-api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore and publish
+        run: |
+          dotnet restore services/commerce-api/Commerce.Api/Commerce.Api.csproj
+          dotnet publish services/commerce-api/Commerce.Api/Commerce.Api.csproj -c Release --no-restore -o "${{ github.workspace }}/publish"
+
+      - name: Deploy to Azure Web App
+        uses: Azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_COMMERCE_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_COMMERCE }}
+          package: ${{ github.workspace }}/publish

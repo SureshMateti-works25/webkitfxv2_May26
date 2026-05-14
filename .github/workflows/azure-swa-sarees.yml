@@ -1,0 +1,56 @@
+# Deploy Nistta (sarees) to Azure Static Web Apps.
+# GitHub repo → Settings → Secrets and variables → Actions:
+#   AZURE_STATIC_WEB_APPS_API_TOKEN_SAREES  (Azure Portal → your SWA → Manage deployment token)
+#   VITE_COMMERCE_API_URL                   (public Commerce.Api base, e.g. https://api.example.com)
+# Optional:
+#   VITE_COMMERCE_TENANT_ID, VITE_CATALOG_PRODUCT_TYPE_ID, VITE_CATALOG_API_URL
+name: Deploy Sarees (Azure SWA)
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "apps/sarees/**"
+      - "packages/core-engine/**"
+      - "packages/react-renderer/**"
+      - "package-lock.json"
+      - ".github/workflows/azure-swa-sarees.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: azure-swa-sarees-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages + sarees-market
+        env:
+          VITE_COMMERCE_API_URL: ${{ secrets.VITE_COMMERCE_API_URL }}
+          VITE_CATALOG_API_URL: ${{ secrets.VITE_CATALOG_API_URL }}
+          VITE_COMMERCE_TENANT_ID: ${{ secrets.VITE_COMMERCE_TENANT_ID }}
+          VITE_CATALOG_PRODUCT_TYPE_ID: ${{ secrets.VITE_CATALOG_PRODUCT_TYPE_ID }}
+        run: npm run build:sarees
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_SAREES }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: apps/sarees/dist
+          skip_app_build: true
