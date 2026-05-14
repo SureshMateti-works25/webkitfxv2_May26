@@ -1,0 +1,80 @@
+# One-click: apply EF migrations, then run Commerce.OneTimeSeed (demo catalog + tiny /media JPEGs).
+#
+# Secret (repository → Settings → Secrets → Actions):
+#   COMMERCE_DATABASE_CONNECTION_STRING — full Npgsql connection string to Azure Postgres (database catalog).
+#
+# Network: Postgres must allow inbound from GitHub-hosted runners (public network access + firewall rule).
+#   GitHub Actions IPs are not fixed; use "Allow public access" and add 0.0.0.0–0.0.0.0 temporarily if needed,
+#   then remove after the run. For private-only servers use a self-hosted runner in the same VNet (change runs-on).
+#
+# After success:
+#   1. Download artifact "commerce-seed-media-for-azure" and deploy under App Service wwwroot as uploads/media
+#      (or run scripts/push-commerce-seed-media-to-azure.ps1 from your PC with the extracted folder as LocalMediaRoot).
+#   2. Restart the Commerce Web App.
+#
+# See: services/commerce-api/Commerce.Api/README.md (One-time demo data + media).
+name: Commerce Azure bootstrap (migrate + seed)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_migration:
+        description: "Optional EF migration id (blank = latest). Passed to dotnet ef database update."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commerce-azure-bootstrap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migrate_and_seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install EF CLI
+        run: dotnet tool install --global dotnet-ef --version 10.0.8
+
+      - name: Apply EF migrations
+        env:
+          CONNECTION_STRING: ${{ secrets.COMMERCE_DATABASE_CONNECTION_STRING }}
+        run: |
+          set -e
+          if [ -z "${CONNECTION_STRING}" ]; then
+            echo "Missing secret COMMERCE_DATABASE_CONNECTION_STRING"
+            exit 1
+          fi
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          if [ -n "${{ inputs.target_migration }}" ]; then
+            dotnet ef database update "${{ inputs.target_migration }}" \
+              --project services/commerce-api/Commerce.Api/Commerce.Api.csproj \
+              --connection "$CONNECTION_STRING"
+          else
+            dotnet ef database update \
+              --project services/commerce-api/Commerce.Api/Commerce.Api.csproj \
+              --connection "$CONNECTION_STRING"
+          fi
+
+      - name: Run demo seed (Commerce.OneTimeSeed)
+        env:
+          ConnectionStrings__Commerce: ${{ secrets.COMMERCE_DATABASE_CONNECTION_STRING }}
+          SEED_MEDIA_ROOT: ${{ github.workspace }}/.seed-media
+        run: |
+          set -e
+          mkdir -p .seed-media
+          dotnet run --project services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj -c Release
+
+      - name: Upload media folder for App Service
+        uses: actions/upload-artifact@v4
+        with:
+          name: commerce-seed-media-for-azure
+          path: .seed-media
+          if-no-files-found: error

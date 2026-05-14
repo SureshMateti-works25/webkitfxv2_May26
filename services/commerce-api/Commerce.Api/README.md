@@ -178,8 +178,16 @@ See also: `services/ARCHITECTURE.md`.
 
 Production **does not** run `CommerceDevDataSeeder` on startup. To copy the **same demo catalog** you get locally (tenant `t1`, saree + grocery rows, lookups, tiny JPEGs for `/media` keys):
 
-1. **Secret** (GitHub or your shell): `COMMERCE_DATABASE_CONNECTION_STRING` or `ConnectionStrings__Commerce` — full Npgsql string to the target DB (must be reachable from where you run the tool).
-2. **From your machine** (writes DB + files under `SEED_MEDIA_ROOT`):
+1. **GitHub secret:** `COMMERCE_DATABASE_CONNECTION_STRING` — full Npgsql string to the target Postgres (`catalog` DB). The DB must accept inbound connections from **GitHub-hosted runners** (public access + firewall; see workflow comments if using Azure).
+
+2. **Recommended — GitHub Actions (migrate + seed in one run):**  
+   **Actions → “Commerce Azure bootstrap (migrate + seed)” → Run workflow.**  
+   This applies **EF migrations**, runs **Commerce.OneTimeSeed**, then uploads artifact **`commerce-seed-media-for-azure`**.  
+   Download the artifact, deploy its contents under the App Service **`wwwroot/uploads/media`** tree (or use `scripts/push-commerce-seed-media-to-azure.ps1` locally with the extracted folder as `-LocalMediaRoot`), then **restart** the Web App.
+
+   _Smaller workflows still exist:_ “Apply Commerce DB migrations” (migrate only) and “Commerce one-time demo seed” (seed only, assumes schema is current).
+
+3. **From your machine** (writes DB + files under `SEED_MEDIA_ROOT`):
 
    ```powershell
    $env:ConnectionStrings__Commerce = "Host=....postgres.database.azure.com;...;Database=catalog;..."
@@ -189,17 +197,15 @@ Production **does not** run `CommerceDevDataSeeder` on startup. To copy the **sa
 
    If `SEED_MEDIA_ROOT` is omitted, JPEGs go under `%TEMP%\commerce-one-time-seed-media`.
 
-3. **Optional admin user** (same as local): set `DevSeed__AdminEmail` and `DevSeed__AdminPassword` in the environment before running.
+4. **Optional admin user** (same as local): set `DevSeed__AdminEmail` and `DevSeed__AdminPassword` in the environment before running the seed tool (local or add env vars to the workflow job if you extend it).
 
-4. **Deploy blobs to App Service** so `/media/...` returns 200: from repo root, after seed:
+5. **Deploy blobs to App Service** so `/media/...` returns 200 (skip if you only used the bootstrap artifact and already deployed it):
 
    ```powershell
    .\scripts\push-commerce-seed-media-to-azure.ps1 `
      -ResourceGroup rg-nistta-prod `
      -WebAppName commerce-api-webkitfx-dev `
-     -LocalMediaRoot (Resolve-Path .\services\commerce-api\Commerce.Api\uploads\media)
+     -LocalMediaRoot (Resolve-Path .\path\to\extracted\artifact\folder)
    ```
 
-   Or use GitHub **Actions → “Commerce one-time demo seed”**: seeds the DB and uploads an artifact **`commerce-seed-media-for-azure`** — unzip and deploy that tree under site `wwwroot` as `uploads/media` (same layout the script produces).
-
-5. **Restart** the Web App after media deploy.
+6. **Restart** the Web App after media deploy.
