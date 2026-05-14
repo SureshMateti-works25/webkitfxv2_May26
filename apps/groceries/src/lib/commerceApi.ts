@@ -1397,15 +1397,30 @@ export async function uploadTenantMediaAsset(accessToken: string, file: File): P
 /** Backend URL for messages (when using dev proxy, API is still on 5055). */
 const apiTargetLabel = BASE || "http://127.0.0.1:5055 (via Vite /api proxy)";
 
+function isRemoteCommerceApiBase(): boolean {
+  const b = BASE.trim().toLowerCase();
+  return (
+    b.startsWith("https://") && !b.includes("localhost") && !b.includes("127.0.0.1")
+  );
+}
+
 /** User-visible message for fetch / JSON failures against Commerce.Api */
 export function formatCommerceApiError(error: unknown): string {
   if (error instanceof TypeError && /fetch|network|failed/i.test(String(error.message))) {
+    if (isRemoteCommerceApiBase()) {
+      return [
+        `Cannot reach Commerce.Api (${apiTargetLabel}).`,
+        "1) Open your API `/health` in a browser — you should see a small JSON body with status ok. If not, fix the App Service (Azure Portal → Log stream: database connection, migrations, startup errors).",
+        "2) Confirm **CORS** on Commerce.Api allows this storefront origin (`https://…azurestaticapps.net`).",
+        "3) After changing the API URL, **redeploy** the storefront so `VITE_COMMERCE_API_URL` in GitHub Actions secrets matches production.",
+      ].join(" ");
+    }
     return [
       `Cannot reach Commerce.Api (${apiTargetLabel}).`,
       "1) Start **Docker Desktop**.",
       "2) From repo root: `docker compose -f services/commerce-api/docker-compose.yml up -d`",
       "3) Start API: `npm run api:commerce:exec` (or `npm run api:commerce` if that works on your machine).",
-      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` to skip the proxy."
+      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` to skip the proxy.",
     ].join(" ");
   }
   if (error instanceof Error) return error.message;

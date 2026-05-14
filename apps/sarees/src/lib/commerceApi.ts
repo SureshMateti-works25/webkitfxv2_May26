@@ -120,16 +120,15 @@ export const DEFAULT_COMMERCE_TENANT_ID =
   (import.meta.env.VITE_COMMERCE_TENANT_ID as string | undefined)?.trim() || "t1";
 
 /**
- * Storefront catalog calls send `excludeProductTypeId` so the grocery product type (`pt_grocery`)
- * does not appear in Nistta browse/search/PDP (Commerce.Api supports this query param).
+ * Nistta storefront only lists active products (and category shells) for this Commerce.Api product type.
+ * Default `pt_saree`; override with `VITE_CATALOG_PRODUCT_TYPE_ID` if your tenant uses another id.
  */
-export const STOREFRONT_EXCLUDE_CATALOG_PRODUCT_TYPE_ID =
-  (import.meta.env.VITE_STOREFRONT_EXCLUDE_CATALOG_PRODUCT_TYPE_ID as string | undefined)?.trim() ||
-  "pt_grocery";
+export const CATALOG_PRODUCT_TYPE_ID =
+  (import.meta.env.VITE_CATALOG_PRODUCT_TYPE_ID as string | undefined)?.trim() || "pt_saree";
 
-function appendStorefrontCatalogExcludeParam(qs: URLSearchParams): void {
-  const ex = STOREFRONT_EXCLUDE_CATALOG_PRODUCT_TYPE_ID.trim();
-  if (ex) qs.set("excludeProductTypeId", ex);
+function appendStorefrontCatalogScopeParam(qs: URLSearchParams): void {
+  const id = CATALOG_PRODUCT_TYPE_ID.trim();
+  if (id) qs.set("productTypeId", id);
 }
 
 export function commerceAuthorizedHeaders(accessToken: string): HeadersInit {
@@ -189,10 +188,12 @@ export type CatalogCategoryRow = {
 
 export async function listCatalogCategories(): Promise<CatalogCategoryRow[]> {
   const qs = new URLSearchParams();
-  appendStorefrontCatalogExcludeParam(qs);
+  appendStorefrontCatalogScopeParam(qs);
   qs.set("includeAllProductCategories", "true");
+  qs.set("includeDepartmentCategoryShell", "true");
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   const res = await fetch(`${BASE}/api/v1/catalog/categories${suffix}`, {
+    cache: "no-store",
     headers: commerceTenantHeaders(),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
@@ -256,7 +257,7 @@ export async function listCommerceLookupTypes(): Promise<CommerceLookupTypeDto[]
 export async function listCommerceLookupValues(lookupTypeId: string): Promise<CommerceLookupValueDto[]> {
   const res = await fetch(
     `${BASE}/api/v1/lookups/types/${encodeURIComponent(lookupTypeId.trim())}/values`,
-    { headers: commerceTenantHeaders() }
+    { cache: "no-store", headers: commerceTenantHeaders() }
   );
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
   const raw = (await res.json()) as Array<Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string }>;
@@ -273,6 +274,7 @@ export async function listCommerceLookupValues(lookupTypeId: string): Promise<Co
 
 export async function getCommerceLookupBundle(): Promise<CommerceLookupBundleDto> {
   const res = await fetch(`${BASE}/api/v1/lookups/bundle`, {
+    cache: "no-store",
     headers: commerceTenantHeaders(),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
@@ -643,7 +645,7 @@ export async function getCatalogProductDetail(params: {
   const qs = new URLSearchParams();
   if (id) qs.set("id", id);
   else if (slug) qs.set("slug", slug);
-  appendStorefrontCatalogExcludeParam(qs);
+  appendStorefrontCatalogScopeParam(qs);
   const res = await fetch(`${BASE}/api/v1/catalog/product-detail?${qs}`, {
     headers: commerceTenantHeaders(),
   });
@@ -948,7 +950,7 @@ export async function addProductComment(params: {
 export async function listCatalogProducts(params?: ListCatalogProductsParams): Promise<CatalogProductsPage> {
   const qs = new URLSearchParams();
   qs.set("view", "card");
-  appendStorefrontCatalogExcludeParam(qs);
+  appendStorefrontCatalogScopeParam(qs);
   if (params?.page != null) qs.set("page", String(params.page));
   if (params?.pageSize != null) qs.set("pageSize", String(params.pageSize));
   if (params?.sort?.trim()) qs.set("sort", params.sort.trim());
@@ -957,6 +959,7 @@ export async function listCatalogProducts(params?: ListCatalogProductsParams): P
   if (params?.slug?.trim()) qs.set("slug", params.slug.trim());
   if (params?.q?.trim()) qs.set("q", params.q.trim());
   const res = await fetch(`${BASE}/api/v1/catalog/products?${qs}`, {
+    cache: "no-store",
     headers: commerceTenantHeaders(),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
@@ -1357,15 +1360,30 @@ export async function uploadTenantMediaAsset(accessToken: string, file: File): P
 /** Backend URL for messages (when using dev proxy, API is still on 5055). */
 const apiTargetLabel = BASE || "http://127.0.0.1:5055 (via Vite /api proxy)";
 
+function isRemoteCommerceApiBase(): boolean {
+  const b = BASE.trim().toLowerCase();
+  return (
+    b.startsWith("https://") && !b.includes("localhost") && !b.includes("127.0.0.1")
+  );
+}
+
 /** User-visible message for fetch / JSON failures against Commerce.Api */
 export function formatCommerceApiError(error: unknown): string {
   if (error instanceof TypeError && /fetch|network|failed/i.test(String(error.message))) {
+    if (isRemoteCommerceApiBase()) {
+      return [
+        `Cannot reach Commerce.Api (${apiTargetLabel}).`,
+        "1) Open your API `/health` in a browser — you should see a small JSON body with status ok. If not, fix the App Service (Azure Portal → Log stream: database connection, migrations, startup errors).",
+        "2) Confirm **CORS** on Commerce.Api allows this storefront origin (`https://…azurestaticapps.net`).",
+        "3) After changing the API URL, **redeploy** the storefront so `VITE_COMMERCE_API_URL` in GitHub Actions secrets matches production.",
+      ].join(" ");
+    }
     return [
       `Cannot reach Commerce.Api (${apiTargetLabel}).`,
       "1) Start **Docker Desktop**.",
       "2) From repo root: `docker compose -f services/commerce-api/docker-compose.yml up -d`",
       "3) Start API: `npm run api:commerce:exec` (or `npm run api:commerce` if that works on your machine).",
-      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` to skip the proxy."
+      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` to skip the proxy.",
     ].join(" ");
   }
   if (error instanceof Error) return error.message;
