@@ -1,0 +1,62 @@
+# Apply EF Core migrations to your Commerce Postgres database from GitHub Actions (runs on Microsoft-hosted runners).
+#
+# Prerequisite: Postgres must accept inbound connections from THIS runner over the internet.
+# - If the server is "private access only" (VNet + private DNS), this job will NOT reach the DB unless you use a
+#   self-hosted runner inside the same VNet (change runs-on) or enable public network access + firewall.
+#
+# Setup (once):
+#   GitHub → Settings → Secrets → Actions → New repository secret
+#     Name:  COMMERCE_DATABASE_CONNECTION_STRING
+#     Value: full Npgsql string, e.g.
+#       Host=....postgres.database.azure.com;Port=5432;Database=catalog;Username=...;Password=...;Ssl Mode=Require;Trust Server Certificate=true
+#
+# Run: Actions → "Apply Commerce DB migrations" → Run workflow → branch develop (or main).
+name: Apply Commerce DB migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_migration:
+        description: "Optional: migration id to migrate to (blank = latest)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commerce-db-migrate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install EF CLI
+        run: dotnet tool install --global dotnet-ef --version 10.0.8
+
+      - name: Apply migrations
+        env:
+          CONNECTION_STRING: ${{ secrets.COMMERCE_DATABASE_CONNECTION_STRING }}
+        run: |
+          set -e
+          if [ -z "${CONNECTION_STRING}" ]; then
+            echo "Missing secret COMMERCE_DATABASE_CONNECTION_STRING"
+            exit 1
+          fi
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          if [ -n "${{ inputs.target_migration }}" ]; then
+            dotnet ef database update "${{ inputs.target_migration }}" \
+              --project services/commerce-api/Commerce.Api/Commerce.Api.csproj \
+              --connection "$CONNECTION_STRING"
+          else
+            dotnet ef database update \
+              --project services/commerce-api/Commerce.Api/Commerce.Api.csproj \
+              --connection "$CONNECTION_STRING"
+          fi
