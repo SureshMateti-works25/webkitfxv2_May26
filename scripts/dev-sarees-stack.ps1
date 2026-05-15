@@ -1,22 +1,23 @@
-# Sarees + Commerce.Api local stack (Windows) - reliable order:
+# Sarees + Groceries + Commerce.Api local stack (Windows) — reliable order:
 # 1) Free port 5055 (stops stale API so Release build never hits DLL lock)
 # 2) Docker Postgres
 # 3) Commerce.Api in a new PowerShell window (build + dotnet exec)
-# 4) Wait until /health returns 200 (avoids Vite proxy 404 while API still starting)
-# 5) Sarees Vite in this window (/api -> 5055)
+# 4) Wait until /health returns 200
+# 5) `npm run build` then **Sarees + Groceries** Vite (parallel, `concurrently`)
 #
 # From repo root:
 #   npm run dev:local
 #   npm run dev:sarees:stack
 #   .\scripts\dev-sarees-stack.ps1 -SkipDocker
-#   .\scripts\dev-sarees-stack.ps1 -NoStopPort          # if something else must keep 5055
-# Extra Vite args (after --):
+#   .\scripts\dev-sarees-stack.ps1 -SareesOnly     # only Sarees (legacy single-window)
+# Extra Vite args (after --) apply only when -SareesOnly:
 #   npm run dev:sarees:stack -- -- --port 5175
 
 param(
     [switch] $SkipDocker,
     [switch] $NoStopPort,
-    [int] $ApiWaitSec = 120
+    [int] $ApiWaitSec = 120,
+    [switch] $SareesOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,7 +29,7 @@ $waitScript = Join-Path $PSScriptRoot "wait-http.ps1"
 $compose = Join-Path $root "services/commerce-api/docker-compose.yml"
 $apiRunner = Join-Path $root "scripts/run-commerce-api.ps1"
 
-Write-Host "`n=== Sarees local stack ===" -ForegroundColor Cyan
+Write-Host "`n=== Sarees + Groceries local stack ===" -ForegroundColor Cyan
 
 if (-not $NoStopPort) {
     Write-Host "`n[1/5] Free port 5055 (stop stale Commerce.Api if any)" -ForegroundColor Cyan
@@ -62,7 +63,7 @@ else {
     Write-Host "`n[2/5] Skipping Docker (-SkipDocker)." -ForegroundColor Yellow
 }
 
-Write-Host "`n[3/5] Start Commerce.Api (new window) -> http://localhost:5055" -ForegroundColor Cyan
+Write-Host "`n[3/5] Start Commerce.Api (new window) -> http://127.0.0.1:5055 (and http://localhost:5055)" -ForegroundColor Cyan
 Write-Host "      Health: http://localhost:5055/health" -ForegroundColor DarkGray
 Start-Process powershell -ArgumentList @(
     "-NoExit",
@@ -75,20 +76,28 @@ Write-Host "`n[4/5] Wait for API health (up to $ApiWaitSec s)..." -ForegroundCol
 & $waitScript -Url "http://127.0.0.1:5055/health" -TimeoutSec $ApiWaitSec
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host "`n[5/5] Sarees (Vite) - /api proxies to 5055" -ForegroundColor Green
-Write-Host '      Use the Local URL printed by Vite (not /api/... in the browser bar).' -ForegroundColor DarkGray
+Write-Host "`n[5/5] Build workspaces, then storefront dev servers (Commerce.Api must stay running)." -ForegroundColor Green
+Write-Host "      Sarees: http://localhost:5175 (or next free port)" -ForegroundColor DarkGray
+Write-Host "      Groceries: http://localhost:5183 (or next free port)" -ForegroundColor DarkGray
 Write-Host ""
 
-$viteArgs = @()
-$dashDash = $false
-foreach ($a in $args) {
-    if ($a -eq "--") { $dashDash = $true; continue }
-    if ($dashDash) { $viteArgs += $a }
-}
+npm run build
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-if ($viteArgs.Count -eq 0) {
-    npm run dev -w sarees-market
+if ($SareesOnly) {
+    $viteArgs = @()
+    $dashDash = $false
+    foreach ($a in $args) {
+        if ($a -eq "--") { $dashDash = $true; continue }
+        if ($dashDash) { $viteArgs += $a }
+    }
+    if ($viteArgs.Count -eq 0) {
+        npm run dev -w sarees-market
+    }
+    else {
+        npm run dev -w sarees-market -- @viteArgs
+    }
 }
 else {
-    npm run dev -w sarees-market -- @viteArgs
+    npm run dev:commerce:apps
 }

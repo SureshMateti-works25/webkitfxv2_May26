@@ -54,7 +54,7 @@ When **`DevSeed:AdminEmail`** and **`DevSeed:AdminPassword`** are set (see `apps
 | GET | `/api/v1/admin/portal-users` | Bearer, `Admin` policy | Optional query `role=shopper\|vendor\|admin`; returns `id`, `email`, `role`, `createdAt`, `loginDisabled` for `X-Tenant-Id` |
 | PATCH | `/api/v1/admin/portal-users/{userId}` | Bearer, `Admin` policy | Body `{ "loginDisabled": true \| false }` toggles password login; cannot target your own user id |
 
-**CORS:** configured for `http://localhost:5175` (Sarees Vite dev). Add origins under **`Cors:Origins`**.
+**CORS:** In **Development**, `Program.cs` allows Vite on **http://localhost:5170–5209** and **http://127.0.0.1:5170–5209** (Sarees, Groceries, alternate ports). Add more under **`Cors:Origins`** in `appsettings.Development.json` if needed.
 
 ## Authentication (JWT)
 

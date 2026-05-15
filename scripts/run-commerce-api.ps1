@@ -32,7 +32,7 @@ $proj = Join-Path $apiDir "Commerce.Api.csproj"
 $dll = Join-Path $apiDir "bin/Release/net10.0/Commerce.Api.dll"
 
 $env:ASPNETCORE_ENVIRONMENT = "Development"
-$env:ASPNETCORE_URLS = "http://localhost:5055"
+$env:ASPNETCORE_URLS = "http://127.0.0.1:5055;http://localhost:5055"
 
 if (-not $SkipBuild) {
     Write-Host "Building Commerce.Api (Release)..." -ForegroundColor Cyan
@@ -48,5 +48,5 @@ if (-not $SkipBuild) {
 
 # Content root must be the project folder so appsettings.json + Jwt:SigningKey load (not repo root).
 Set-Location $apiDir
-Write-Host 'Starting API at http://localhost:5055 (Ctrl+C to stop)' -ForegroundColor Green
+Write-Host 'Starting API at http://127.0.0.1:5055 and http://localhost:5055 (Ctrl+C to stop)' -ForegroundColor Green
 dotnet exec $dll

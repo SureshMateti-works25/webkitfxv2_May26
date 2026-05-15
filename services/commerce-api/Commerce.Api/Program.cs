@@ -51,18 +51,17 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        var defaultOrigins = new[]
+        var defaultOrigins = new List<string>();
+        if (builder.Environment.IsDevelopment())
         {
-            "http://localhost:5175", "http://127.0.0.1:5175",
-            "http://localhost:5176", "http://127.0.0.1:5176",
-            "http://localhost:5177", "http://127.0.0.1:5177",
-            "http://localhost:5178", "http://127.0.0.1:5178",
-            "http://localhost:5179", "http://127.0.0.1:5179",
-            "http://localhost:5180", "http://127.0.0.1:5180",
-            "http://localhost:5181", "http://127.0.0.1:5181",
-            "http://localhost:5182", "http://127.0.0.1:5182",
-            "http://localhost:5183", "http://127.0.0.1:5183",
-        };
+            // Vite dev servers (Sarees default 5175, Groceries 5183, plus common fallback ports).
+            foreach (var port in Enumerable.Range(5170, 40))
+            {
+                defaultOrigins.Add($"http://localhost:{port}");
+                defaultOrigins.Add($"http://127.0.0.1:{port}");
+            }
+        }
+
         var extraOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>();
         var origins = defaultOrigins
             .Concat(extraOrigins.Where(static o => !string.IsNullOrWhiteSpace(o)).Select(static o => o.Trim()))

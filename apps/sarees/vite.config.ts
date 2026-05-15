@@ -1,8 +1,8 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-/** Prefer localhost on Windows so proxy matches Kestrel's typical binding. */
-const commerceApiOrigin = "http://localhost:5055";
+/** Commerce.Api — use 127.0.0.1 so it matches dev storefront `VITE_*` defaults and IPv4 resolution on Windows. */
+const commerceApiOrigin = "http://127.0.0.1:5055";
 
 const onProxyErr = (label: string) => (err: Error) => {
   console.error(

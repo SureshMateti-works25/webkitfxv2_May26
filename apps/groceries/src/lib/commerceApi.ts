@@ -3,19 +3,20 @@
  * (catalog, auth, vendor workspace, lookups) with grocery catalog filtering via
  * {@link CATALOG_PRODUCT_TYPE_ID} on public catalogue reads.
  *
- * - If `VITE_COMMERCE_API_URL` / `VITE_CATALOG_API_URL` is set → use it (direct calls; CORS must allow this Vite origin).
- * - In **dev** with no env → `""` so requests go to `/api/...` and **Vite proxies** to http://127.0.0.1:5055.
- * - Production build without env → `http://localhost:5055` (set `VITE_COMMERCE_API_URL` in real deploys).
+ * - If `VITE_COMMERCE_API_URL` / `VITE_CATALOG_API_URL` is set → use it (Azure CI, or override local).
+ * - **Dev default:** `http://127.0.0.1:5055` — direct API + media URLs (see sarees `commerceApi.ts`).
+ * - Production build without env → `http://localhost:5055` (set `VITE_COMMERCE_API_URL` in real deploys / SWA).
  */
 const fromEnv =
   (import.meta.env.VITE_COMMERCE_API_URL as string | undefined) ??
   (import.meta.env.VITE_CATALOG_API_URL as string | undefined);
 const trimmed = fromEnv?.trim().replace(/\/$/, "");
+const LOCAL_COMMERCE_ORIGIN = "http://127.0.0.1:5055";
 const BASE =
   trimmed && trimmed.length > 0
     ? trimmed
     : import.meta.env.DEV
-      ? ""
+      ? LOCAL_COMMERCE_ORIGIN
       : "http://localhost:5055";
 
 export type AuthSuccess = {
@@ -105,17 +106,18 @@ export function getCommerceApiBase(): string {
   return BASE;
 }
 
-/** Public URL for a stored media blob (works with Vite `/media` proxy when BASE is empty). */
+/** Public URL for a stored media blob (absolute to {@link BASE} in dev and production). */
 export function mediaAssetUrl(storageKey: string): string {
-  const trimmed = storageKey.trim().replace(/^\/+/, "");
-  if (!trimmed) return "/media";
-  const path = `/media/${trimmed
+  const key = storageKey.trim().replace(/^\/+/, "").replace(/\\/g, "/");
+  const origin = BASE.replace(/\/$/, "");
+  const prefix = "/media";
+  if (!key) return `${origin}${prefix}`;
+  const path = `${prefix}/${key
     .split("/")
     .filter((s) => s.length > 0)
     .map((p) => encodeURIComponent(p))
     .join("/")}`;
-  if (!BASE) return path;
-  return `${BASE.replace(/\/$/, "")}${path}`;
+  return `${origin}${path}`;
 }
 
 /** Default tenant for Commerce.Api (header `X-Tenant-Id`). */
@@ -1400,8 +1402,8 @@ export async function uploadTenantMediaAsset(accessToken: string, file: File): P
   return { id, storageKey, publicUrl };
 }
 
-/** Backend URL for messages (when using dev proxy, API is still on 5055). */
-const apiTargetLabel = BASE || "http://127.0.0.1:5055 (via Vite /api proxy)";
+/** Backend URL for user-visible error strings. */
+const apiTargetLabel = BASE;
 
 function isRemoteCommerceApiBase(): boolean {
   const b = BASE.trim().toLowerCase();
@@ -1426,7 +1428,7 @@ export function formatCommerceApiError(error: unknown): string {
       "1) Start **Docker Desktop**.",
       "2) From repo root: `docker compose -f services/commerce-api/docker-compose.yml up -d`",
       "3) Start API: `npm run api:commerce:exec` (or `npm run api:commerce` if that works on your machine).",
-      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` to skip the proxy.",
+      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` if the API is not on 127.0.0.1:5055.",
     ].join(" ");
   }
   if (error instanceof Error) return error.message;

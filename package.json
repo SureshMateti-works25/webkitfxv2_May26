@@ -20,6 +20,7 @@
     "dev:groceries": "npm run build && npm run dev -w groceries-market",
     "dev:sarees:stack": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-sarees-stack.ps1",
     "dev:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-sarees-stack.ps1",
+    "dev:commerce:apps": "concurrently -k -n sarees,groceries -c green,cyan \"npm run dev -w sarees-market\" \"npm run dev -w groceries-market\"",
     "stop:commerce-api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-commerce-api.ps1",
     "api:commerce:exec:fresh": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-commerce-api.ps1 -StopExisting",
     "api:commerce:watch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-commerce-api-watch.ps1",
@@ -40,5 +41,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }
