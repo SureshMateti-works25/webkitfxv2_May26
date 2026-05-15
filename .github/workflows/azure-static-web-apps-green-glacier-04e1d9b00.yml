@@ -1,6 +1,5 @@
-# Portal-generated SWA workflow (green-glacier-…). Monorepo: ./apps is not a single app — Oryx cannot build it.
-# This job builds the demo Vite app and uploads dist. To host groceries/sarees instead, copy env + script from
-# azure-swa-groceries.yml / azure-swa-sarees.yml and set app_location to apps/<app>/dist.
+# Portal-generated SWA (green-glacier-…): deploy groceries-market (same build as azure-swa-groceries.yml).
+# Secrets: same VITE_* as repo “Deploy Groceries” workflow + AZURE_STATIC_WEB_APPS_API_TOKEN_GREEN_GLACIER_04E1D9B00.
 name: Azure Static Web Apps CI/CD
 
 on:
@@ -8,7 +7,7 @@ on:
     branches:
       - develop
     paths:
-      - "apps/demo/**"
+      - "apps/groceries/**"
       - "packages/core-engine/**"
       - "packages/react-renderer/**"
       - "package-lock.json"
@@ -40,8 +39,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build packages + demo
-        run: npm run build:demo
+      - name: Build packages + groceries-market
+        env:
+          VITE_COMMERCE_API_URL: ${{ secrets.VITE_COMMERCE_API_URL }}
+          VITE_CATALOG_API_URL: ${{ secrets.VITE_CATALOG_API_URL }}
+          VITE_COMMERCE_TENANT_ID: ${{ secrets.VITE_COMMERCE_TENANT_ID }}
+          VITE_CATALOG_PRODUCT_TYPE_ID: ${{ secrets.VITE_CATALOG_PRODUCT_TYPE_ID }}
+          VITE_PRODUCT_DEPARTMENTS_LOOKUP_TYPE_ID: ${{ secrets.VITE_PRODUCT_DEPARTMENTS_LOOKUP_TYPE_ID }}
+        run: npm run build:groceries
 
       - name: Build And Deploy
         id: builddeploy
@@ -50,7 +55,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GREEN_GLACIER_04E1D9B00 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: apps/demo/dist
+          app_location: apps/groceries/dist
           api_location: ""
           skip_app_build: true
 
