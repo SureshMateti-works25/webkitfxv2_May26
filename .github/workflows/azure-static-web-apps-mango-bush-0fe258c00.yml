@@ -1,14 +1,71 @@
-# Groceries deploys to the Green Glacier SWA only (azure-static-web-apps-green-glacier-04e1d9b00.yml).
-# This file stays so the repo matches any legacy Azure link; it does not push to Mango Bush.
-# Remove the Mango Bush Static Web App in Azure if you do not need it, or extend this workflow if you assign it another app.
-name: Azure SWA — mango-bush (idle)
+# Sarees dev → Mango Bush Static Web App (swa-sarees-dev). Same build as azure-swa-sarees.yml, different deploy token.
+# Secrets: AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_BUSH_0FE258C00 + same VITE_* as Deploy Sarees (Azure SWA).
+name: Azure SWA — Sarees dev (mango-bush)
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    paths:
+      - "apps/sarees/**"
+      - "packages/core-engine/**"
+      - "packages/react-renderer/**"
+      - "package-lock.json"
+      - ".github/workflows/azure-static-web-apps-mango-bush-0fe258c00.yml"
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - develop
 
 jobs:
-  noop:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
+    name: Build and Deploy Job
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Skipped
-        run: echo "Groceries deploy uses workflow 'Azure SWA — Groceries (green-glacier)' only."
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages + sarees-market
+        env:
+          VITE_COMMERCE_API_URL: ${{ secrets.VITE_COMMERCE_API_URL }}
+          VITE_CATALOG_API_URL: ${{ secrets.VITE_CATALOG_API_URL }}
+          VITE_COMMERCE_TENANT_ID: ${{ secrets.VITE_COMMERCE_TENANT_ID }}
+          VITE_CATALOG_PRODUCT_TYPE_ID: ${{ secrets.VITE_CATALOG_PRODUCT_TYPE_ID }}
+        run: npm run build:sarees
+
+      - name: Build And Deploy
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_BUSH_0FE258C00 }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: apps/sarees/dist
+          api_location: ""
+          skip_app_build: true
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        id: closepullrequest
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_BUSH_0FE258C00 }}
+          action: close
