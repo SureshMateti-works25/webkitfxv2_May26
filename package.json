@@ -36,7 +36,7 @@
     "test:catalog-api": "npm run test:commerce-api",
     "test:catalog-api:auth": "npm run test:commerce-api:auth",
     "test:catalog-api:catalog": "npm run test:commerce-api:catalog",
-    "seed:commerce:remote": "dotnet run --project services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj -c Release"
+    "seed:commerce:remote": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/seed-commerce-remote.ps1"
   },
   "engines": {
     "node": ">=18"

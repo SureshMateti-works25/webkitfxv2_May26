@@ -189,6 +189,8 @@ Production **does not** run `CommerceDevDataSeeder` on startup. To copy the **sa
 
 3. **From your machine** (writes DB + files under `SEED_MEDIA_ROOT`):
 
+   Stop any local **Commerce.Api** first (or `npm run stop:commerce-api`), otherwise the Release build can fail with **MSB3027** because `WebkitFx.Platform.dll` is locked. `npm run seed:commerce:remote` runs that stop script on Windows before seeding.
+
    ```powershell
    $env:ConnectionStrings__Commerce = "Host=....postgres.database.azure.com;...;Database=catalog;..."
    $env:SEED_MEDIA_ROOT = "$(Resolve-Path .\services\commerce-api\Commerce.Api\uploads\media)"
@@ -196,6 +198,9 @@ Production **does not** run `CommerceDevDataSeeder` on startup. To copy the **sa
    ```
 
    If `SEED_MEDIA_ROOT` is omitted, JPEGs go under `%TEMP%\commerce-one-time-seed-media`.
+
+   On macOS/Linux, stop the API process yourself, then:  
+   `dotnet run --project services/commerce-api/Commerce.OneTimeSeed/Commerce.OneTimeSeed.csproj -c Release`
 
 4. **Optional admin user** (same as local): set `DevSeed__AdminEmail` and `DevSeed__AdminPassword` in the environment before running the seed tool (local or add env vars to the workflow job if you extend it).
 
