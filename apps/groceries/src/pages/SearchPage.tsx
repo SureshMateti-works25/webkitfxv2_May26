@@ -1,53 +1,120 @@
-import { JsonForm } from "@webkitfxv2/react-renderer";
-import { getAtPath, type FormDefinition } from "@webkitfxv2/core-engine";
-import { useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CatalogGridProductCard } from "../components/CatalogGridProductCard.js";
-import { searchFiltersForm } from "../config/forms/index.js";
 import { getShell } from "../config/getShell.js";
-import { listCatalogProducts, type CatalogProductCard } from "../lib/commerceApi.js";
+import {
+  buildFacetFiltersParam,
+  facetDefDisplayLabel,
+  facetValueDisplayLabel,
+} from "../lib/catalogFacetSearch.js";
+import {
+  listCatalogCategories,
+  listCatalogFacetOptions,
+  listCatalogProducts,
+  type CatalogCategoryRow,
+  type CatalogFacetGroup,
+  type CatalogProductCard,
+} from "../lib/commerceApi.js";
 
 type ActiveFilter = { label: string; value: string };
-
-function readFieldMap(form: FormDefinition): Record<string, { label?: string; props?: Record<string, unknown> }> {
-  return (form.fields ?? {}) as Record<string, { label?: string; props?: Record<string, unknown> }>;
-}
-
-function deriveTextQuery(values: Record<string, unknown>): string {
-  const filterObj = (getAtPath(values, "filters") ?? {}) as Record<string, unknown>;
-  const formFields = readFieldMap(searchFiltersForm);
-  for (const fieldId of Object.keys(formFields)) {
-    const field = formFields[fieldId];
-    const searchParam = String(field.props?.searchParam ?? "").trim();
-    if (searchParam !== "q") continue;
-    const value = String(filterObj[fieldId] ?? "").trim();
-    if (value) return value;
-  }
-  return "";
-}
-
-function activeFilters(values: Record<string, unknown>): ActiveFilter[] {
-  const filterObj = (getAtPath(values, "filters") ?? {}) as Record<string, unknown>;
-  const formFields = readFieldMap(searchFiltersForm);
-  const out: ActiveFilter[] = [];
-  for (const fieldId of Object.keys(formFields)) {
-    const raw = filterObj[fieldId];
-    const value = raw == null ? "" : String(raw).trim();
-    if (!value) continue;
-    const label = formFields[fieldId]?.label ?? fieldId;
-    out.push({ label, value });
-  }
-  return out;
-}
 
 export function SearchPage() {
   const shell = getShell();
   const copy = shell.screens.search;
-  const [appliedValues, setAppliedValues] = useState<Record<string, unknown>>({});
+
+  const [facetGroups, setFacetGroups] = useState<CatalogFacetGroup[]>([]);
+  const [categories, setCategories] = useState<CatalogCategoryRow[]>([]);
+  const [facetsLoading, setFacetsLoading] = useState(true);
+  const [facetsError, setFacetsError] = useState<string | null>(null);
+
+  const [productName, setProductName] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [facetSelections, setFacetSelections] = useState<Record<string, string>>({});
+  const [applied, setApplied] = useState<{
+    productName: string;
+    categoryId: string;
+    facetSelections: Record<string, string>;
+  } | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<CatalogProductCard[]>([]);
 
-  const filters = useMemo(() => activeFilters(appliedValues), [appliedValues]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setFacetsLoading(true);
+      setFacetsError(null);
+      try {
+        const [facets, cats] = await Promise.all([listCatalogFacetOptions(), listCatalogCategories()]);
+        if (cancelled) return;
+        setFacetGroups(facets.filter((g) => g.values.some((v) => v.productCount > 0) || g.values.length > 0));
+        setCategories(cats);
+      } catch (e) {
+        if (!cancelled) setFacetsError(e instanceof Error ? e.message : "Could not load attribute filters");
+      } finally {
+        if (!cancelled) setFacetsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const activeFilters = useMemo((): ActiveFilter[] => {
+    if (!applied) return [];
+    const out: ActiveFilter[] = [];
+    const name = applied.productName.trim();
+    if (name) out.push({ label: "Product name", value: name });
+    if (applied.categoryId) {
+      const cat = categories.find((c) => c.id === applied.categoryId);
+      out.push({ label: "Aisle", value: cat?.label ?? applied.categoryId });
+    }
+    for (const group of facetGroups) {
+      const valueId = applied.facetSelections[group.attributeDefId]?.trim();
+      if (!valueId) continue;
+      const val = group.values.find((v) => v.id === valueId);
+      out.push({
+        label: facetDefDisplayLabel(group),
+        value: val ? facetValueDisplayLabel(val) : valueId,
+      });
+    }
+    return out;
+  }, [applied, categories, facetGroups]);
+
+  const runSearch = useCallback(
+    async (next: { productName: string; categoryId: string; facetSelections: Record<string, string> }) => {
+      setError(null);
+      setLoading(true);
+      setApplied(next);
+      try {
+        const filters = buildFacetFiltersParam(next.facetSelections);
+        const page = await listCatalogProducts({
+          q: next.productName.trim() || undefined,
+          categoryId: next.categoryId.trim() || undefined,
+          includeSubtree: Boolean(next.categoryId.trim()),
+          filters: filters || undefined,
+          page: 1,
+          pageSize: 36,
+        });
+        setItems(page.items);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Search failed");
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    void runSearch({ productName, categoryId, facetSelections });
+  };
+
+  const setFacet = (defId: string, valueId: string) => {
+    setFacetSelections((prev) => ({ ...prev, [defId]: valueId }));
+  };
 
   return (
     <section className="search-page">
@@ -56,35 +123,77 @@ export function SearchPage() {
         <p>{copy.body}</p>
       </header>
 
-      <div className="search-page__form-panel">
-        <JsonForm
-          form={searchFiltersForm}
-          onSubmit={async (values) => {
-            setError(null);
-            setLoading(true);
-            setAppliedValues(values);
-            try {
-              const q = deriveTextQuery(values);
-              const page = await listCatalogProducts({ q: q || undefined, page: 1, pageSize: 36 });
-              setItems(page.items);
-            } catch (e) {
-              setError(e instanceof Error ? e.message : "Search failed");
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          <div className="webkitfx-form-actions">
-            <button type="submit" disabled={loading} aria-busy={loading}>
-              {loading ? "Searching..." : "Search"}
-            </button>
-          </div>
-        </JsonForm>
-      </div>
+      <form className="search-page__form-panel search-attribute-form" onSubmit={onSubmit}>
+        <div className="search-attribute-form__row">
+          <label className="search-attribute-form__field search-attribute-form__field--grow">
+            <span className="search-attribute-form__label">Product name</span>
+            <input
+              type="search"
+              className="search-attribute-form__input"
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              placeholder="e.g. okra, atta, milk"
+              autoComplete="off"
+            />
+          </label>
+          <label className="search-attribute-form__field">
+            <span className="search-attribute-form__label">Aisle</span>
+            <select
+              className="search-attribute-form__select"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              disabled={facetsLoading}
+            >
+              <option value="">All aisles</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-      {filters.length > 0 ? (
+        {facetsError ? <p className="search-page__error">{facetsError}</p> : null}
+
+        {facetGroups.length > 0 ? (
+          <fieldset className="search-attribute-form__attributes" disabled={facetsLoading}>
+            <legend className="search-attribute-form__legend">Product attributes</legend>
+            <div className="search-attribute-form__attr-grid">
+              {facetGroups.map((group) => (
+                <label key={group.attributeDefId} className="search-attribute-form__field">
+                  <span className="search-attribute-form__label">{facetDefDisplayLabel(group)}</span>
+                  <select
+                    className="search-attribute-form__select"
+                    value={facetSelections[group.attributeDefId] ?? ""}
+                    onChange={(e) => setFacet(group.attributeDefId, e.target.value)}
+                  >
+                    <option value="">Any</option>
+                    {group.values.map((val) => (
+                      <option key={val.id} value={val.id} disabled={val.productCount === 0}>
+                        {facetValueDisplayLabel(val)}
+                        {val.productCount > 0 ? ` (${val.productCount})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : !facetsLoading && !facetsError ? (
+          <p className="search-attribute-form__hint">{copy.noAttributesHint}</p>
+        ) : null}
+
+        <div className="webkitfx-form-actions">
+          <button type="submit" disabled={loading || facetsLoading} aria-busy={loading}>
+            {loading ? "Searching…" : "Search"}
+          </button>
+        </div>
+      </form>
+
+      {activeFilters.length > 0 ? (
         <ul className="search-page__active-filters" aria-label="Active filters">
-          {filters.map((f) => (
+          {activeFilters.map((f) => (
             <li key={`${f.label}:${f.value}`}>
               <span>{f.label}</span>
               <strong>{f.value}</strong>
@@ -94,7 +203,7 @@ export function SearchPage() {
       ) : null}
 
       {error ? <p className="search-page__error">{error}</p> : null}
-      {!loading && !error && filters.length > 0 && items.length === 0 ? (
+      {!loading && !error && applied && items.length === 0 ? (
         <p className="search-page__empty">{copy.noResults}</p>
       ) : null}
 

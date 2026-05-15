@@ -1,17 +1,20 @@
+import { normalizeProductSpec, productSpecHasDisplayContent, type ProductSpec } from "./productSpec.js";
+
 /**
  * Commerce.Api client for the groceries storefront: same surface as sarees-market
  * (catalog, auth, vendor workspace, lookups) with grocery catalog filtering via
  * {@link CATALOG_PRODUCT_TYPE_ID} on public catalogue reads.
  *
  * - If `VITE_COMMERCE_API_URL` / `VITE_CATALOG_API_URL` is set → use it (Azure CI, or override local).
- * - **Dev default:** `http://127.0.0.1:5055` — direct API + media URLs (see sarees `commerceApi.ts`).
+ * - **Dev default:** `http://localhost:5055` for API `fetch`; **images** use same-origin `/media/...` (Vite proxy) when
+ *   the API URL is loopback :5055. See sarees `commerceApi.ts` for details.
  * - Production build without env → `http://localhost:5055` (set `VITE_COMMERCE_API_URL` in real deploys / SWA).
  */
 const fromEnv =
   (import.meta.env.VITE_COMMERCE_API_URL as string | undefined) ??
   (import.meta.env.VITE_CATALOG_API_URL as string | undefined);
 const trimmed = fromEnv?.trim().replace(/\/$/, "");
-const LOCAL_COMMERCE_ORIGIN = "http://127.0.0.1:5055";
+const LOCAL_COMMERCE_ORIGIN = "http://localhost:5055";
 const BASE =
   trimmed && trimmed.length > 0
     ? trimmed
@@ -106,17 +109,38 @@ export function getCommerceApiBase(): string {
   return BASE;
 }
 
-/** Public URL for a stored media blob (absolute to {@link BASE} in dev and production). */
+/** In dev, use same-origin `/media` so Vite proxies — including when `.env` sets the API to `localhost`/`127.0.0.1:5055`. */
+function useRelativeDevMedia(): boolean {
+  if (!import.meta.env.DEV) return false;
+  if (!trimmed || trimmed.length === 0) return true;
+  try {
+    const u = new URL(trimmed);
+    const h = u.hostname.toLowerCase();
+    const port = u.port || (u.protocol === "https:" ? "443" : "80");
+    return (h === "localhost" || h === "127.0.0.1") && port === "5055";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Public URL for a stored media blob.
+ * Default local dev: same-origin `/media/...` (Vite → Commerce.Api). Remote `VITE_COMMERCE_API_URL`: absolute under that base.
+ */
 export function mediaAssetUrl(storageKey: string): string {
-  const key = storageKey.trim().replace(/^\/+/, "").replace(/\\/g, "/");
-  const origin = BASE.replace(/\/$/, "");
+  let key = storageKey.trim().replace(/^\/+/, "").replace(/\\/g, "/");
+  if (/^media\//i.test(key)) key = key.replace(/^media\//i, "");
   const prefix = "/media";
-  if (!key) return `${origin}${prefix}`;
-  const path = `${prefix}/${key
-    .split("/")
-    .filter((s) => s.length > 0)
-    .map((p) => encodeURIComponent(p))
-    .join("/")}`;
+  const path =
+    !key
+      ? prefix
+      : `${prefix}/${key
+          .split("/")
+          .filter((s) => s.length > 0)
+          .map((p) => encodeURIComponent(p))
+          .join("/")}`;
+  if (useRelativeDevMedia()) return path;
+  const origin = BASE.replace(/\/$/, "");
   return `${origin}${path}`;
 }
 
@@ -279,9 +303,31 @@ export type CommerceLookupValueDto = {
   label: string;
   sortOrder: number;
   parentValueId: string | null;
+  /** Optional merchandising tree parent (`product_categories` → another category id). */
+  merchandisingParentId: string | null;
   /** Optional storefront tile image (media storage key). */
   imageStorageKey: string | null;
 };
+
+export function parseCommerceLookupValueFromApi(
+  v: Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string }
+): CommerceLookupValueDto {
+  const row = v as Record<string, unknown>;
+  const imgRaw = row.imageStorageKey ?? row.ImageStorageKey;
+  const imgStr = typeof imgRaw === "string" ? imgRaw.trim() : "";
+  const mpRaw = row.merchandisingParentId ?? row.MerchandisingParentId;
+  const mpStr = typeof mpRaw === "string" ? mpRaw.trim() : "";
+  return {
+    id: v.id,
+    lookupTypeId: v.lookupTypeId,
+    code: String(v.code ?? ""),
+    label: String(v.label ?? ""),
+    sortOrder: typeof v.sortOrder === "number" ? v.sortOrder : 0,
+    parentValueId: v.parentValueId ?? null,
+    merchandisingParentId: mpStr.length > 0 ? mpStr : null,
+    imageStorageKey: imgStr.length > 0 ? imgStr : null,
+  };
+}
 
 export type CommerceLookupBundleDto = {
   version: string;
@@ -304,15 +350,7 @@ export async function listCommerceLookupValues(lookupTypeId: string): Promise<Co
   );
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
   const raw = (await res.json()) as Array<Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string }>;
-  return raw.map((v) => ({
-    id: v.id,
-    lookupTypeId: v.lookupTypeId,
-    code: String(v.code ?? ""),
-    label: String(v.label ?? ""),
-    sortOrder: typeof v.sortOrder === "number" ? v.sortOrder : 0,
-    parentValueId: v.parentValueId ?? null,
-    imageStorageKey: v.imageStorageKey?.trim() || null,
-  }));
+  return raw.map((v) => parseCommerceLookupValueFromApi(v));
 }
 
 export async function getCommerceLookupBundle(): Promise<CommerceLookupBundleDto> {
@@ -321,7 +359,14 @@ export async function getCommerceLookupBundle(): Promise<CommerceLookupBundleDto
     headers: commerceTenantHeaders(),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return (await res.json()) as CommerceLookupBundleDto;
+  const raw = (await res.json()) as CommerceLookupBundleDto;
+  const mapped: Record<string, CommerceLookupValueDto[]> = {};
+  for (const [k, slice] of Object.entries(raw.valuesByLookupTypeId ?? {})) {
+    mapped[k] = (slice ?? []).map((v) =>
+      parseCommerceLookupValueFromApi(v as Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string })
+    );
+  }
+  return { ...raw, valuesByLookupTypeId: mapped };
 }
 
 export type UpsertCommerceLookupTypeBody = {
@@ -379,7 +424,8 @@ export async function createCommerceLookupValue(
     }
   );
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return (await res.json()) as CommerceLookupValueDto;
+  const data = (await res.json()) as Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string };
+  return parseCommerceLookupValueFromApi(data);
 }
 
 export type UpdateCommerceLookupValueBody = {
@@ -401,7 +447,8 @@ export async function updateCommerceLookupValue(
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return (await res.json()) as CommerceLookupValueDto;
+  const data = (await res.json()) as Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string };
+  return parseCommerceLookupValueFromApi(data);
 }
 
 export async function deleteCommerceLookupValue(accessToken: string, valueId: string): Promise<void> {
@@ -458,7 +505,20 @@ export type SkuGalleryFacet = {
   swatchStorageKey: string | null;
 };
 
+export type CatalogProductSpec = ProductSpec;
+
+export type CatalogStorefrontSku = {
+  id: string;
+  skuCode: string;
+  listPriceMinor: number | null;
+  compareAtPriceMinor: number | null;
+};
+
 export type CatalogProductDetail = CatalogProductCard & {
+  /** From commerce JSON `productSpec` when present. */
+  productSpec: CatalogProductSpec | null;
+  /** Active SKUs with list/compare prices (PDP pack selection). */
+  storefrontSkus: CatalogStorefrontSku[];
   gallery: CatalogProductGalleryImage[];
   /** Angled / variant / hero / gallery roles (excludes colour swatch rail). */
   angleImages: CatalogProductGalleryImage[];
@@ -511,6 +571,32 @@ export type ListCatalogProductsParams = {
   /** Exact product slug (PDP fetch). */
   slug?: string;
   q?: string;
+  /** Facet filters: comma-separated `attributeDefId:attributeValueId` pairs. */
+  filters?: string;
+};
+
+export type CatalogFacetValueOption = {
+  id: string;
+  code: string;
+  labelKey: string;
+  sortKey: number;
+  swatchHex: string | null;
+  productCount: number;
+};
+
+export type CatalogFacetGroup = {
+  attributeDefId: string;
+  code: string;
+  labelKey: string;
+  displayType: string | null;
+  values: CatalogFacetValueOption[];
+};
+
+export type ListCatalogFacetOptionsParams = {
+  q?: string;
+  categoryId?: string;
+  includeSubtree?: boolean;
+  collectionId?: string;
 };
 
 function optionalMinorField(row: Record<string, unknown>, camel: string, pascal: string): number | null {
@@ -675,7 +761,36 @@ export function normalizeCatalogProductDetail(row: Record<string, unknown>): Cat
     primaryCategorySlug: optionalStringField(row, "primaryCategorySlug", "PrimaryCategorySlug"),
     skuCodes: normalizeSkuCodes(row.skuCodes ?? row.SkuCodes),
     skuGalleryFacets: normalizeSkuGalleryFacets(row.skuGalleryFacets ?? row.SkuGalleryFacets),
+    productSpec: normalizeCatalogProductSpec(row.productSpec ?? row.ProductSpec),
+    storefrontSkus: normalizeStorefrontSkus(row.storefrontSkus ?? row.StorefrontSkus),
   };
+}
+
+function normalizeStorefrontSkus(raw: unknown): CatalogStorefrontSku[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CatalogStorefrontSku[] = [];
+  for (const el of raw) {
+    if (el == null || typeof el !== "object") continue;
+    const o = el as Record<string, unknown>;
+    const id = String(o.id ?? o.Id ?? "").trim();
+    const skuCode = String(o.skuCode ?? o.SkuCode ?? "").trim();
+    if (!id || !skuCode) continue;
+    const listRaw = o.listPriceMinor ?? o.ListPriceMinor;
+    const compareRaw = o.compareAtPriceMinor ?? o.CompareAtPriceMinor;
+    out.push({
+      id,
+      skuCode,
+      listPriceMinor: listRaw == null || listRaw === "" ? null : Number(listRaw),
+      compareAtPriceMinor: compareRaw == null || compareRaw === "" ? null : Number(compareRaw),
+    });
+  }
+  return out;
+}
+
+function normalizeCatalogProductSpec(raw: unknown): CatalogProductSpec | null {
+  if (raw == null) return null;
+  const spec = normalizeProductSpec(raw);
+  return productSpecHasDisplayContent(spec) ? spec : null;
 }
 
 export async function getCatalogProductDetail(params: {
@@ -896,6 +1011,8 @@ export async function resolveCatalogProductDetail(lookupKey: string): Promise<Ca
     primaryCategorySlug: null,
     skuCodes: card.skuCodes?.length ? [...card.skuCodes] : [],
     skuGalleryFacets: [],
+    productSpec: null,
+    storefrontSkus: [],
   };
 }
 
@@ -913,7 +1030,7 @@ export async function getProductEngagement(productId: string): Promise<ProductEn
     averageRating: Number(raw.averageRating ?? raw.AverageRating ?? 0),
     commentsCount: Number(raw.commentsCount ?? raw.CommentsCount ?? 0),
     recentComments: Array.isArray(raw.recentComments ?? raw.RecentComments)
-      ? (raw.recentComments ?? raw.RecentComments).map((c: unknown) => {
+      ? ((raw.recentComments ?? raw.RecentComments) as unknown[]).map((c: unknown) => {
           const o = c as Record<string, unknown>;
           return {
             id: String(o.id ?? o.Id ?? ""),
@@ -990,6 +1107,52 @@ export async function addProductComment(params: {
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
 }
 
+function normalizeCatalogFacetValue(row: Record<string, unknown>): CatalogFacetValueOption {
+  return {
+    id: String(row.id ?? row.Id ?? ""),
+    code: String(row.code ?? row.Code ?? ""),
+    labelKey: String(row.labelKey ?? row.LabelKey ?? ""),
+    sortKey: Number(row.sortKey ?? row.SortKey ?? 0),
+    swatchHex: optionalStringField(row, "swatchHex", "SwatchHex"),
+    productCount: Number(row.productCount ?? row.ProductCount ?? 0),
+  };
+}
+
+function normalizeCatalogFacetGroup(row: Record<string, unknown>): CatalogFacetGroup {
+  const valuesRaw = row.values ?? row.Values;
+  const values: CatalogFacetValueOption[] = Array.isArray(valuesRaw)
+    ? (valuesRaw as Record<string, unknown>[]).map(normalizeCatalogFacetValue)
+    : [];
+  return {
+    attributeDefId: String(row.attributeDefId ?? row.AttributeDefId ?? ""),
+    code: String(row.code ?? row.Code ?? ""),
+    labelKey: String(row.labelKey ?? row.LabelKey ?? ""),
+    displayType: optionalStringField(row, "displayType", "DisplayType"),
+    values,
+  };
+}
+
+/** Attribute definitions + value options for storefront product search (scoped to grocery catalog). */
+export async function listCatalogFacetOptions(
+  params?: ListCatalogFacetOptionsParams
+): Promise<CatalogFacetGroup[]> {
+  const qs = new URLSearchParams();
+  appendStorefrontCatalogExcludeParam(qs);
+  if (params?.q?.trim()) qs.set("q", params.q.trim());
+  if (params?.categoryId?.trim()) qs.set("categoryId", params.categoryId.trim());
+  if (params?.includeSubtree) qs.set("includeSubtree", "true");
+  if (params?.collectionId?.trim()) qs.set("collectionId", params.collectionId.trim());
+  const res = await fetch(`${BASE}/api/v1/catalog/facet-options?${qs}`, {
+    cache: "no-store",
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const raw = (await res.json()) as Record<string, unknown>;
+  const facetsRaw = raw.facets ?? raw.Facets;
+  if (!Array.isArray(facetsRaw)) return [];
+  return (facetsRaw as Record<string, unknown>[]).map(normalizeCatalogFacetGroup);
+}
+
 export async function listCatalogProducts(params?: ListCatalogProductsParams): Promise<CatalogProductsPage> {
   const qs = new URLSearchParams();
   qs.set("view", "card");
@@ -1001,6 +1164,7 @@ export async function listCatalogProducts(params?: ListCatalogProductsParams): P
   if (params?.includeSubtree) qs.set("includeSubtree", "true");
   if (params?.slug?.trim()) qs.set("slug", params.slug.trim());
   if (params?.q?.trim()) qs.set("q", params.q.trim());
+  if (params?.filters?.trim()) qs.set("filters", params.filters.trim());
   const res = await fetch(`${BASE}/api/v1/catalog/products?${qs}`, {
     cache: "no-store",
     headers: commerceTenantHeaders(),
@@ -1426,9 +1590,9 @@ export function formatCommerceApiError(error: unknown): string {
     return [
       `Cannot reach Commerce.Api (${apiTargetLabel}).`,
       "1) Start **Docker Desktop**.",
-      "2) From repo root: `docker compose -f services/commerce-api/docker-compose.yml up -d`",
+      "2) From repo root: `npm run docker:commerce-db` (or `docker compose -f services/commerce-api/docker-compose.yml up -d`).",
       "3) Start API: `npm run api:commerce:exec` (or `npm run api:commerce` if that works on your machine).",
-      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` if the API is not on 127.0.0.1:5055.",
+      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` if the API is not on localhost:5055.",
     ].join(" ");
   }
   if (error instanceof Error) return error.message;

@@ -9,6 +9,7 @@ using Commerce.Api.Features;
 using Commerce.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.StaticFiles;
 using Npgsql;
 using WebkitFx.Platform;
 using WebkitFx.Platform.Media;
@@ -99,6 +100,17 @@ if (!app.Environment.IsDevelopment()
     }
 }
 
+// Production / staging: idempotent grocery aisle rows (Fresh vegetables, Atta, …) — dev seed does not run on Azure.
+if (!app.Environment.IsDevelopment()
+    && !string.Equals(app.Configuration["Commerce:EnsureGroceryStorefrontAisles"], "false", StringComparison.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var dbAisles = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
+    var aisleLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Commerce.Api.Bootstrap");
+    await CommerceDevDataSeeder.EnsureGroceryStorefrontAisleLookupsAsync(dbAisles);
+    aisleLogger.LogInformation("Grocery storefront aisle lookups ensured (Commerce:EnsureGroceryStorefrontAisles).");
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -129,31 +141,62 @@ if (app.Environment.IsDevelopment())
             await db.SaveChangesAsync();
         }
 
-        await CommerceDevDataSeeder.EnsureConfigurableLookupSeedAsync(db);
-        await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
-        await CommerceDevDataSeeder.RemoveGroceryProduceDairyDemoDepartmentValuesAsync(db, CancellationToken.None);
-        await CommerceDevDataSeeder.EnsureDevSareeProductCategoryLookupsAsync(db);
-        await CommerceDevDataSeeder.EnsureProductCategoryLookupParentTypesAsync(db);
-        await CommerceDevDataSeeder.SeedAsync(db);
-        await CommerceDevDataSeeder.EnsureOperationalSeedAsync(db);
-        await CommerceDevDataSeeder.EnsureDemoProductCardPricingAsync(db);
-        await CommerceDevDataSeeder.EnsureDemoProductColorGalleryAsync(db);
-        await CommerceDevDataSeeder.EnsureKalamkariCategoryAsync(db);
+        var skipLookupReseed = string.Equals(
+            builder.Configuration["Commerce:SkipLookupReseed"],
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+        if (skipLookupReseed)
+            bootstrapLogger.LogInformation("Skipping dev lookup re-seed (Commerce:SkipLookupReseed=true).");
+
+        if (!skipLookupReseed)
+        {
+            await CommerceDevDataSeeder.EnsureConfigurableLookupSeedAsync(db);
+            await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
+            await CommerceDevDataSeeder.RemoveGroceryProduceDairyDemoDepartmentValuesAsync(db, CancellationToken.None);
+            await CommerceDevDataSeeder.EnsureDevSareeProductCategoryLookupsAsync(db);
+            await CommerceDevDataSeeder.EnsureProductCategoryLookupParentTypesAsync(db);
+        }
+
+        var skipProductReseed = string.Equals(
+            builder.Configuration["Commerce:SkipProductReseed"],
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+        if (skipProductReseed)
+            bootstrapLogger.LogInformation("Skipping dev product re-seed (Commerce:SkipProductReseed=true).");
+
+        if (!skipProductReseed)
+        {
+            await CommerceDevDataSeeder.SeedAsync(db);
+            await CommerceDevDataSeeder.EnsureOperationalSeedAsync(db);
+            await CommerceDevDataSeeder.EnsureDemoProductCardPricingAsync(db);
+            await CommerceDevDataSeeder.EnsureDemoProductColorGalleryAsync(db);
+        }
+
+        if (!skipLookupReseed)
+        {
+            await CommerceDevDataSeeder.EnsureKalamkariCategoryAsync(db);
+        }
+
         await CommerceDevDataSeeder.EnsureLegacySareeProductTypeAsync(db);
 
         var mediaRootForSeed = Path.GetFullPath(Path.Combine(
             app.Environment.ContentRootPath,
             builder.Configuration.GetSection("Media").Get<LocalMediaStorageOptions>()?.RootPath ?? "uploads/media"));
-        await CommerceDevDataSeeder.EnsureGroceryCatalogDevSeedAsync(db, mediaRootForSeed);
+        if (!skipLookupReseed && !skipProductReseed)
+        {
+            await CommerceDevDataSeeder.EnsureGroceryCatalogDevSeedAsync(db, mediaRootForSeed);
+            await CommerceDevDataSeeder.EnsureProductCategoryLookupParentTypesAsync(db);
+        }
 
-        await CommerceDevDataSeeder.EnsureProductCategoryLookupParentTypesAsync(db);
-        await CommerceDevDataSeeder.EnsureStorefrontSponsoredDevSeedAsync(db);
+        if (!skipProductReseed)
+            await CommerceDevDataSeeder.EnsureStorefrontSponsoredDevSeedAsync(db);
 
         var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<PortalUser>>();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         await CommerceDevDataSeeder.EnsureDevSiteAdminAsync(db, passwordHasher, configuration, bootstrapLogger, CancellationToken.None);
 
-        CommerceDevDataSeeder.EnsureSeedHeroMediaBlobExists(mediaRootForSeed);
+        if (!skipProductReseed)
+            CommerceDevDataSeeder.EnsureSeedHeroMediaBlobExists(mediaRootForSeed);
 
         await audit.RecordAsync(
             AuditActions.BootstrapMigrate,
@@ -176,11 +219,86 @@ app.UseCors();
 
 // Public blobs must be reachable without JWT (storefront + Vite `/media` proxy). Register before auth.
 var mediaOpts = app.Configuration.GetSection("Media").Get<LocalMediaStorageOptions>() ?? new LocalMediaStorageOptions();
-var mediaRoot = Path.GetFullPath(mediaOpts.RootPath);
+var mediaRoot = LocalMediaStorage.ResolveMediaRootPath(app.Environment.ContentRootPath, mediaOpts.RootPath);
 Directory.CreateDirectory(mediaRoot);
+// Older runs resolved relative Media:RootPath against cwd (e.g. repo root) while seeding used ContentRootPath.
+// If that folder still exists, serve blobs from there too so existing uploads keep working.
+var rawMediaRoot = mediaOpts.RootPath ?? "uploads/media";
+string? cwdMediaLegacy = null;
+if (!Path.IsPathRooted(rawMediaRoot.Trim()))
+    cwdMediaLegacy = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), rawMediaRoot));
+
+IFileProvider mediaFiles = new PhysicalFileProvider(mediaRoot);
+if (cwdMediaLegacy is not null
+    && Directory.Exists(cwdMediaLegacy)
+    && !string.Equals(mediaRoot, cwdMediaLegacy, StringComparison.OrdinalIgnoreCase))
+{
+    mediaFiles = new CompositeFileProvider(
+        new PhysicalFileProvider(mediaRoot),
+        new PhysicalFileProvider(cwdMediaLegacy));
+}
+
+var mediaServeSearchRoots = new List<string> { mediaRoot };
+if (cwdMediaLegacy is not null && !string.Equals(mediaRoot, cwdMediaLegacy, StringComparison.OrdinalIgnoreCase))
+    mediaServeSearchRoots.Add(cwdMediaLegacy);
+
+// Explicit /media resolution (content root + legacy cwd) so blobs always match upload paths even if static file mapping misses.
+app.Use(async (context, next) =>
+{
+    if (!HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method))
+    {
+        await next();
+        return;
+    }
+
+    var prefix = (mediaOpts.PublicPathPrefix ?? "/media").TrimEnd('/');
+    if (!prefix.StartsWith('/'))
+        prefix = "/" + prefix;
+
+    var pathValue = context.Request.Path.Value ?? "";
+    if (!pathValue.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase))
+    {
+        await next();
+        return;
+    }
+
+    var encodedRel = pathValue.AsSpan(prefix.Length).TrimStart('/').ToString();
+    if (string.IsNullOrEmpty(encodedRel))
+    {
+        await next();
+        return;
+    }
+
+    string rel;
+    try
+    {
+        rel = Uri.UnescapeDataString(encodedRel).Replace('\\', '/').TrimStart('/');
+    }
+    catch (UriFormatException)
+    {
+        await next();
+        return;
+    }
+
+    var physical = LocalMediaStorage.TryResolveStorageFile(rel, mediaServeSearchRoots.ToArray());
+    if (physical is null)
+    {
+        await next();
+        return;
+    }
+
+    var provider = new FileExtensionContentTypeProvider();
+    if (!provider.TryGetContentType(physical, out var contentType))
+        contentType = "application/octet-stream";
+
+    context.Response.ContentType = contentType;
+    context.Response.Headers.CacheControl = "public, max-age=3600";
+    await context.Response.SendFileAsync(physical);
+});
+
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(mediaRoot),
+    FileProvider = mediaFiles,
     RequestPath = mediaOpts.PublicPathPrefix
 });
 

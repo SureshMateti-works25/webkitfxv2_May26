@@ -63,7 +63,7 @@ else {
     Write-Host "`n[2/5] Skipping Docker (-SkipDocker)." -ForegroundColor Yellow
 }
 
-Write-Host "`n[3/5] Start Commerce.Api (new window) -> http://127.0.0.1:5055 (and http://localhost:5055)" -ForegroundColor Cyan
+Write-Host "`n[3/5] Start Commerce.Api (new window) -> http://localhost:5055" -ForegroundColor Cyan
 Write-Host "      Health: http://localhost:5055/health" -ForegroundColor DarkGray
 Start-Process powershell -ArgumentList @(
     "-NoExit",
@@ -73,7 +73,7 @@ Start-Process powershell -ArgumentList @(
 )
 
 Write-Host "`n[4/5] Wait for API health (up to $ApiWaitSec s)..." -ForegroundColor Cyan
-& $waitScript -Url "http://127.0.0.1:5055/health" -TimeoutSec $ApiWaitSec
+& $waitScript -Url "http://localhost:5055/health" -TimeoutSec $ApiWaitSec
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "`n[5/5] Build workspaces, then storefront dev servers (Commerce.Api must stay running)." -ForegroundColor Green

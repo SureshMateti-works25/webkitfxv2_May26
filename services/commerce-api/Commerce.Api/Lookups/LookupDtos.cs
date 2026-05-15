@@ -15,6 +15,7 @@ public sealed record LookupValueResponse(
     string Label,
     int SortOrder,
     string? ParentValueId,
+    string? MerchandisingParentId,
     string? ImageStorageKey);
 
 public sealed record LookupBundleResponse(

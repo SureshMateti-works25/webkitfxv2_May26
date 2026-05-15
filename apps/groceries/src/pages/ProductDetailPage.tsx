@@ -6,6 +6,7 @@ import { ProductStorefrontGallery, type ProductStorefrontWhatsappProps } from ".
 import { ProductImageFullView } from "../components/ProductImageFullView.js";
 import { ProductCardPrices } from "../components/ProductCardPrices.js";
 import { ProductEngagementPanel } from "../components/ProductEngagementPanel.js";
+import { ProductSpecDetail } from "../components/ProductSpecDetail.js";
 import productDetailScreen from "../config/screens/product-detail.json";
 import { getShell } from "../config/getShell.js";
 import {
@@ -18,6 +19,16 @@ import {
 } from "../lib/commerceApi.js";
 import { recordProductVisit } from "../lib/recentVisits.js";
 import { canUseStorefrontCart } from "../lib/storefrontCartAccess.js";
+import { emptyProductSpec, formatPackagingVariant } from "../lib/productSpec.js";
+import type { CartPackSnapshot } from "../lib/cartLineMeasure.js";
+import {
+  defaultPackVariantIndex,
+  packSelectionCount,
+  resolveSelectionStorefrontSku,
+  storefrontComparePriceMinor,
+  storefrontUnitPriceMinor,
+} from "../lib/storefrontPackPricing.js";
+import { formatMinorAmount } from "../lib/formatMinor.js";
 
 type ScreenConfig = {
   version?: string;
@@ -87,6 +98,8 @@ export function ProductDetailPage() {
     skuId: null,
     skuCode: null,
   });
+  const [packIndex, setPackIndex] = useState(0);
+  const [cartQty, setCartQty] = useState(1);
 
   const closeFullView = useCallback(() => {
     setFullViewOpen(false);
@@ -110,6 +123,38 @@ export function ProductDetailPage() {
 
   useEffect(() => {
     if (!product) return;
+    setPackIndex(defaultPackVariantIndex(product.productSpec));
+    setCartQty(1);
+  }, [product?.id]);
+
+  const selectedPackSku = useMemo(() => {
+    if (!product) return null;
+    return resolveSelectionStorefrontSku(product.productSpec, packIndex, product.storefrontSkus);
+  }, [product, packIndex]);
+
+  const hasPackChoice = useMemo(() => {
+    if (!product) return false;
+    return packSelectionCount(product.productSpec, product.storefrontSkus) > 1;
+  }, [product]);
+
+  const cartPackSnapshot = useMemo((): CartPackSnapshot | null => {
+    if (!product?.productSpec?.packagingVariants.length) return null;
+    const v = product.productSpec.packagingVariants[packIndex] ?? product.productSpec.packagingVariants[0];
+    if (!v) return null;
+    return {
+      packLabel: formatPackagingVariant(v),
+      packUnitType: v.unitType,
+      packQuantity: v.quantity,
+      unitsPerPack: product.productSpec.unitsPerPack ?? null,
+    };
+  }, [product, packIndex]);
+
+  useEffect(() => {
+    if (!product) return;
+    if (selectedPackSku) {
+      setSkuFocus({ skuId: selectedPackSku.id, skuCode: selectedPackSku.skuCode });
+      return;
+    }
     const f = product.skuGalleryFacets[0];
     if (f) {
       setSkuFocus({ skuId: f.skuId, skuCode: (f.skuCode ?? "").trim() || null });
@@ -117,7 +162,7 @@ export function ProductDetailPage() {
     }
     const c = product.skuCodes[0]?.trim();
     setSkuFocus({ skuId: null, skuCode: c || null });
-  }, [product?.id, product]);
+  }, [product?.id, product, selectedPackSku?.id, selectedPackSku?.skuCode]);
 
   useEffect(() => {
     if (!key) {
@@ -245,20 +290,29 @@ export function ProductDetailPage() {
   const vendorName = product.vendorDisplayName?.trim() || null;
   const offerLabel = offerTypeLabel(product.offerType);
   const offerValueLabel = (product.offerCardText ?? "").trim() || offerLabel;
-  const salePrice =
-    product.offerType &&
-    product.offerType.toLowerCase() !== "none" &&
-    product.offerPriceMinor != null &&
-    Number.isFinite(product.offerPriceMinor)
+  const skuDrivenPrice = selectedPackSku?.listPriceMinor != null;
+  const salePrice = skuDrivenPrice
+    ? selectedPackSku!.listPriceMinor
+    : product.offerType &&
+        product.offerType.toLowerCase() !== "none" &&
+        product.offerPriceMinor != null &&
+        Number.isFinite(product.offerPriceMinor)
       ? product.offerPriceMinor
       : product.minPriceMinor;
-  const mrpPrice =
-    product.listPriceMinor != null &&
-    salePrice != null &&
-    Number.isFinite(product.listPriceMinor) &&
-    product.listPriceMinor > salePrice
+  const mrpPrice = skuDrivenPrice
+    ? (() => {
+        const cmp = storefrontComparePriceMinor(selectedPackSku, product);
+        return cmp != null && salePrice != null && cmp > salePrice ? cmp : null;
+      })()
+    : product.listPriceMinor != null &&
+        salePrice != null &&
+        Number.isFinite(product.listPriceMinor) &&
+        product.listPriceMinor > salePrice
       ? product.listPriceMinor
       : null;
+  const effectiveUnitMinor = storefrontUnitPriceMinor(selectedPackSku, product);
+  const showPackBlock =
+    product.productSpec != null || product.storefrontSkus.length > 1;
 
   return (
     <article className="pdp-page pdp-page--storefront">
@@ -318,26 +372,47 @@ export function ProductDetailPage() {
             <h1 className="pdp-page__title pdp-page__title--hero">{product.titleDisplay}</h1>
           ) : null}
           {vendorName ? <p className="pdp-page__vendor-name">{vendorName}</p> : null}
-          {screen.sections.includes("prices") || (screen.sections.includes("addToCart") && showConsumerCart) ? (
-            <div className="pdp-page__prices-cart-block">
-              <div className="pdp-page__prices-cart-row">
-                {screen.sections.includes("prices") ? (
-                  <ProductCardPrices
-                    variant="detail"
-                    className="pdp-page__prices"
-                    minPriceMinor={product.minPriceMinor}
-                    currency={product.currency}
-                    listPriceMinor={product.listPriceMinor}
-                    offerPriceMinor={product.offerPriceMinor}
-                    offerType={product.offerType}
-                    offerCardText={product.offerCardText}
-                  />
-                ) : null}
-                {screen.sections.includes("addToCart") && showConsumerCart ? (
-                  <AddToCartButton product={product} skuFocus={skuFocus} />
-                ) : null}
-              </div>
+          {screen.sections.includes("prices") && !hasPackChoice ? (
+            <div className="pdp-page__prices-cart-block pdp-page__prices-cart-block--compact">
+              <ProductCardPrices
+                variant="detail"
+                className="pdp-page__prices"
+                minPriceMinor={salePrice}
+                currency={product.currency}
+                listPriceMinor={mrpPrice ?? product.listPriceMinor}
+                offerPriceMinor={product.offerPriceMinor}
+                offerType={product.offerType}
+                offerCardText={product.offerCardText}
+              />
             </div>
+          ) : null}
+          {showPackBlock ? (
+            <ProductSpecDetail
+              spec={product.productSpec ?? emptyProductSpec()}
+              product={product}
+              storefrontSkus={product.storefrontSkus}
+              selectedIndex={packIndex}
+              onSelectIndex={setPackIndex}
+              quantity={cartQty}
+              className="pdp-page__product-spec pdp-page__product-spec--compact"
+            />
+          ) : null}
+          {screen.sections.includes("addToCart") && showConsumerCart ? (
+            <AddToCartButton
+              layout="retail"
+              product={product}
+              skuFocus={skuFocus}
+              quantity={cartQty}
+              onQuantityChange={setCartQty}
+              purchaseSku={
+                selectedPackSku
+                  ? { skuId: selectedPackSku.id, skuCode: selectedPackSku.skuCode }
+                  : null
+              }
+              unitPriceMinor={effectiveUnitMinor}
+              requirePackSelection={hasPackChoice && !selectedPackSku}
+              packSnapshot={showPackBlock ? cartPackSnapshot : null}
+            />
           ) : null}
           {screen.sections.includes("meta") ? (
             <>

@@ -101,11 +101,13 @@ public static class CatalogProductDetailAssembler
         ProductDetailSource row,
         CancellationToken ct)
     {
-        var skuCodes = await db.Skus.AsNoTracking()
+        var storefrontSkus = await db.Skus.AsNoTracking()
             .Where(s => s.TenantId == tenantId && s.ProductId == row.Id && s.Status == "active")
             .OrderBy(s => s.SkuCode)
-            .Select(s => s.SkuCode)
+            .Select(s => new StorefrontSkuDto(s.Id, s.SkuCode, s.ListPriceMinor, s.CompareAtPriceMinor))
             .ToListAsync(ct);
+
+        var skuCodes = storefrontSkus.Select(s => s.SkuCode).ToList();
 
         // Product-level media first, then SKU-scoped variant images (same rows the vendor attaches on SKUs).
         var galleryRows = await (
@@ -186,6 +188,8 @@ public static class CatalogProductDetailAssembler
             ProductMerchandisingIndicators.DefaultDetailMax,
             compactCard: false);
 
+        var productSpec = CommerceProductSpecReader.Read(row.CommerceJson);
+
         return new ProductDetailDto(
             row.Id,
             row.Slug,
@@ -207,6 +211,8 @@ public static class CatalogProductDetailAssembler
             primarySlug,
             skuCodes,
             skuGalleryFacets,
-            row.ProductTypeId);
+            row.ProductTypeId,
+            productSpec,
+            storefrontSkus);
     }
 }

@@ -7,13 +7,28 @@ import {
 } from "./lookupFormBindings.js";
 
 export type VendorProductCoreLookupOptions = {
+  /** When set, category options prefer rows whose `parent_value_id` equals this department id. */
+  productDepartmentId?: string | null;
   /**
-   * When set, primary category options are limited to rows whose `parent_value_id` equals this id
-   * when the lookup type still parents categories on `product_types`. If no category row uses that
-   * parent (e.g. parent type is `product_departments`), options stay unfiltered by this id.
+   * When categories are parented on `product_types` (legacy), limit categories to this application type id.
+   * Ignored when department filtering already applies.
    */
-  primaryCategoryParentTypeId?: string | null;
+  applicationTypeId?: string | null;
 };
+
+function filterCategoryPatch(
+  cat: ResolvedLookupSelectPatch,
+  predicate: (row: NonNullable<ResolvedLookupSelectPatch["lookupRows"]>[number]) => boolean
+): ResolvedLookupSelectPatch {
+  const rows = cat.lookupRows ?? [];
+  const key = cat.optionValueKey ?? "id";
+  const filteredRows = rows.filter(predicate);
+  return {
+    ...cat,
+    options: lookupValuesToFieldOptions(filteredRows, key),
+    lookupRows: filteredRows,
+  };
+}
 
 /**
  * Vendor product core JsonForm with select options filled from
@@ -23,24 +38,56 @@ export function vendorProductCoreFormWithResolvedLookups(
   resolved: Record<string, ResolvedLookupSelectPatch>,
   opts?: VendorProductCoreLookupOptions
 ): FormDefinition {
-  const pid = opts?.primaryCategoryParentTypeId?.trim();
+  const deptId = opts?.productDepartmentId?.trim();
+  const appTypeId = opts?.applicationTypeId?.trim();
   let merged = resolved;
-  if (pid && resolved.primaryCategoryId?.lookupRows?.length) {
-    const cat = resolved.primaryCategoryId;
-    const key = cat.optionValueKey ?? "id";
-    const hasLinked = cat.lookupRows.some((r) => r.parentValueId === pid);
-    if (hasLinked) {
-      const filteredRows = cat.lookupRows.filter((r) => r.parentValueId === pid);
+
+  const dept = resolved.productDepartmentId;
+  if (appTypeId && dept?.lookupRows?.length) {
+    const hasAppLinked = dept.lookupRows.some((r) => r.parentValueId === appTypeId);
+    if (hasAppLinked) {
       merged = {
-        ...resolved,
-        primaryCategoryId: {
-          ...cat,
-          options: lookupValuesToFieldOptions(filteredRows, key),
-          lookupRows: filteredRows,
-        },
+        ...merged,
+        productDepartmentId: filterCategoryPatch(dept, (r) => r.parentValueId === appTypeId),
       };
     }
   }
 
+  const cat = resolved.productCategoryId;
+  if (cat?.lookupRows?.length) {
+    if (deptId) {
+      const hasDeptLinked = cat.lookupRows.some((r) => r.parentValueId === deptId);
+      if (hasDeptLinked) {
+        merged = {
+          ...merged,
+          productCategoryId: filterCategoryPatch(cat, (r) => r.parentValueId === deptId),
+        };
+      }
+    } else if (appTypeId) {
+      const hasTypeLinked = cat.lookupRows.some((r) => r.parentValueId === appTypeId);
+      if (hasTypeLinked) {
+        merged = {
+          ...merged,
+          productCategoryId: filterCategoryPatch(cat, (r) => r.parentValueId === appTypeId),
+        };
+      }
+    }
+  }
+
   return applyLookupResolvedOptionsToForm(vendorProductCoreForm, merged);
+}
+
+/** Derive department id from a selected category row (parent in `product_departments`). */
+export function departmentIdForCategory(
+  categoryId: string,
+  categoryRows: ResolvedLookupSelectPatch["lookupRows"],
+  departmentRows: ResolvedLookupSelectPatch["lookupRows"]
+): string {
+  const cid = categoryId.trim();
+  if (!cid || !categoryRows?.length) return "";
+  const cat = categoryRows.find((r) => r.id === cid);
+  const parent = cat?.parentValueId?.trim();
+  if (!parent) return "";
+  if (departmentRows?.some((d) => d.id === parent)) return parent;
+  return "";
 }

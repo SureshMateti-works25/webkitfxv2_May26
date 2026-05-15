@@ -22,6 +22,8 @@
     "dev:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-sarees-stack.ps1",
     "dev:commerce:apps": "concurrently -k -n sarees,groceries -c green,cyan \"npm run dev -w sarees-market\" \"npm run dev -w groceries-market\"",
     "stop:commerce-api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-commerce-api.ps1",
+    "clear:commerce-lookups": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-lookups.ps1",
+    "clear:commerce-products": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-products.ps1 -DeleteProductMedia",
     "api:commerce:exec:fresh": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-commerce-api.ps1 -StopExisting",
     "api:commerce:watch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-commerce-api-watch.ps1",
     "docker:commerce-db": "docker compose -f services/commerce-api/docker-compose.yml up -d",

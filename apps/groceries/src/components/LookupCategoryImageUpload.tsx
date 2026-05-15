@@ -3,7 +3,7 @@ import { useFormRenderer } from "@webkitfxv2/react-renderer";
 import { useEffect, useId, useRef, useState } from "react";
 import { mediaAssetUrl, uploadTenantMediaAsset } from "../lib/commerceApi.js";
 
-const STOREFRONT_IMAGE_BINDING = "entry.storefrontImageKey";
+import { LOOKUP_TILE_IMAGE_BINDING } from "../lib/lookupTileImage.js";
 
 const ACCEPT_IMAGES = "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp";
 
@@ -102,9 +102,27 @@ function LookupCategoryImageUploadInner(props: {
           {uploadError}
         </p>
       ) : null}
+      {!previewSrc && !uploading ? (
+        <p className="lookup-category-image-upload__empty" id={`${inputId}-hint`}>
+          JPEG, PNG, or WebP. Preview appears after upload.
+        </p>
+      ) : null}
+      {!accessToken ? (
+        <p className="lookup-admin-page__hint" role="status">
+          Sign in as admin or vendor to upload images.
+        </p>
+      ) : null}
       {previewSrc ? (
-        <div className="lookup-category-image-upload__preview">
-          <img key={previewSrc} src={previewSrc} alt="" width={72} height={72} loading="lazy" decoding="async" />
+        <div className="lookup-category-image-upload__preview" aria-live="polite">
+          <img
+            key={previewSrc}
+            src={previewSrc}
+            alt="Uploaded tile preview"
+            width={120}
+            height={120}
+            loading="lazy"
+            decoding="async"
+          />
         </div>
       ) : null}
     </div>
@@ -116,14 +134,14 @@ export function LookupCategoryImageFormBinding(props: { accessToken: string | nu
   const { accessToken, canUpload } = props;
   const { setBinding, values } = useFormRenderer();
   const inputId = useId();
-  const storageKey = String(getAtPath(values, STOREFRONT_IMAGE_BINDING) ?? "").trim();
+  const storageKey = String(getAtPath(values, LOOKUP_TILE_IMAGE_BINDING) ?? "").trim();
 
   return (
     <LookupCategoryImageUploadInner
       accessToken={accessToken}
       canUpload={canUpload}
       storageKey={storageKey}
-      onStorageKeyChange={(next) => setBinding(STOREFRONT_IMAGE_BINDING, next)}
+      onStorageKeyChange={(next) => setBinding(LOOKUP_TILE_IMAGE_BINDING, next)}
       inputId={inputId}
     />
   );

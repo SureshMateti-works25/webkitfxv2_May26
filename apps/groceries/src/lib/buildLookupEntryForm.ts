@@ -1,6 +1,7 @@
 import type { FieldDefinition, FormDefinition, LayoutNode } from "@webkitfxv2/core-engine";
 import type { FieldOptionRow } from "@webkitfxv2/react-renderer";
 import type { LookupTypeDef } from "./lookupDomainModel.js";
+import { lookupTypeSupportsTileImage } from "./lookupTileImage.js";
 
 /**
  * Builds a {@link FormDefinition} for JsonForm from registry metadata + parent select options.
@@ -57,7 +58,7 @@ export function buildLookupEntryFormDefinition(
     layoutChildren.push({ type: "field", fieldId: "parentId" });
   }
 
-  if (def.id === "product_categories") {
+  if (lookupTypeSupportsTileImage(def.id)) {
     fields.storefrontImageKey = {
       binding: "entry.storefrontImageKey",
       widget: "hidden",

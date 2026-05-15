@@ -19,6 +19,7 @@ import {
   listCatalogProducts,
   listCommerceLookupValues,
   mediaAssetUrl,
+  parseCommerceLookupValueFromApi,
   PRODUCT_DEPARTMENTS_LOOKUP_TYPE_ID,
   type CatalogCategoryRow,
   type CatalogProductCard,
@@ -207,15 +208,11 @@ function findCommerceLookupValueByIdInBundle(
     for (const raw of slice ?? []) {
       const v = raw as CommerceLookupValueDto;
       if ((v.id ?? "").trim() !== id) continue;
-      return {
+      return parseCommerceLookupValueFromApi({
+        ...v,
         id: v.id.trim(),
         lookupTypeId: (v.lookupTypeId ?? lookupTypeId).trim(),
-        code: String(v.code ?? ""),
-        label: String(v.label ?? ""),
-        sortOrder: typeof v.sortOrder === "number" ? v.sortOrder : 0,
-        parentValueId: v.parentValueId ?? null,
-        imageStorageKey: v.imageStorageKey?.trim() ? v.imageStorageKey.trim() : null,
-      };
+      } as Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string });
     }
   }
   return null;
@@ -248,6 +245,7 @@ function resolveDepartmentRowsForStorefront(
       label: pv,
       sortOrder: 999999,
       parentValueId: null,
+      merchandisingParentId: null,
       imageStorageKey: null,
     });
   }
@@ -347,7 +345,9 @@ function prefersReducedMotion(): boolean {
 /** Dev grocery aisles: try alternate hero keys if the category tile key fails to load. */
 const GROCERY_CATEGORY_IMAGE_FALLBACKS: Record<string, string> = {
   produce: "t1/p_gr_demo_produce/hero.jpg",
+  "fresh-vegetables": "t1/p_gr_demo_produce/hero.jpg",
   dairy: "t1/p_gr_demo_dairy/hero.jpg",
+  "milk-dairy": "t1/p_gr_demo_dairy/hero.jpg",
 };
 
 function BrowseCategoryCircleTile({ category }: { category: CatalogCategoryRow }) {
@@ -599,8 +599,14 @@ export function HomeCatalogRails() {
 
         const resolvedDeptRows = resolveDepartmentRowsForStorefront(cats, bundle, deptRows);
         const deptGroups = departmentBrowseGroupsByDepartments(cats, resolvedDeptRows);
-        const useDeptGrouping = deptGroups.length > 0;
-        const groups = useDeptGrouping ? deptGroups : departmentBrowseGroupsMerchandising(cats);
+        const merchGroups = departmentBrowseGroupsMerchandising(cats);
+        const deptTileCount = deptGroups.reduce((n, g) => n + g.categories.length, 0);
+        const merchTileCount = merchGroups.reduce((n, g) => n + g.categories.length, 0);
+        // Prefer `product_departments` only when it surfaces most grocery aisles; otherwise use merchandising tree
+        // (e.g. all tiles under `cat_grocery_dept` — Fresh vegetables, Atta, dairy, …).
+        const useDeptGrouping =
+          deptGroups.length > 0 && deptTileCount >= Math.max(merchTileCount, Math.min(6, cats.length));
+        const groups = useDeptGrouping ? deptGroups : merchGroups;
         const deptRoots = rootCategories(cats);
         const broadSlug = useDeptGrouping
           ? (groups.find((g) => g.categories.length > 0)?.categories[0]?.slug ?? null)

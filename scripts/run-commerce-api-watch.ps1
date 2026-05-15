@@ -27,8 +27,8 @@ $apiDir = Join-Path $root "services/commerce-api/Commerce.Api"
 $proj = Join-Path $apiDir "Commerce.Api.csproj"
 
 $env:ASPNETCORE_ENVIRONMENT = "Development"
-$env:ASPNETCORE_URLS = "http://127.0.0.1:5055;http://localhost:5055"
+$env:ASPNETCORE_URLS = "http://localhost:5055"
 
 Set-Location $apiDir
-Write-Host "Commerce.Api watch → http://127.0.0.1:5055 / http://localhost:5055 (Ctrl+C to stop)" -ForegroundColor Green
+Write-Host "Commerce.Api watch → http://localhost:5055 (Ctrl+C to stop)" -ForegroundColor Green
 dotnet watch run --project $proj -c Release --verbosity minimal

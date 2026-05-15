@@ -3,7 +3,8 @@ import { JsonForm } from "@webkitfxv2/react-renderer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
-import { LookupCategoryImageFormBinding, LookupCategoryImageUploadControl } from "../components/LookupCategoryImageUpload.js";
+import { LookupCategoryImageUploadControl } from "../components/LookupCategoryImageUpload.js";
+import { LookupEntryFormActions } from "../components/LookupEntryFormActions.js";
 import { buildLookupEntryFormDefinition } from "../lib/buildLookupEntryForm.js";
 import { commerceLookupTypeToTypeDef } from "../lib/commerceLookupMappers.js";
 import {
@@ -13,12 +14,16 @@ import {
   formatCommerceApiError,
   listCommerceLookupTypes,
   listCommerceLookupValues,
+  mediaAssetUrl,
   updateCommerceLookupValue,
   upsertCommerceLookupType,
   type CommerceLookupTypeDto,
   type CommerceLookupValueDto,
 } from "../lib/commerceApi.js";
-import { filterProductTypeLookupRowsForGroceries } from "../lib/groceriesLookupFilters.js";
+import { filterProductCategoryLookupRowsForGroceries, filterProductTypeLookupRowsForGroceries } from "../lib/groceriesLookupFilters.js";
+import { lookupTypeSupportsTileImage } from "../lib/lookupTileImage.js";
+
+const ADD_ENTRY_FORM_ID = "lookup-admin-add-entry-form";
 
 type LookupAdminSection = "types" | "values";
 
@@ -42,6 +47,10 @@ export function LookupAdminPage() {
   const [valuesSearchQuery, setValuesSearchQuery] = useState("");
   const [typesSearchQuery, setTypesSearchQuery] = useState("");
   const [showAddEntryForm, setShowAddEntryForm] = useState(false);
+  const [addEntryImageKey, setAddEntryImageKey] = useState("");
+  const [addEntrySaving, setAddEntrySaving] = useState(false);
+  const saveAnotherRef = useRef(false);
+  const addPanelRef = useRef<HTMLElement | null>(null);
   const valueRowRefs = useRef(new Map<string, HTMLLIElement>());
   const [typeFormError, setTypeFormError] = useState<string | null>(null);
   const [savingType, setSavingType] = useState(false);
@@ -153,7 +162,31 @@ export function LookupAdminPage() {
     setEditingEntryId(null);
     setValuesSearchQuery("");
     setShowAddEntryForm(false);
+    setAddEntryImageKey("");
   }, [selectedTypeId]);
+
+  useEffect(() => {
+    setAddEntryImageKey("");
+  }, [formResetKey]);
+
+  const closeAddEntryForm = useCallback(() => {
+    setShowAddEntryForm(false);
+    setFormError(null);
+    setFormResetKey((k) => k + 1);
+    setAddEntryImageKey("");
+    saveAnotherRef.current = false;
+  }, []);
+
+  const scrollAddPanelIntoView = useCallback(() => {
+    requestAnimationFrame(() => {
+      addPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
+  const triggerSaveAndAddAnother = useCallback(() => {
+    saveAnotherRef.current = true;
+    document.getElementById(ADD_ENTRY_FORM_ID)?.requestSubmit();
+  }, []);
 
   const typeDef = useMemo(() => (selectedDto ? commerceLookupTypeToTypeDef(selectedDto) : null), [selectedDto]);
   const parentOptions = useMemo(() => {
@@ -195,9 +228,11 @@ export function LookupAdminPage() {
 
   const filteredEntries = useMemo(() => {
     if (editingEntryId) return entries;
+    const base =
+      selectedDto?.id === "product_categories" ? filterProductCategoryLookupRowsForGroceries(entries) : entries;
     const q = valuesSearchQuery.trim().toLowerCase();
-    if (!q) return entries;
-    return entries.filter((e) => {
+    if (!q) return base;
+    return base.filter((e) => {
       if (e.code.toLowerCase().includes(q)) return true;
       if (e.label.toLowerCase().includes(q)) return true;
       if (e.id.toLowerCase().includes(q)) return true;
@@ -210,7 +245,7 @@ export function LookupAdminPage() {
       if (e.imageStorageKey?.toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [entries, valuesSearchQuery, editingEntryId, parentRows]);
+  }, [entries, valuesSearchQuery, editingEntryId, parentRows, selectedDto?.id]);
 
   useEffect(() => {
     if (!editingEntryId) return;
@@ -246,11 +281,10 @@ export function LookupAdminPage() {
             : 0;
       const parentIdRaw = typeDef.parentLookupId ? String(getAtPath(values, "entry.parentId") ?? "").trim() : "";
       const parentValueId = parentIdRaw || null;
-      const imageRaw =
-        selectedDto.id === "product_categories"
-          ? String(getAtPath(values, "entry.storefrontImageKey") ?? "").trim()
-          : "";
-      const imageStorageKey = imageRaw.length > 0 ? imageRaw : null;
+      const imageStorageKey =
+        lookupTypeSupportsTileImage(selectedDto.id) && addEntryImageKey.trim().length > 0
+          ? addEntryImageKey.trim()
+          : null;
 
       if (!code || !label) {
         setFormError("Code and label are required.");
@@ -261,6 +295,7 @@ export function LookupAdminPage() {
         return;
       }
 
+      setAddEntrySaving(true);
       try {
         await createCommerceLookupValue(token, selectedDto.id, {
           code,
@@ -269,13 +304,19 @@ export function LookupAdminPage() {
           parentValueId: typeDef.parentLookupId ? parentValueId : null,
           imageStorageKey,
         });
+        saveAnotherRef.current = false;
         setFormResetKey((k) => k + 1);
+        setAddEntryImageKey("");
         bumpList();
+        scrollAddPanelIntoView();
       } catch (e) {
+        saveAnotherRef.current = false;
         setFormError(formatCommerceApiError(e));
+      } finally {
+        setAddEntrySaving(false);
       }
     },
-    [typeDef, entryForm, selectedDto, token, bumpList]
+    [typeDef, entryForm, selectedDto, token, bumpList, addEntryImageKey, scrollAddPanelIntoView]
   );
 
   const onDelete = useCallback(
@@ -963,45 +1004,61 @@ export function LookupAdminPage() {
           >
             {showAddEntryForm ? (
               <section
+                ref={addPanelRef}
                 id="lookup-add-panel"
-                className="lookup-admin-page__panel"
+                className="lookup-admin-page__panel lookup-admin-page__panel--add-entry"
                 aria-labelledby="lookup-add-heading"
               >
-                <h2 id="lookup-add-heading" className="lookup-admin-page__panel-title">
-                  Add entry — {selectedDto.title}
-                </h2>
-                {formError ? (
-                  <p className="lookup-admin-page__form-error" role="alert">
-                    {formError}
-                  </p>
-                ) : null}
-                <div className="lookup-admin-page__form-actions lookup-admin-page__form-actions--top">
-                  <button
-                    type="submit"
-                    form="lookup-admin-add-entry-form"
-                    className="shell-btn shell-btn--primary"
-                    disabled={!token}
-                  >
-                    Save entry
-                  </button>
+                <div className="lookup-admin-page__sticky-head">
+                  <h2 id="lookup-add-heading" className="lookup-admin-page__panel-title">
+                    Add entry — {selectedDto.title}
+                  </h2>
+                  {formError ? (
+                    <p className="lookup-admin-page__form-error" role="alert">
+                      {formError}
+                    </p>
+                  ) : null}
+                  <LookupEntryFormActions
+                    formId={ADD_ENTRY_FORM_ID}
+                    canSave={!!token}
+                    saving={addEntrySaving}
+                    onCancel={closeAddEntryForm}
+                    onSaveAndAddAnother={triggerSaveAndAddAnother}
+                  />
                 </div>
-                <JsonForm
-                  id="lookup-admin-add-entry-form"
-                  key={selectedDto.id}
-                  form={entryForm}
-                  className="lookup-admin-page__form"
-                  resetKey={formResetKey}
-                  onSubmit={onAdd}
-                >
-                  {selectedDto.id === "product_categories" ? (
+                <div className="lookup-admin-page__panel-scroll">
+                  {lookupTypeSupportsTileImage(selectedDto.id) ? (
                     <div className="lookup-admin-page__field lookup-admin-page__field--span">
-                      <span className="lookup-admin-page__label">
-                        Category image (storefront tile)
-                      </span>
-                      <LookupCategoryImageFormBinding accessToken={token} canUpload={canUploadCategoryImage} />
+                      <span className="lookup-admin-page__label">Tile image (optional)</span>
+                      <p className="lookup-admin-page__hint lookup-admin-page__hint--block">
+                        Shown on home category rails when this lookup is <code>product_categories</code>.
+                      </p>
+                      <LookupCategoryImageUploadControl
+                        accessToken={token}
+                        canUpload={canUploadCategoryImage}
+                        storageKey={addEntryImageKey}
+                        onStorageKeyChange={setAddEntryImageKey}
+                      />
                     </div>
                   ) : null}
-                </JsonForm>
+                  <JsonForm
+                    id={ADD_ENTRY_FORM_ID}
+                    key={selectedDto.id}
+                    form={entryForm}
+                    className="lookup-admin-page__form"
+                    resetKey={formResetKey}
+                    onSubmit={onAdd}
+                  />
+                </div>
+                <div className="lookup-admin-page__sticky-foot">
+                  <LookupEntryFormActions
+                    formId={ADD_ENTRY_FORM_ID}
+                    canSave={!!token}
+                    saving={addEntrySaving}
+                    onCancel={closeAddEntryForm}
+                    onSaveAndAddAnother={triggerSaveAndAddAnother}
+                  />
+                </div>
               </section>
             ) : null}
 
@@ -1038,14 +1095,8 @@ export function LookupAdminPage() {
                     aria-expanded={showAddEntryForm}
                     aria-controls={showAddEntryForm ? "lookup-add-panel" : undefined}
                     onClick={() => {
-                      setShowAddEntryForm((prev) => {
-                        const next = !prev;
-                        if (!next) {
-                          setFormError(null);
-                          setFormResetKey((k) => k + 1);
-                        }
-                        return next;
-                      });
+                      if (showAddEntryForm) closeAddEntryForm();
+                      else setShowAddEntryForm(true);
                     }}
                   >
                     {showAddEntryForm ? "Close add form" : "Add lookup"}
@@ -1091,7 +1142,7 @@ export function LookupAdminPage() {
                           parentOptions={parentOptions}
                           parentRequired={!!selectedDto.parentLookupTypeId}
                           parentLabel={selectedDto.parentFieldLabel ?? parentTypeTitle ?? "Parent"}
-                          showStorefrontImage={selectedDto.id === "product_categories"}
+                          showStorefrontImage={lookupTypeSupportsTileImage(selectedDto.id)}
                           onCancel={() => {
                             setEditingEntryId(null);
                             setFormError(null);
@@ -1113,37 +1164,46 @@ export function LookupAdminPage() {
                             ) : null}
                             <span className="lookup-admin-page__sort">Sort {e.sortOrder}</span>
                             {(() => {
-                              const isCategories = selectedDto.id === "product_categories";
+                              const showTileImage = lookupTypeSupportsTileImage(selectedDto.id);
+                              const imgKey = e.imageStorageKey;
                               const hasImg =
-                                typeof e.imageStorageKey === "string" &&
-                                e.imageStorageKey.trim().length > 0;
-                              const key = hasImg ? e.imageStorageKey.trim() : "";
-                              if (!isCategories) {
-                                return (
-                                  <span
-                                    className="lookup-admin-page__thumb-hint lookup-admin-page__thumb-hint--na"
-                                    title="Storefront image is only used for the product categories lookup"
-                                    aria-label="Storefront image not used for this lookup type"
-                                  >
-                                    Image · n/a
-                                  </span>
-                                );
+                                typeof imgKey === "string" && imgKey.trim().length > 0;
+                              const key = hasImg ? imgKey.trim() : "";
+                              if (!showTileImage) {
+                                return null;
                               }
                               return (
-                                <span
-                                  className={
-                                    hasImg
-                                      ? "lookup-admin-page__thumb-hint lookup-admin-page__thumb-hint--set"
-                                      : "lookup-admin-page__thumb-hint lookup-admin-page__thumb-hint--empty"
-                                  }
-                                  title={hasImg ? key : "No storefront image for this category"}
-                                  aria-label={
-                                    hasImg
-                                      ? `Storefront image is set (${key})`
-                                      : "No storefront image for this category"
-                                  }
-                                >
-                                  {hasImg ? "Image · yes" : "Image · no"}
+                                <span className="lookup-admin-page__thumb-row">
+                                  {hasImg ? (
+                                    <img
+                                      className="lookup-admin-page__thumb-img"
+                                      src={mediaAssetUrl(key)}
+                                      alt=""
+                                      width={40}
+                                      height={40}
+                                      loading="lazy"
+                                      decoding="async"
+                                      title={key}
+                                      onError={(ev) => {
+                                        ev.currentTarget.style.visibility = "hidden";
+                                      }}
+                                    />
+                                  ) : null}
+                                  <span
+                                    className={
+                                      hasImg
+                                        ? "lookup-admin-page__thumb-hint lookup-admin-page__thumb-hint--set"
+                                        : "lookup-admin-page__thumb-hint lookup-admin-page__thumb-hint--empty"
+                                    }
+                                    title={hasImg ? key : "No storefront image for this category"}
+                                    aria-label={
+                                      hasImg
+                                        ? `Storefront image is set (${key})`
+                                        : "No storefront image for this category"
+                                    }
+                                  >
+                                    {hasImg ? "Image · yes" : "Image · no"}
+                                  </span>
                                 </span>
                               );
                             })()}
@@ -1192,6 +1252,14 @@ export function LookupAdminPage() {
   );
 }
 
+function readLookupEntryImageKey(e: CommerceLookupValueDto): string {
+  const r = e as Record<string, unknown>;
+  const s1 = typeof r.imageStorageKey === "string" ? r.imageStorageKey.trim() : "";
+  if (s1.length > 0) return s1;
+  const s2 = typeof r.ImageStorageKey === "string" ? r.ImageStorageKey.trim() : "";
+  return s2;
+}
+
 function LookupValueEditRow({
   entry,
   accessToken,
@@ -1219,10 +1287,7 @@ function LookupValueEditRow({
     imageStorageKey: string | null;
   }) => Promise<void>;
 }) {
-  const normalizedImageKey =
-    typeof entry.imageStorageKey === "string" && entry.imageStorageKey.trim().length > 0
-      ? entry.imageStorageKey.trim()
-      : "";
+  const normalizedImageKey = readLookupEntryImageKey(entry);
 
   const [code, setCode] = useState(entry.code);
   const [label, setLabel] = useState(entry.label);
@@ -1237,13 +1302,17 @@ function LookupValueEditRow({
     setLabel(entry.label);
     setSortOrder(String(entry.sortOrder));
     setParentValueId(entry.parentValueId ?? "");
-    const nextImg =
-      typeof entry.imageStorageKey === "string" && entry.imageStorageKey.trim().length > 0
-        ? entry.imageStorageKey.trim()
-        : "";
-    setImageStorageKey(nextImg);
+    setImageStorageKey(readLookupEntryImageKey(entry));
     setLocalError(null);
-  }, [entry.id, entry.code, entry.label, entry.sortOrder, entry.parentValueId, entry.imageStorageKey]);
+  }, [
+    entry.id,
+    entry.code,
+    entry.label,
+    entry.sortOrder,
+    entry.parentValueId,
+    entry.imageStorageKey,
+    (entry as Record<string, unknown>).ImageStorageKey,
+  ]);
 
   const submit = async () => {
     setLocalError(null);
@@ -1278,20 +1347,19 @@ function LookupValueEditRow({
   };
 
   return (
-    <div className="lookup-admin-page__value-edit">
+    <div className="lookup-admin-page__value-edit lookup-admin-page__value-edit--stacked">
       {localError ? (
         <p className="lookup-admin-page__form-error" role="alert">
           {localError}
         </p>
       ) : null}
-      <div className="lookup-admin-page__value-edit-actions lookup-admin-page__value-edit-actions--sticky">
-        <button type="button" className="shell-btn shell-btn--primary" disabled={saving} onClick={() => void submit()}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button type="button" className="shell-btn shell-btn--outline" disabled={saving} onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
+      <LookupEntryFormActions
+        canSave
+        saving={saving}
+        onCancel={onCancel}
+        onSave={() => void submit()}
+        showSaveAndAddAnother={false}
+      />
       <div className="lookup-admin-page__value-edit-grid">
         <label className="lookup-admin-page__field">
           <span className="lookup-admin-page__label">Code</span>
@@ -1333,7 +1401,7 @@ function LookupValueEditRow({
         {showStorefrontImage ? (
           <>
             <div className="lookup-admin-page__field lookup-admin-page__field--span">
-              <span className="lookup-admin-page__label">Category image</span>
+              <span className="lookup-admin-page__label">Tile image</span>
               <LookupCategoryImageUploadControl
                 accessToken={accessToken}
                 canUpload={canUploadCategoryImage}
@@ -1358,6 +1426,13 @@ function LookupValueEditRow({
           </>
         ) : null}
       </div>
+      <LookupEntryFormActions
+        canSave
+        saving={saving}
+        onCancel={onCancel}
+        onSave={() => void submit()}
+        showSaveAndAddAnother={false}
+      />
     </div>
   );
 }

@@ -61,7 +61,7 @@
           "id": "promo-ship",
           "title": "Free shipping",
           "body": "Orders over INR 1,999 ship free this week — GST invoice included.",
-          "ctaLabel": "Browse catalogue",
+          "ctaLabel": "Search by attributes",
           "ctaHref": "/search",
           "variant": "accent",
           "audiences": ["anonymous", "guest", "shopper"],
@@ -383,9 +383,10 @@
       "body": "Messages, alerts, and announcements will be driven from your notifications configuration — placeholder for now."
     },
     "search": {
-      "title": "Search catalogue",
-      "body": "Use one or many filters to find products. Filters are configuration-driven and can be extended without changing this page component.",
-      "noResults": "No products matched the selected filters."
+      "title": "Search groceries",
+      "body": "Find products by name, aisle, and catalogue attributes (colour, dietary, organic, and other values vendors assign on each product). Attribute options come from Commerce.Api.",
+      "noResults": "No grocery products matched your search.",
+      "noAttributesHint": "No filterable product attributes are configured yet. Search by product name or aisle, or ask an admin to add attribute definitions in Commerce.Api."
     },
     "adminVendors": {
       "title": "Vendors",

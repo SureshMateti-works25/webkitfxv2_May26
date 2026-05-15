@@ -11,8 +11,8 @@ import {
 const STORAGE_KEY = "groceries.storefront.cart.v1";
 const MAX_LINES = 60;
 
-export type CartLine = {
-  lineId: string;
+export type CartLineInput = {
+  lineId?: string;
   productId: string;
   slug: string;
   titleDisplay: string;
@@ -23,6 +23,30 @@ export type CartLine = {
   currency: string | null;
   heroStorageKey: string | null;
   vendorCode: string | null;
+  packLabel?: string | null;
+  packUnitType?: string | null;
+  packQuantity?: number | null;
+  unitsPerPack?: number | null;
+};
+
+export type CartLine = {
+  lineId: string;
+  productId: string;
+  slug: string;
+  titleDisplay: string;
+  skuId: string | null;
+  skuCode: string | null;
+  /** Number of sellable packs (same SKU merges on this count). */
+  quantity: number;
+  unitPriceMinor: number | null;
+  currency: string | null;
+  heroStorageKey: string | null;
+  vendorCode: string | null;
+  /** Pack-size label at add time (e.g. "500 g"). */
+  packLabel: string | null;
+  packUnitType: string | null;
+  packQuantity: number | null;
+  unitsPerPack: number | null;
 };
 
 function newLineId(): string {
@@ -50,6 +74,26 @@ function normalizeLine(raw: unknown): CartLine | null {
     currency: o.currency == null ? null : String(o.currency ?? o.Currency),
     heroStorageKey: o.heroStorageKey == null ? null : String(o.heroStorageKey ?? o.HeroStorageKey),
     vendorCode: o.vendorCode == null ? null : String(o.vendorCode ?? o.VendorCode),
+    packLabel:
+      o.packLabel == null || o.packLabel === ""
+        ? null
+        : String(o.packLabel ?? o.PackLabel).trim() || null,
+    packUnitType:
+      o.packUnitType == null || o.packUnitType === ""
+        ? null
+        : String(o.packUnitType ?? o.PackUnitType).trim() || null,
+    packQuantity: (() => {
+      const v = o.packQuantity ?? o.PackQuantity;
+      if (v == null || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    })(),
+    unitsPerPack: (() => {
+      const v = o.unitsPerPack ?? o.UnitsPerPack;
+      if (v == null || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    })(),
   };
 }
 
@@ -76,7 +120,7 @@ function writeLines(lines: CartLine[]) {
 type CartContextValue = {
   lines: CartLine[];
   totalQuantity: number;
-  addOrMergeLine: (input: Omit<CartLine, "lineId">) => void;
+  addOrMergeLine: (input: CartLineInput) => void;
   setLineQuantity: (lineId: string, quantity: number) => void;
   removeLine: (lineId: string) => void;
   clearCart: () => void;
@@ -102,22 +146,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const totalQuantity = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines]);
 
-  const addOrMergeLine = useCallback((input: Omit<CartLine, "lineId">) => {
+  const addOrMergeLine = useCallback((input: CartLineInput) => {
+    const line: CartLine = {
+      lineId: newLineId(),
+      productId: input.productId,
+      slug: input.slug,
+      titleDisplay: input.titleDisplay,
+      skuId: input.skuId,
+      skuCode: input.skuCode,
+      quantity: input.quantity,
+      unitPriceMinor: input.unitPriceMinor,
+      currency: input.currency,
+      heroStorageKey: input.heroStorageKey,
+      vendorCode: input.vendorCode,
+      packLabel: input.packLabel ?? null,
+      packUnitType: input.packUnitType ?? null,
+      packQuantity: input.packQuantity ?? null,
+      unitsPerPack: input.unitsPerPack ?? null,
+    };
     setLines((prev) => {
-      const skuKey = input.skuCode?.trim() || "";
+      const skuKey = line.skuCode?.trim() || "";
       const idx = prev.findIndex(
         (l) =>
-          l.productId === input.productId &&
+          l.productId === line.productId &&
           (l.skuCode?.trim() || "") === skuKey &&
-          (l.skuId ?? "") === (input.skuId ?? "")
+          (l.skuId ?? "") === (line.skuId ?? "")
       );
       if (idx >= 0) {
         const next = [...prev];
-        const merged = { ...next[idx]!, quantity: Math.min(999, next[idx]!.quantity + input.quantity) };
+        const merged = {
+          ...next[idx]!,
+          quantity: Math.min(999, next[idx]!.quantity + line.quantity),
+          unitPriceMinor: line.unitPriceMinor ?? next[idx]!.unitPriceMinor,
+          packLabel: line.packLabel ?? next[idx]!.packLabel,
+          packUnitType: line.packUnitType ?? next[idx]!.packUnitType,
+          packQuantity: line.packQuantity ?? next[idx]!.packQuantity,
+          unitsPerPack: line.unitsPerPack ?? next[idx]!.unitsPerPack,
+        };
         next[idx] = merged;
         return next;
       }
-      return [...prev, { ...input, lineId: newLineId() }];
+      return [...prev, line];
     });
   }, []);
 

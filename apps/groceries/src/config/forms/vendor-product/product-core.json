@@ -13,8 +13,9 @@
           { "type": "field", "fieldId": "titleDisplay" },
           { "type": "field", "fieldId": "slug" },
           { "type": "field", "fieldId": "status" },
-          { "type": "field", "fieldId": "productTypeId" },
-          { "type": "field", "fieldId": "primaryCategoryId" }
+          { "type": "field", "fieldId": "applicationTypeId" },
+          { "type": "field", "fieldId": "productDepartmentId" },
+          { "type": "field", "fieldId": "productCategoryId" }
         ]
       },
       {
@@ -53,19 +54,27 @@
       },
       "default": "draft"
     },
-    "productTypeId": {
+    "applicationTypeId": {
       "binding": "core.productTypeId",
       "widget": "select",
-      "label": "Product type",
-      "description": "Options load from Commerce.Api lookup `product_types` (see lookup-form-bindings.json).",
+      "label": "Application type",
+      "description": "Which application or vertical this product belongs to (stored as product type on the server).",
       "default": "",
       "props": { "options": [] }
     },
-    "primaryCategoryId": {
+    "productDepartmentId": {
+      "binding": "core.productDepartmentId",
+      "widget": "select",
+      "label": "Product department",
+      "description": "Narrows the category list; not stored on the product row.",
+      "default": "",
+      "props": { "options": [] }
+    },
+    "productCategoryId": {
       "binding": "core.primaryCategoryId",
       "widget": "select",
-      "label": "Primary category",
-      "description": "Options load from Commerce.Api lookup `product_categories` (mirrors catalog categories).",
+      "label": "Product category",
+      "description": "Storefront aisle / category tile (Commerce.Api primary category link).",
       "default": "",
       "props": { "options": [] }
     },

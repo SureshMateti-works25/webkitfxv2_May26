@@ -36,7 +36,7 @@ Use the **Vite URL** in the browser for the React app. Do not bookmark `http://l
 Set in `apps/sarees/.env`:
 
 ```env
-VITE_COMMERCE_API_URL=http://127.0.0.1:5055
+VITE_COMMERCE_API_URL=http://localhost:5055
 ```
 
 Commerce.Api **CORS** must include your Vite origin (see `Commerce.Api/appsettings.Development.json` — includes 5175–5177).

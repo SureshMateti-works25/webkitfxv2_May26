@@ -124,6 +124,56 @@ public static class CatalogEndpoints
                     }
                 }
 
+                static void AddMerchandisingDescendants(HashSet<string> set, List<LookupValue> all)
+                {
+                    var byMerchParent = new Dictionary<string, List<LookupValue>>(StringComparer.Ordinal);
+                    foreach (var c in all)
+                    {
+                        var mp = c.MerchandisingParentId;
+                        if (string.IsNullOrEmpty(mp)) continue;
+                        if (!byMerchParent.TryGetValue(mp, out var list))
+                        {
+                            list = [];
+                            byMerchParent[mp] = list;
+                        }
+                        list.Add(c);
+                    }
+                    var queue = new Queue<string>(set.ToArray());
+                    while (queue.Count > 0)
+                    {
+                        var parentId = queue.Dequeue();
+                        if (!byMerchParent.TryGetValue(parentId, out var children)) continue;
+                        foreach (var child in children)
+                        {
+                            if (set.Add(child.Id))
+                                queue.Enqueue(child.Id);
+                        }
+                    }
+                }
+
+                /// <summary>
+                /// Groceries storefront tiles (Fresh vegetables, Atta, dairy, …) usually live under
+                /// <c>cat_grocery_dept</c> merchandising, not <c>product_departments</c>. Include that full tree
+                /// so aisles with images still list when <c>includeAllProductCategories</c> is scoped to <c>pt_grocery</c>.
+                /// </summary>
+                static void IncludeGroceryMerchandisingTree(HashSet<string> set, List<LookupValue> all)
+                {
+                    var roots = new HashSet<string>(StringComparer.Ordinal);
+                    foreach (var c in all)
+                    {
+                        if (string.Equals(c.Id, "cat_grocery_dept", StringComparison.Ordinal)
+                            || c.Id.StartsWith("cat_grocery_", StringComparison.Ordinal)
+                            || c.Id.StartsWith("cat_gr_", StringComparison.Ordinal)
+                            || string.Equals(c.MerchandisingParentId, "cat_grocery_dept", StringComparison.Ordinal))
+                            roots.Add(c.Id);
+                    }
+                    if (roots.Count == 0) return;
+                    var expanded = new HashSet<string>(roots, StringComparer.Ordinal);
+                    AddMerchandisingDescendants(expanded, all);
+                    foreach (var id in expanded)
+                        set.Add(id);
+                }
+
                 AddMerchandisingAncestors(includedForIncludeAll, allCatsForFilter);
 
                 var parentValueIds = allCatsForFilter
@@ -196,6 +246,9 @@ public static class CatalogEndpoints
                         }
                     }
                 }
+
+                if (string.Equals(productTypeFilter, "pt_grocery", StringComparison.Ordinal))
+                    IncludeGroceryMerchandisingTree(includedForIncludeAll, allCatsForFilter);
 
                 AddMerchandisingAncestors(includedForIncludeAll, allCatsForFilter);
 
@@ -871,10 +924,24 @@ public static class CatalogEndpoints
 
         var search = req.Query["q"].ToString();
 
+        var productTypeId = req.Query["productTypeId"].ToString().Trim();
+        if (string.IsNullOrEmpty(productTypeId))
+            productTypeId = null;
+        else if (productTypeId.Length > 64)
+            productTypeId = productTypeId[..64];
+
+        var excludeProductTypeId = req.Query["excludeProductTypeId"].ToString().Trim();
+        if (string.IsNullOrEmpty(excludeProductTypeId))
+            excludeProductTypeId = null;
+        else if (excludeProductTypeId.Length > 64)
+            excludeProductTypeId = excludeProductTypeId[..64];
+        if (productTypeId is not null)
+            excludeProductTypeId = null;
+
         var scope = CatalogListingQueries.ResolveCategoryScope(db, tenantId, categoryId, includeSubtree);
         var now = DateTimeOffset.UtcNow;
         var baseQ = CatalogListingQueries.BaseProductQuery(
-            db, tenantId, scope, collectionId, search, now, slug: null, productTypeId: null, excludeProductTypeId: null);
+            db, tenantId, scope, collectionId, search, now, slug: null, productTypeId, excludeProductTypeId);
 
         var defs = await db.AttributeDefs.AsNoTracking()
             .Where(d => d.TenantId == tenantId && d.Filterable)

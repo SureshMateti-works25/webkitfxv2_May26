@@ -53,7 +53,7 @@ public static class LookupEndpoints
         new(t.Id, t.Title, t.Description, t.ParentLookupTypeId, t.ParentFieldLabel, t.EntryIdPrefix);
 
     private static LookupValueResponse ToDto(LookupValue v) =>
-        new(v.Id, v.LookupTypeId, v.Code, v.Label, v.SortOrder, v.ParentValueId, v.ImageStorageKey);
+        new(v.Id, v.LookupTypeId, v.Code, v.Label, v.SortOrder, v.ParentValueId, v.MerchandisingParentId, v.ImageStorageKey);
 
     /// <summary>Maps legacy URL segment <c>product_department</c> to <c>product_departments</c> when only the plural type exists.</summary>
     private static async Task<string> ResolveLegacyProductDepartmentTypeIdAsync(

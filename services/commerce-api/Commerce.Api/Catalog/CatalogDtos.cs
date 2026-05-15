@@ -8,6 +8,13 @@ public sealed record ProductGalleryImageDto(string StorageKey, string Role, int 
 /// <summary>One colour / variant option in the PDP matrix: pick SKU → show that SKU’s angle rail.</summary>
 public sealed record SkuGalleryFacetDto(string SkuId, string SkuCode, string? SwatchStorageKey);
 
+/// <summary>Active SKU with storefront list/compare prices for pack-size selection on PDP.</summary>
+public sealed record StorefrontSkuDto(
+    string Id,
+    string SkuCode,
+    long? ListPriceMinor,
+    long? CompareAtPriceMinor);
+
 public sealed record ProductCardDto(
     string Id,
     string Slug,
@@ -49,7 +56,9 @@ public sealed record ProductDetailDto(
     string? PrimaryCategorySlug,
     IReadOnlyList<string> SkuCodes,
     IReadOnlyList<SkuGalleryFacetDto> SkuGalleryFacets,
-    string? ProductTypeId);
+    string? ProductTypeId,
+    ProductSpecDto? ProductSpec,
+    IReadOnlyList<StorefrontSkuDto> StorefrontSkus);
 
 public sealed record ProductCommentDto(
     string Id,

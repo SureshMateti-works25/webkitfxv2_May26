@@ -1,6 +1,26 @@
 import type { CommerceLookupValueDto } from "./commerceApi.js";
 
 /**
+ * Seeded saree **demo** category ids only. We do not walk `merchandisingParentId`:
+ * real grocery rows sometimes share or mis-point parents, which would hide valid
+ * categories (e.g. atta, oil, ice cream) from Admin / vendor selects.
+ */
+const KNOWN_SAREE_DEMO_CATEGORY_IDS = new Set([
+  "cat_saree",
+  "cat_silk",
+  "cat_kan",
+  "pcat_kalamkari",
+]);
+
+/**
+ * Groceries admin / vendor: hide only the fixed saree demo rows from `product_categories`.
+ * Everything else from Commerce.Api stays visible.
+ */
+export function filterProductCategoryLookupRowsForGroceries(rows: CommerceLookupValueDto[]): CommerceLookupValueDto[] {
+  return rows.filter((r) => !KNOWN_SAREE_DEMO_CATEGORY_IDS.has(r.id));
+}
+
+/**
  * Groceries storefront / admin: hide saree product type so category parent and
  * vendor "Product type" selects only show types relevant to this vertical.
  */

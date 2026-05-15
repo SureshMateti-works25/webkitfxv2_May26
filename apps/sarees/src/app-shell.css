@@ -4416,6 +4416,58 @@
   border-bottom: 1px solid rgba(107, 93, 82, 0.12);
 }
 
+.lookup-admin-page__form-actions--bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.lookup-admin-page__panel--add-entry {
+  display: flex;
+  flex-direction: column;
+  max-height: min(88vh, 40rem);
+  min-height: 0;
+}
+
+.lookup-admin-page__sticky-head {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: -0.15rem 0 0;
+  padding-bottom: 0.5rem;
+  background: #fff;
+  border-bottom: 1px solid rgba(107, 93, 82, 0.12);
+}
+
+.lookup-admin-page__sticky-head .lookup-admin-page__panel-title {
+  margin-bottom: 0.5rem;
+}
+
+.lookup-admin-page__panel-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.65rem 0 0.5rem;
+  scrollbar-gutter: stable;
+}
+
+.lookup-admin-page__sticky-foot {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding-top: 0.55rem;
+  background: linear-gradient(0deg, #fff 78%, rgba(255, 255, 255, 0));
+  border-top: 1px solid rgba(107, 93, 82, 0.12);
+}
+
+.lookup-admin-page__value-edit--stacked {
+  width: 100%;
+  gap: 0.55rem;
+}
+
 .lookup-admin-page__value-edit-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4491,9 +4543,15 @@
 
 .lookup-category-image-upload__preview img {
   display: block;
-  width: 72px;
-  height: 72px;
+  width: 120px;
+  height: 120px;
   object-fit: cover;
+}
+
+.lookup-category-image-upload__empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--nistta-ink-muted);
 }
 
 .lookup-admin-page__sort-controls {
@@ -4617,6 +4675,24 @@
   background: rgba(15, 23, 42, 0.04);
   border-color: rgba(107, 93, 82, 0.12);
   font-weight: 500;
+}
+
+.lookup-admin-page__thumb-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  flex-basis: 100%;
+}
+
+.lookup-admin-page__thumb-img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid rgba(107, 93, 82, 0.22);
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .lookup-admin-page__delete {

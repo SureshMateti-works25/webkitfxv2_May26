@@ -2,7 +2,6 @@ import type { FormDefinition } from "@webkitfxv2/core-engine";
 import login from "./login.json";
 import shopperSignup from "./shopper-signup.json";
 import vendorSignup from "./vendor-signup.json";
-import searchFilters from "./search-filters.json";
 import chromeNotice from "./chrome-notice.json";
 import productEngagement from "./product-engagement.json";
 import vendorProductCollections from "./vendor-product/collections.json";
@@ -17,7 +16,6 @@ import vendorProductTypeSaree from "./vendor-product/type-saree.json";
 export const loginForm = login as FormDefinition;
 export const vendorSignupForm = vendorSignup as FormDefinition;
 export const shopperSignupForm = shopperSignup as FormDefinition;
-export const searchFiltersForm = searchFilters as FormDefinition;
 export const chromeNoticeForm = chromeNotice as FormDefinition;
 export const productEngagementForm = productEngagement as FormDefinition;
 

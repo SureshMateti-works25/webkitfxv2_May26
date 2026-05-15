@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import { getShell } from "../config/getShell.js";
 import { useCart } from "../cart/CartContext.js";
+import { CartLineBreakdown } from "../components/CartLineBreakdown.js";
+import { cartLineHasPackPricing } from "../lib/cartLineMeasure.js";
 
 function formatMinor(minor: number | null, currency: string | null): string {
   if (minor == null) return "—";
@@ -14,6 +16,8 @@ export function CartPage() {
   const shell = getShell();
   const copy = shell.screens.cart;
   const { lines, totalQuantity, setLineQuantity, removeLine, clearCart } = useCart();
+
+  const anyPackLines = useMemo(() => lines.some((ln) => cartLineHasPackPricing(ln)), [lines]);
 
   const subtotalHint = useMemo(() => {
     if (lines.length === 0) return null;
@@ -60,37 +64,47 @@ export function CartPage() {
             </p>
           ) : null}
           <p className="cart-page__units" aria-live="polite">
-            {totalQuantity} {totalQuantity === 1 ? "unit" : "units"} in cart
+            {totalQuantity} {anyPackLines ? (totalQuantity === 1 ? "pack" : "packs") : totalQuantity === 1 ? "item" : "items"}{" "}
+            in cart
           </p>
           <ul className="cart-page__lines">
-            {lines.map((ln) => (
-              <li key={ln.lineId} className="cart-line">
-                <div className="cart-line__main">
-                  <Link to={`/p/${encodeURIComponent(ln.slug)}`} className="cart-line__title">
-                    {ln.titleDisplay || ln.slug}
-                  </Link>
-                  <p className="cart-line__meta">
-                    {ln.vendorCode ? <span>{ln.vendorCode}</span> : null}
-                    {ln.skuCode ? <span>SKU {ln.skuCode}</span> : null}
-                  </p>
-                  <p className="cart-line__price">{formatMinor(ln.unitPriceMinor, ln.currency)} each</p>
-                </div>
-                <label className="cart-line__qty">
-                  <span className="cart-line__qty-label">{copy.lineQtyLabel ?? "Qty"}</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={999}
-                    value={ln.quantity}
-                    onChange={(e) => setLineQuantity(ln.lineId, Number(e.target.value))}
-                    aria-label={`Quantity for ${ln.titleDisplay}`}
-                  />
-                </label>
-                <button type="button" className="cart-line__remove" onClick={() => removeLine(ln.lineId)}>
-                  {copy.removeLineLabel ?? "Remove"}
-                </button>
-              </li>
-            ))}
+            {lines.map((ln) => {
+              const packLine = cartLineHasPackPricing(ln);
+              return (
+                <li key={ln.lineId} className="cart-line">
+                  <div className="cart-line__main">
+                    <Link to={`/p/${encodeURIComponent(ln.slug)}`} className="cart-line__title">
+                      {ln.titleDisplay || ln.slug}
+                    </Link>
+                    <p className="cart-line__meta">
+                      {ln.vendorCode ? <span>{ln.vendorCode}</span> : null}
+                      {ln.skuCode ? <span>SKU {ln.skuCode}</span> : null}
+                    </p>
+                    <CartLineBreakdown line={ln} formatMinor={formatMinor} />
+                  </div>
+                  <label className="cart-line__qty">
+                    <span className="cart-line__qty-label">
+                      {packLine ? "Packs" : copy.lineQtyLabel ?? "Qty"}
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={999}
+                      value={ln.quantity}
+                      onChange={(e) => setLineQuantity(ln.lineId, Number(e.target.value))}
+                      aria-label={
+                        packLine
+                          ? `Number of packs for ${ln.titleDisplay}`
+                          : `Quantity for ${ln.titleDisplay}`
+                      }
+                    />
+                  </label>
+                  <button type="button" className="cart-line__remove" onClick={() => removeLine(ln.lineId)}>
+                    {copy.removeLineLabel ?? "Remove"}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

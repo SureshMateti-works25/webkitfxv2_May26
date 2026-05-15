@@ -747,6 +747,31 @@ public static class CommerceDevDataSeeder
     }
 
     /// <summary>
+    /// Idempotent: Groceries home grid aisles under <c>cat_grocery_dept</c> (Fresh vegetables, Atta, dairy, …).
+    /// Does not remove admin-created rows; only upserts known ids. Re-run safe on every dev API start.
+    /// </summary>
+    public static async Task EnsureGroceryStorefrontAisleLookupsAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string dept = "cat_grocery_dept";
+
+        await UpsertProductCategoryLookupAsync(db, tid, dept, "groceries", "Groceries & food", 5, null, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_grocery_produce", "fresh-vegetables", "Fresh vegetables", 10, dept, "t1/p_gr_demo_produce/hero.jpg", ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_fresh_fruits", "fresh-fruits", "Fresh fruits", 15, dept, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_atta_rice", "atta-rice-grains", "Atta, rice & grains", 20, dept, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_dals_pulses", "dals-pulses", "Dals & pulses", 25, dept, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_oil_ghee", "oil-ghee", "Oil & ghee", 30, dept, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_masala_spices", "masala-sugar-spices", "Masala, sugar & spices", 35, dept, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_grocery_dairy", "milk-dairy", "Milk & dairy", 40, dept, "t1/p_gr_demo_dairy/hero.jpg", ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_breads_bakery", "breads-bakery", "Breads & bakery", 45, dept, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_cereals_dry_fruits", "cereals-dry-fruits", "Cereals & dry fruits", 50, dept, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_tea_coffee", "tea-coffee-drinks", "Tea, coffee & drink mixes", 55, dept, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_juices_drinks", "juices-cold-drinks", "Juices & cold drinks", 60, dept, null, ct);
+        await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_sauces_spreads", "sauces-spreads", "Sauces & spreads", 65, dept, null, ct);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
     /// Idempotent: sample grocery <c>product_categories</c> + <c>pt_grocery</c> products for the Groceries storefront (tenant <c>t1</c>).
     /// When <paramref name="mediaRootForBlobWrites"/> is set, writes tiny JPEG blobs for demo hero paths.
     /// </summary>
@@ -758,10 +783,7 @@ public static class CommerceDevDataSeeder
         const string tid = "t1";
         const string typeGrocery = "pt_grocery";
 
-        await UpsertProductCategoryLookupAsync(db, tid, "cat_grocery_dept", "groceries", "Groceries", 5, null, null, ct);
-        await UpsertProductCategoryLookupAsync(db, tid, "cat_grocery_produce", "produce", "Produce", 10, "cat_grocery_dept", "t1/p_gr_demo_produce/hero.jpg", ct);
-        await UpsertProductCategoryLookupAsync(db, tid, "cat_grocery_dairy", "dairy", "Dairy", 20, "cat_grocery_dept", "t1/p_gr_demo_dairy/hero.jpg", ct);
-        await db.SaveChangesAsync(ct);
+        await EnsureGroceryStorefrontAisleLookupsAsync(db, ct);
 
         var published = new DateTimeOffset(2026, 5, 10, 12, 0, 0, TimeSpan.Zero);
         if (!await db.Products.AnyAsync(p => p.TenantId == tid && p.Id == "p_gr_demo_produce", ct))

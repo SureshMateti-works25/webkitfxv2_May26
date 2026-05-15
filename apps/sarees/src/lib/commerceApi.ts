@@ -1,15 +1,15 @@
 /**
  * Base URL for Commerce.Api (auth, catalog, media).
  * - If `VITE_COMMERCE_API_URL` / `VITE_CATALOG_API_URL` is set → use it (Azure CI, or override local).
- * - **Dev default:** `http://127.0.0.1:5055` — direct calls + absolute `/media/...` URLs (same pattern as production;
- *   avoids Vite `/media` proxy edge cases). Commerce.Api Development CORS allows localhost/127 Vite ports.
+ * - **Dev default:** `http://localhost:5055` for API `fetch`; **images** use same-origin `/media/...` (Vite proxies to
+ *   Commerce.Api) whenever the configured API is loopback port 5055. Commerce.Api CORS allows Vite ports for JSON calls.
  * - Production build without env → `http://localhost:5055` (set `VITE_COMMERCE_API_URL` in real deploys / SWA).
  */
 const fromEnv =
   (import.meta.env.VITE_COMMERCE_API_URL as string | undefined) ??
   (import.meta.env.VITE_CATALOG_API_URL as string | undefined);
 const trimmed = fromEnv?.trim().replace(/\/$/, "");
-const LOCAL_COMMERCE_ORIGIN = "http://127.0.0.1:5055";
+const LOCAL_COMMERCE_ORIGIN = "http://localhost:5055";
 const BASE =
   trimmed && trimmed.length > 0
     ? trimmed
@@ -104,17 +104,38 @@ export function getCommerceApiBase(): string {
   return BASE;
 }
 
-/** Public URL for a stored media blob (absolute to {@link BASE} in dev and production). */
+/** In dev, use same-origin `/media` so Vite proxies — including when `.env` sets the API to `localhost`/`127.0.0.1:5055`. */
+function useRelativeDevMedia(): boolean {
+  if (!import.meta.env.DEV) return false;
+  if (!trimmed || trimmed.length === 0) return true;
+  try {
+    const u = new URL(trimmed);
+    const h = u.hostname.toLowerCase();
+    const port = u.port || (u.protocol === "https:" ? "443" : "80");
+    return (h === "localhost" || h === "127.0.0.1") && port === "5055";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Public URL for a stored media blob.
+ * Default local dev: same-origin `/media/...` (Vite → Commerce.Api). Remote `VITE_COMMERCE_API_URL`: absolute under that base.
+ */
 export function mediaAssetUrl(storageKey: string): string {
-  const key = storageKey.trim().replace(/^\/+/, "").replace(/\\/g, "/");
-  const origin = BASE.replace(/\/$/, "");
+  let key = storageKey.trim().replace(/^\/+/, "").replace(/\\/g, "/");
+  if (/^media\//i.test(key)) key = key.replace(/^media\//i, "");
   const prefix = "/media";
-  if (!key) return `${origin}${prefix}`;
-  const path = `${prefix}/${key
-    .split("/")
-    .filter((s) => s.length > 0)
-    .map((p) => encodeURIComponent(p))
-    .join("/")}`;
+  const path =
+    !key
+      ? prefix
+      : `${prefix}/${key
+          .split("/")
+          .filter((s) => s.length > 0)
+          .map((p) => encodeURIComponent(p))
+          .join("/")}`;
+  if (useRelativeDevMedia()) return path;
+  const origin = BASE.replace(/\/$/, "");
   return `${origin}${path}`;
 }
 
@@ -246,8 +267,31 @@ export type CommerceLookupValueDto = {
   label: string;
   sortOrder: number;
   parentValueId: string | null;
+  /** Optional merchandising tree parent (`product_categories` → another category id). */
+  merchandisingParentId: string | null;
+  /** Optional storefront tile image (media storage key). */
   imageStorageKey: string | null;
 };
+
+export function parseCommerceLookupValueFromApi(
+  v: Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string }
+): CommerceLookupValueDto {
+  const row = v as Record<string, unknown>;
+  const imgRaw = row.imageStorageKey ?? row.ImageStorageKey;
+  const imgStr = typeof imgRaw === "string" ? imgRaw.trim() : "";
+  const mpRaw = row.merchandisingParentId ?? row.MerchandisingParentId;
+  const mpStr = typeof mpRaw === "string" ? mpRaw.trim() : "";
+  return {
+    id: v.id,
+    lookupTypeId: v.lookupTypeId,
+    code: String(v.code ?? ""),
+    label: String(v.label ?? ""),
+    sortOrder: typeof v.sortOrder === "number" ? v.sortOrder : 0,
+    parentValueId: v.parentValueId ?? null,
+    merchandisingParentId: mpStr.length > 0 ? mpStr : null,
+    imageStorageKey: imgStr.length > 0 ? imgStr : null,
+  };
+}
 
 export type CommerceLookupBundleDto = {
   version: string;
@@ -270,15 +314,7 @@ export async function listCommerceLookupValues(lookupTypeId: string): Promise<Co
   );
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
   const raw = (await res.json()) as Array<Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string }>;
-  return raw.map((v) => ({
-    id: v.id,
-    lookupTypeId: v.lookupTypeId,
-    code: String(v.code ?? ""),
-    label: String(v.label ?? ""),
-    sortOrder: typeof v.sortOrder === "number" ? v.sortOrder : 0,
-    parentValueId: v.parentValueId ?? null,
-    imageStorageKey: v.imageStorageKey?.trim() || null,
-  }));
+  return raw.map((v) => parseCommerceLookupValueFromApi(v));
 }
 
 export async function getCommerceLookupBundle(): Promise<CommerceLookupBundleDto> {
@@ -287,7 +323,14 @@ export async function getCommerceLookupBundle(): Promise<CommerceLookupBundleDto
     headers: commerceTenantHeaders(),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return (await res.json()) as CommerceLookupBundleDto;
+  const raw = (await res.json()) as CommerceLookupBundleDto;
+  const mapped: Record<string, CommerceLookupValueDto[]> = {};
+  for (const [k, slice] of Object.entries(raw.valuesByLookupTypeId ?? {})) {
+    mapped[k] = (slice ?? []).map((v) =>
+      parseCommerceLookupValueFromApi(v as Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string })
+    );
+  }
+  return { ...raw, valuesByLookupTypeId: mapped };
 }
 
 export type UpsertCommerceLookupTypeBody = {
@@ -345,7 +388,8 @@ export async function createCommerceLookupValue(
     }
   );
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return (await res.json()) as CommerceLookupValueDto;
+  const data = (await res.json()) as Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string };
+  return parseCommerceLookupValueFromApi(data);
 }
 
 export type UpdateCommerceLookupValueBody = {
@@ -367,7 +411,8 @@ export async function updateCommerceLookupValue(
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return (await res.json()) as CommerceLookupValueDto;
+  const data = (await res.json()) as Partial<CommerceLookupValueDto> & { id: string; lookupTypeId: string };
+  return parseCommerceLookupValueFromApi(data);
 }
 
 export async function deleteCommerceLookupValue(accessToken: string, valueId: string): Promise<void> {
@@ -1390,9 +1435,9 @@ export function formatCommerceApiError(error: unknown): string {
     return [
       `Cannot reach Commerce.Api (${apiTargetLabel}).`,
       "1) Start **Docker Desktop**.",
-      "2) From repo root: `docker compose -f services/commerce-api/docker-compose.yml up -d`",
+      "2) From repo root: `npm run docker:commerce-db` (or `docker compose -f services/commerce-api/docker-compose.yml up -d`).",
       "3) Start API: `npm run api:commerce:exec` (or `npm run api:commerce` if that works on your machine).",
-      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` if the API is not on 127.0.0.1:5055.",
+      "4) Refresh this app. Optional: set `VITE_COMMERCE_API_URL` in `.env` if the API is not on localhost:5055.",
     ].join(" ");
   }
   if (error instanceof Error) return error.message;

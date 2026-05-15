@@ -1,24 +1,33 @@
 {
   "version": "1",
-  "description": "Maps JsonForm definitions (formId) + fieldId to a Commerce.Api lookup type whose values populate that select. optionValueKey: form submits id or code; primary category must use id to match categories.id / product_categories FK.",
+  "description": "Maps JsonForm definitions (formId) + fieldId to Commerce.Api lookup types. Category select uses value id to match product_categories FK.",
   "bindings": [
     {
       "formId": "vendor-product-core",
-      "fieldId": "productTypeId",
-      "lookupTypeId": "product_types",
+      "fieldId": "applicationTypeId",
+      "lookupTypeId": "app_type",
       "optionValueKey": "id",
-      "placeholderOption": "— None —",
-      "label": "Product type",
-      "description": "From Commerce.Api lookup `product_types` (value id is stored on the product as product_type_id)."
+      "placeholderOption": "— Select application type —",
+      "label": "Application type",
+      "description": "Commerce.Api lookup `app_type` (mapped to catalog product_type_id on save, e.g. pt_grocery)."
     },
     {
       "formId": "vendor-product-core",
-      "fieldId": "primaryCategoryId",
+      "fieldId": "productDepartmentId",
+      "lookupTypeId": "product_departments",
+      "optionValueKey": "id",
+      "placeholderOption": "— Select department —",
+      "label": "Product department",
+      "description": "Commerce.Api lookup `product_departments` (used to filter categories; optional on save)."
+    },
+    {
+      "formId": "vendor-product-core",
+      "fieldId": "productCategoryId",
       "lookupTypeId": "product_categories",
       "optionValueKey": "id",
-      "placeholderOption": "— None —",
-      "label": "Primary category",
-      "description": "Mirrored from Commerce.Api catalog categories into lookup type product_categories (ids align with categories.id). Each value’s parent_value_id should reference product_departments so the storefront can group by department; the vendor form shows all categories when none are linked by product type."
+      "placeholderOption": "— Select category —",
+      "label": "Product category",
+      "description": "Commerce.Api lookup `product_categories` (saved as the product's primary category link)."
     }
   ]
 }
