@@ -157,8 +157,8 @@ public static class CatalogEndpoints
                         excludedDepartments.Add("dept_pt_saree");
 
                     // Grocery Fresh: show every department-backed aisle (minus excluded ids) so empty shelves still appear.
-                    // Other product types (e.g. pt_saree): only expand shells for departments already tied to this scope,
-                    // otherwise unrelated departments (Atta, Bath, …) leak in because their ids do not contain "grocery".
+                    // Other product types (e.g. pt_saree): show every non–grocery-demo department-backed aisle so new
+                    // departments appear before the first product ships; grocery demo department ids stay excluded.
                     var usePermissiveDepartmentShell =
                         string.Equals(productTypeFilter, "pt_grocery", StringComparison.Ordinal);
 
@@ -174,20 +174,23 @@ public static class CatalogEndpoints
                     }
                     else
                     {
-                        var deptShellParents = new HashSet<string>(StringComparer.Ordinal);
+                        // Sarees (and other non-grocery scopes): show empty aisles for every real merchandise
+                        // department, but omit seeded grocery-only departments so Fresh / dairy demo rows do not
+                        // appear on saree storefronts. (Previously we only expanded departments already tied to an
+                        // included category, which hid new departments until at least one active product existed.)
+                        var groceryDemoDepartmentIds = new HashSet<string>(StringComparer.Ordinal)
+                        {
+                            "dept_grocery",
+                            "dept_grocery_produce",
+                            "dept_grocery_dairy",
+                            "dept_pt_saree",
+                        };
                         foreach (var c in allCatsForFilter)
                         {
-                            if (!includedForIncludeAll.Contains(c.Id))
+                            var pv = c.ParentValueId;
+                            if (string.IsNullOrEmpty(pv) || !deptParentSet.Contains(pv))
                                 continue;
-                            var pv = c.ParentValueId;
-                            if (!string.IsNullOrEmpty(pv) && deptParentSet.Contains(pv))
-                                deptShellParents.Add(pv);
-                        }
-
-                        foreach (var c in allCatsForFilter)
-                        {
-                            var pv = c.ParentValueId;
-                            if (string.IsNullOrEmpty(pv) || !deptParentSet.Contains(pv) || !deptShellParents.Contains(pv))
+                            if (groceryDemoDepartmentIds.Contains(pv))
                                 continue;
                             includedForIncludeAll.Add(c.Id);
                         }
