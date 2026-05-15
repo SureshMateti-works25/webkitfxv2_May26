@@ -1,6 +1,6 @@
-# Portal-generated SWA (green-glacier-…): deploy groceries-market (same build as azure-swa-groceries.yml).
-# Secrets: same VITE_* as repo “Deploy Groceries” workflow + AZURE_STATIC_WEB_APPS_API_TOKEN_GREEN_GLACIER_04E1D9B00.
-name: Azure Static Web Apps CI/CD
+# Groceries → this Static Web App only (green-glacier). Same build as azure-swa-groceries.yml.
+# Secrets: VITE_* (see azure-swa-groceries.yml) + AZURE_STATIC_WEB_APPS_API_TOKEN_GREEN_GLACIER_04E1D9B00.
+name: Azure SWA — Groceries (green-glacier)
 
 on:
   push:

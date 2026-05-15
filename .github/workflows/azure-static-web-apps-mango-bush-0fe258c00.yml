@@ -1,72 +1,14 @@
-# Portal-generated SWA (mango-bush-…): deploy groceries-market (same build as azure-swa-groceries.yml).
-# Secrets: same VITE_* as repo “Deploy Groceries” workflow + AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_BUSH_0FE258C00.
-name: Azure Static Web Apps CI/CD
+# Groceries deploys to the Green Glacier SWA only (azure-static-web-apps-green-glacier-04e1d9b00.yml).
+# This file stays so the repo matches any legacy Azure link; it does not push to Mango Bush.
+# Remove the Mango Bush Static Web App in Azure if you do not need it, or extend this workflow if you assign it another app.
+name: Azure SWA — mango-bush (idle)
 
 on:
-  push:
-    branches:
-      - develop
-    paths:
-      - "apps/groceries/**"
-      - "packages/core-engine/**"
-      - "packages/react-renderer/**"
-      - "package-lock.json"
-      - ".github/workflows/azure-static-web-apps-mango-bush-0fe258c00.yml"
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches:
-      - develop
+  workflow_dispatch:
 
 jobs:
-  build_and_deploy_job:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+  noop:
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
-    permissions:
-      contents: read
-      id-token: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          lfs: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build packages + groceries-market
-        env:
-          VITE_COMMERCE_API_URL: ${{ secrets.VITE_COMMERCE_API_URL }}
-          VITE_CATALOG_API_URL: ${{ secrets.VITE_CATALOG_API_URL }}
-          VITE_COMMERCE_TENANT_ID: ${{ secrets.VITE_COMMERCE_TENANT_ID }}
-          VITE_CATALOG_PRODUCT_TYPE_ID: ${{ secrets.VITE_CATALOG_PRODUCT_TYPE_ID }}
-          VITE_PRODUCT_DEPARTMENTS_LOOKUP_TYPE_ID: ${{ secrets.VITE_PRODUCT_DEPARTMENTS_LOOKUP_TYPE_ID }}
-        run: npm run build:groceries
-
-      - name: Build And Deploy
-        id: builddeploy
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_BUSH_0FE258C00 }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: upload
-          app_location: apps/groceries/dist
-          api_location: ""
-          skip_app_build: true
-
-  close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    name: Close Pull Request Job
-    steps:
-      - name: Close Pull Request
-        id: closepullrequest
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_BUSH_0FE258C00 }}
-          action: close
+      - name: Skipped
+        run: echo "Groceries deploy uses workflow 'Azure SWA — Groceries (green-glacier)' only."
