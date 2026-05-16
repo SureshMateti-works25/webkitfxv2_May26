@@ -3044,8 +3044,8 @@
   width: 100%;
   min-height: 0;
   /* Fixed column height so top rail + main + bottom rail stay on screen together */
-  height: min(82vh, 880px);
-  max-height: min(82vh, 880px);
+  height: min(72vh, 760px);
+  max-height: min(72vh, 760px);
 }
 
 .product-storefront-gallery--empty {
@@ -3144,9 +3144,10 @@
   min-height: 0;
 }
 
-/* Hero crop: bias to the left so draped product is not lost to centered cover crop */
+/* PDP hero: fill frame (cover) but crop from the middle, not left-heavy zoom */
 .product-storefront-gallery .catalog-thumb__img {
-  object-position: left center;
+  object-fit: cover;
+  object-position: center center;
 }
 
 .product-storefront-gallery__codes {

@@ -21,7 +21,11 @@ function bindingLookupTypeId(fieldId: string, fallback: string): string {
 
 async function loadLookupValuesForBinding(fieldId: string, fallbackTypeId: string) {
   if (fieldId === "applicationTypeId") {
-    for (const typeId of resolveApplicationTypeLookupTypeIds()) {
+    const typeIds = resolveApplicationTypeLookupTypeIds();
+    if (fallbackTypeId.trim() && !typeIds.includes(fallbackTypeId.trim())) {
+      typeIds.unshift(fallbackTypeId.trim());
+    }
+    for (const typeId of typeIds) {
       try {
         let rows = await listCommerceLookupValues(typeId);
         rows = filterProductTypeLookupRowsForGroceries(rows);

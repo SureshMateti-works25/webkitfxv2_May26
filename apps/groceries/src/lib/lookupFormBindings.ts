@@ -61,7 +61,7 @@ export async function fetchResolvedLookupFieldOptions(
   const out: Record<string, ResolvedLookupSelectPatch> = {};
   for (const b of getLookupBindingsForForm(formId)) {
     let rows = await listCommerceLookupValues(b.lookupTypeId);
-    if (b.lookupTypeId === "product_types") {
+    if (b.lookupTypeId === "product_types" || b.lookupTypeId === "application_type") {
       rows = filterProductTypeLookupRowsForGroceries(rows);
     }
     const optionValueKey = (b.optionValueKey ?? "id") as "id" | "code";

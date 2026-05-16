@@ -1,17 +1,25 @@
 import { CATALOG_PRODUCT_TYPE_ID } from "./commerceApi.js";
 import type { CommerceLookupValueDto } from "./commerceApi.js";
 
-/** Lookup type id for application type rows (your Admin type is `app_type`). */
+/** Lookup type id for application-type rows in Commerce.Api (`application_type` in groceries admin). */
 export const APPLICATION_TYPE_LOOKUP_TYPE_ID =
-  (import.meta.env.VITE_APPLICATION_TYPE_LOOKUP_TYPE_ID as string | undefined)?.trim() || "app_type";
+  (import.meta.env.VITE_APPLICATION_TYPE_LOOKUP_TYPE_ID as string | undefined)?.trim() || "application_type";
 
-/** Legacy seed id; used only if `app_type` has no values. */
-export const LEGACY_PRODUCT_TYPES_LOOKUP_TYPE_ID = "product_types";
+/** Older seeds / docs; tried after primary when loading vendor dropdowns. */
+const LEGACY_APPLICATION_TYPE_LOOKUP_TYPE_IDS = ["app_type", "product_types"] as const;
 
 export function resolveApplicationTypeLookupTypeIds(): string[] {
-  const primary = APPLICATION_TYPE_LOOKUP_TYPE_ID;
-  if (primary === LEGACY_PRODUCT_TYPES_LOOKUP_TYPE_ID) return [primary];
-  return [primary, LEGACY_PRODUCT_TYPES_LOOKUP_TYPE_ID];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const add = (id: string) => {
+    const key = id.trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(key);
+  };
+  add(APPLICATION_TYPE_LOOKUP_TYPE_ID);
+  for (const legacy of LEGACY_APPLICATION_TYPE_LOOKUP_TYPE_IDS) add(legacy);
+  return out;
 }
 
 /**

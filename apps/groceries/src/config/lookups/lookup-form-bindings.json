@@ -5,11 +5,11 @@
     {
       "formId": "vendor-product-core",
       "fieldId": "applicationTypeId",
-      "lookupTypeId": "app_type",
+      "lookupTypeId": "application_type",
       "optionValueKey": "id",
       "placeholderOption": "— Select application type —",
       "label": "Application type",
-      "description": "Commerce.Api lookup `app_type` (mapped to catalog product_type_id on save, e.g. pt_grocery)."
+      "description": "Commerce.Api lookup `application_type` (mapped to catalog product_type_id on save, e.g. pt_grocery)."
     },
     {
       "formId": "vendor-product-core",
