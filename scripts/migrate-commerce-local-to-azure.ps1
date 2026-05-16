@@ -1,9 +1,9 @@
-# Repeatable local -> Azure catalog migration (your data, not demo seed):
-#   1) export local Postgres + media to artifacts/commerce-migrate/latest
-#   2) clear Azure tenant catalog + lookups, import CSVs, push media blobs
+# Local -> Azure catalog migration (your data, not demo seed):
+#   1) export local Postgres + media (artifacts/commerce-migrate/<stamp> + latest-path.txt)
+#   2) import clears Azure tenant rows, loads CSVs, pushes media, restarts App Service
 #
+# For explicit Azure wipe before import, prefer: npm run reset:migrate:commerce:azure
 # Prerequisite: Azure Postgres reachable from this machine (VPN / public access + firewall).
-# Orders: not in DB yet; when added, extend export tables to exclude order_* from migration.
 param(
     [string]$TenantId = 't1',
     [string]$ExportDir = '',

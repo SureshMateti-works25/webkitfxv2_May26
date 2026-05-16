@@ -24,6 +24,7 @@
     "stop:commerce-api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-commerce-api.ps1",
     "clear:commerce-lookups": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-lookups.ps1",
     "clear:commerce-lookups:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-lookups-remote.ps1 -DisableAzureLookupBootstrap",
+    "clear:commerce:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-azure.ps1",
     "clear:commerce-catalog:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-catalog-remote.ps1",
     "clear:commerce-products": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-products.ps1 -DeleteProductMedia",
     "clear:commerce:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-local.ps1",
@@ -48,7 +49,8 @@
     "reset:commerce:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-commerce-azure.ps1",
     "export:commerce:catalog": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-commerce-catalog.ps1",
     "import:commerce:catalog:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/import-commerce-catalog.ps1",
-    "migrate:commerce:local-to-azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-commerce-local-to-azure.ps1"
+    "migrate:commerce:local-to-azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-commerce-local-to-azure.ps1",
+    "reset:migrate:commerce:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-and-migrate-commerce-to-azure.ps1"
   },
   "engines": {
     "node": ">=18"

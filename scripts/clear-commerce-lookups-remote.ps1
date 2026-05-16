@@ -17,44 +17,17 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. "$PSScriptRoot\lib\commerce-pg.ps1"
+
 $repoRoot = Split-Path $PSScriptRoot -Parent
 Set-Location $repoRoot
 
 & "$PSScriptRoot\stop-commerce-api.ps1" -Port 5055
 
-if ([string]::IsNullOrWhiteSpace($ConnectionString)) {
-    $ConnectionString = $env:COMMERCE_DATABASE_CONNECTION_STRING
-}
-if ([string]::IsNullOrWhiteSpace($ConnectionString)) {
-    Write-Host "Reading ConnectionStrings__Commerce from App Service $WebAppName ..."
-    $ConnectionString = az webapp config appsettings list `
-        --name $WebAppName --resource-group $ResourceGroup `
-        --query "[?name=='ConnectionStrings__Commerce'].value" -o tsv
-}
+$ConnectionString = Resolve-CommerceAzureConnectionString -ConnectionString $ConnectionString `
+    -ResourceGroup $ResourceGroup -WebAppName $WebAppName
 if ([string]::IsNullOrWhiteSpace($ConnectionString)) {
     throw "Set -ConnectionString or COMMERCE_DATABASE_CONNECTION_STRING."
-}
-
-function Get-PgEnvFromNpgsql([string]$cs) {
-    $map = @{}
-    foreach ($part in $cs -split ';') {
-        if ([string]::IsNullOrWhiteSpace($part)) { continue }
-        $i = $part.IndexOf('=')
-        if ($i -lt 1) { continue }
-        $k = $part.Substring(0, $i).Trim().ToLowerInvariant()
-        $v = $part.Substring($i + 1).Trim()
-        switch -Regex ($k) {
-            '^host$' { $map['PGHOST'] = $v }
-            '^port$' { $map['PGPORT'] = $v }
-            '^database$' { $map['PGDATABASE'] = $v }
-            '^username$' { $map['PGUSER'] = $v }
-            '^password$' { $map['PGPASSWORD'] = $v }
-            '^ssl\s*mode$' { $map['PGSSLMODE'] = ($v -replace '\s+', '').ToLowerInvariant() }
-        }
-    }
-    if (-not $map['PGPORT']) { $map['PGPORT'] = '5432' }
-    if (-not $map['PGSSLMODE']) { $map['PGSSLMODE'] = 'require' }
-    return $map
 }
 
 $pg = Get-PgEnvFromNpgsql $ConnectionString
@@ -93,10 +66,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Remove-Item $sqlFile -Force -ErrorAction SilentlyContinue
 
 if ($DisableAzureLookupBootstrap) {
-    Write-Host "Disabling Azure API lookup bootstrap (Commerce__EnsureGroceryStorefrontAisles=false) ..."
-    az webapp config appsettings set `
-        --name $WebAppName --resource-group $ResourceGroup `
-        --settings Commerce__EnsureGroceryStorefrontAisles=false | Out-Null
+    Set-CommerceAzureLookupBootstrap -Enabled $false -ResourceGroup $ResourceGroup -WebAppName $WebAppName
 }
 
 Write-Host "Done. lookup_types and lookup_values are empty for tenant $TenantId on the target database."

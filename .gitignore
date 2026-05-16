@@ -14,3 +14,4 @@ coverage
 .vs/
 uploads/
 artifacts/commerce-migrate/
+artifacts/commerce-migrate/latest-path.txt

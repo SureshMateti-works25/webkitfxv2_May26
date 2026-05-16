@@ -72,14 +72,8 @@ else {
 
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $ExportDir 'manifest.json') -Encoding utf8
 
-$latest = Join-Path $repoRoot 'artifacts\commerce-migrate\latest'
-if (Test-Path $latest) { Remove-Item $latest -Force -ErrorAction SilentlyContinue }
-New-Item -ItemType Directory -Path (Split-Path $latest -Parent) -Force | Out-Null
-cmd /c mklink /J "$latest" "$ExportDir" 2>$null | Out-Null
-if (-not (Test-Path $latest)) {
-    Copy-Item -Path $ExportDir -Destination $latest -Recurse -Force
-}
+Set-CommerceMigrateLatestPointer -RepoRoot $repoRoot -ExportDir $ExportDir
 
-Write-Host ""
+Write-Host ''
 Write-Host "Export complete: $ExportDir"
-Write-Host "Latest pointer: artifacts/commerce-migrate/latest"
+Write-Host "Latest pointer: artifacts/commerce-migrate/latest-path.txt"
