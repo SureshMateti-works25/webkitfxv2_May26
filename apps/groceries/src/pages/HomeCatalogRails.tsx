@@ -27,7 +27,8 @@ import {
   type CommerceLookupValueDto,
 } from "../lib/commerceApi.js";
 import { sortedCommerceLookupValues } from "../lib/lookupFormBindings.js";
-import { readRecentVisits, RECENT_VISITS_EVENT } from "../lib/recentVisits.js";
+import { fetchRecentProductVisits, RECENT_VISITS_EVENT } from "../lib/recentVisits.js";
+import { useAuth } from "../auth/AuthContext.js";
 
 const MAX_CATEGORY_RAILS = 24;
 const RAIL_PAGE_SIZE = 16;
@@ -391,20 +392,26 @@ function CartResumeCard({ line }: { line: CartLine }) {
     (e: MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       e.stopPropagation();
-      addOrMergeLine({
-        productId: line.productId,
-        slug: line.slug,
-        titleDisplay: line.titleDisplay,
-        skuId: line.skuId,
-        skuCode: line.skuCode,
-        quantity: 1,
-        unitPriceMinor: line.unitPriceMinor,
-        currency: line.currency,
-        heroStorageKey: line.heroStorageKey,
-        vendorCode: line.vendorCode,
-      });
-      setFlash(true);
-      window.setTimeout(() => setFlash(false), 1400);
+      void (async () => {
+        try {
+          await addOrMergeLine({
+            productId: line.productId,
+            slug: line.slug,
+            titleDisplay: line.titleDisplay,
+            skuId: line.skuId,
+            skuCode: line.skuCode,
+            quantity: 1,
+            unitPriceMinor: line.unitPriceMinor,
+            currency: line.currency,
+            heroStorageKey: line.heroStorageKey,
+            vendorCode: line.vendorCode,
+          });
+          setFlash(true);
+          window.setTimeout(() => setFlash(false), 1400);
+        } catch {
+          /* signed-out or API error */
+        }
+      })();
     },
     [addOrMergeLine, line]
   );
@@ -547,6 +554,7 @@ type CategoryRail = { category: CatalogCategoryRow; items: CatalogProductCard[] 
 
 export function HomeCatalogRails() {
   const baseId = useId().replace(/:/g, "");
+  const { getAccessToken } = useAuth();
   const { lines: cartLines } = useCart();
   const [refreshKey, setRefreshKey] = useState(0);
   const [departmentGroups, setDepartmentGroups] = useState<DepartmentBrowseGroup[] | null>(null);
@@ -576,11 +584,21 @@ export function HomeCatalogRails() {
   }, []);
 
   useEffect(() => {
-    setVisited(readRecentVisits());
-    const onVisits = () => setVisited(readRecentVisits());
+    let cancelled = false;
+    const loadVisited = async () => {
+      const items = await fetchRecentProductVisits(getAccessToken());
+      if (!cancelled) setVisited(items);
+    };
+    void loadVisited();
+    const onVisits = () => {
+      void loadVisited();
+    };
     window.addEventListener(RECENT_VISITS_EVENT, onVisits);
-    return () => window.removeEventListener(RECENT_VISITS_EVENT, onVisits);
-  }, []);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(RECENT_VISITS_EVENT, onVisits);
+    };
+  }, [getAccessToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -756,7 +774,7 @@ export function HomeCatalogRails() {
           subtitle="Quick re-order from your cart."
           seeAllHref="/cart"
           products={buyAgain}
-          emptyHint="Your cart is empty. Add items from any product page."
+          emptyHint="Sign in and add items from a product page to see them here."
           renderProduct={(item) => <CartResumeCard line={item as CartLine} />}
         />
 
@@ -817,7 +835,7 @@ export function HomeCatalogRails() {
           subtitle="Pick up where you left off."
           seeAllHref={browseAllHref}
           products={visited}
-          emptyHint="Open a product page to build your history here."
+          emptyHint="Sign in and open product pages to build your history here."
           renderProduct={(item) => <CatalogGridProductCard product={item as CatalogProductCard} compactAddLabel />}
         />
       </div>

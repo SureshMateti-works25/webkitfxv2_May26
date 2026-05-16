@@ -222,6 +222,8 @@ export function LookupAdminPage() {
     [types]
   );
 
+  const lookupValuesCount = entries.length;
+
   const filteredEntries = useMemo(() => {
     if (editingEntryId) return entries;
     const q = valuesSearchQuery.trim().toLowerCase();
@@ -550,16 +552,29 @@ export function LookupAdminPage() {
   }
 
   return (
-    <div className="lookup-admin-page">
-      <header className="lookup-admin-page__header">
-        <h1 className="lookup-admin-page__title">Lookup maintenance</h1>
-        <p className="lookup-admin-page__lede">
-          Types and values are stored in Postgres on Commerce.Api (<code>lookup_types</code>, <code>lookup_values</code>
-          ). Reads use your tenant header; <strong>add / delete</strong> require a signed-in JWT. Dependent lookups use{" "}
-          <code>parentLookupTypeId</code> on the type and <code>parentValueId</code> on each row.
-        </p>
+    <div className={`lookup-admin-page${adminSection === "values" ? " lookup-admin-page--values" : ""}`}>
+      <header className="lookup-admin-page__header lookup-admin-page__header--compact">
+        <div className="lookup-admin-page__title-row">
+          <h1 className="lookup-admin-page__title">Lookup maintenance</h1>
+          {adminSection === "values" ? (
+            <span className="lookup-admin-page__title-meta">
+              <span className="lookup-admin-page__title-lookup">{selectedDto.title}</span>
+              <span
+                className="lookup-admin-page__values-count-badge"
+                title={listsLoading ? "Loading…" : `${lookupValuesCount} value${lookupValuesCount === 1 ? "" : "s"}`}
+                aria-label={
+                  listsLoading
+                    ? "Loading value count"
+                    : `${lookupValuesCount} value${lookupValuesCount === 1 ? "" : "s"} in this lookup`
+                }
+              >
+                {listsLoading ? "…" : lookupValuesCount}
+              </span>
+            </span>
+          ) : null}
+        </div>
         {!token ? (
-          <p className="lookup-admin-page__warn" role="status">
+          <p className="lookup-admin-page__warn lookup-admin-page__warn--compact" role="status">
             <Link to="/login">Sign in</Link> to add or delete rows.
           </p>
         ) : null}
@@ -595,6 +610,29 @@ export function LookupAdminPage() {
           Lookup values
         </button>
       </div>
+
+      {adminSection === "values" ? (
+        <div className="lookup-admin-page__lookup-pills vendor-pills" role="tablist" aria-label="Select lookup">
+          {types.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={selectedTypeId === t.id}
+              className={`vendor-pill${selectedTypeId === t.id ? " vendor-pill--active" : ""}`}
+              onClick={() => {
+                setSelectedTypeId(t.id);
+                setFormError(null);
+                setFormResetKey((k) => k + 1);
+                setShowAddEntryForm(false);
+                setValuesSearchQuery("");
+              }}
+            >
+              {t.title}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {adminSection === "types" ? (
         <div
@@ -936,61 +974,8 @@ export function LookupAdminPage() {
           id="lookup-admin-panel-values"
           role="tabpanel"
           aria-labelledby="lookup-admin-tab-values"
-          className="lookup-admin-page__tab-panel"
+          className="lookup-admin-page__tab-panel lookup-admin-page__tab-panel--values"
         >
-          <div className="lookup-admin-page__toolbar">
-            <label className="lookup-admin-page__field">
-              <span className="lookup-admin-page__label">Lookup</span>
-              <select
-                className="lookup-admin-page__select"
-                value={selectedTypeId}
-                onChange={(e) => {
-                  setSelectedTypeId(e.target.value);
-                  setFormError(null);
-                  setFormResetKey((k) => k + 1);
-                }}
-                aria-label="Select lookup type"
-              >
-                {types.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                    {t.parentLookupTypeId?.trim() ? "" : " · no parent type"}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {selectedDto.description ? <p className="lookup-admin-page__hint">{selectedDto.description}</p> : null}
-            <p className="lookup-admin-page__hint lookup-admin-page__hint--block" role="status">
-              {selectedDto.parentLookupTypeId?.trim() ? (
-                <>
-                  <span className="lookup-admin-page__parent-badge lookup-admin-page__parent-badge--set">Parent set</span>{" "}
-                  This lookup&apos;s type declares <code>parentLookupTypeId</code> ={" "}
-                  <code>{selectedDto.parentLookupTypeId.trim()}</code>
-                  {parentTypeTitle && parentTypeTitle !== selectedDto.parentLookupTypeId.trim()
-                    ? ` (${parentTypeTitle})`
-                    : ""}
-                  . Value rows should set <strong>{selectedDto.parentFieldLabel ?? "Parent"}</strong> when entries depend
-                  on that type.
-                </>
-              ) : (
-                <>
-                  <span className="lookup-admin-page__parent-badge lookup-admin-page__parent-badge--none">No parent type</span>{" "}
-                  This lookup&apos;s type has no <code>parentLookupTypeId</code>. Add/edit value forms will not show a
-                  parent row selector; values are standalone.
-                </>
-              )}
-            </p>
-            <button type="button" className="shell-btn shell-btn--outline lookup-admin-page__toolbar-link" onClick={() => setAdminSection("types")}>
-              New type…
-            </button>
-          </div>
-
-          {selectedDto.parentLookupTypeId && parentRows.length === 0 ? (
-            <p className="lookup-admin-page__warn" role="status">
-              Add at least one row in <strong>{parentTypeTitle}</strong> before you can pick a parent here.
-            </p>
-          ) : null}
-
           <div
             className={
               showAddEntryForm ? "lookup-admin-page__grid" : "lookup-admin-page__values-layout-list-only"
@@ -1007,6 +992,11 @@ export function LookupAdminPage() {
                   <h2 id="lookup-add-heading" className="lookup-admin-page__panel-title">
                     Add entry — {selectedDto.title}
                   </h2>
+                  {selectedDto.parentLookupTypeId && parentRows.length === 0 ? (
+                    <p className="lookup-admin-page__warn" role="status">
+                      Add at least one row in <strong>{parentTypeTitle}</strong> before you can pick a parent here.
+                    </p>
+                  ) : null}
                   {formError ? (
                     <p className="lookup-admin-page__form-error" role="alert">
                       {formError}
@@ -1056,10 +1046,10 @@ export function LookupAdminPage() {
               </section>
             ) : null}
 
-            <section className="lookup-admin-page__panel" aria-labelledby="lookup-list-heading">
-              <div className="lookup-admin-page__values-toolbar">
-                <h2 id="lookup-list-heading" className="lookup-admin-page__panel-title lookup-admin-page__panel-title--inline">
-                  Current values
+            <section className="lookup-admin-page__panel lookup-admin-page__panel--values-list" aria-label={`${selectedDto.title} values`}>
+              <div className="lookup-admin-page__values-toolbar lookup-admin-page__values-toolbar--list-only">
+                <h2 id="lookup-list-heading" className="lookup-admin-page__sr-only">
+                  {selectedDto.title} values
                 </h2>
                 <div className="lookup-admin-page__values-toolbar-controls">
                   {!listsLoading && entries.length > 0 ? (
@@ -1234,12 +1224,7 @@ export function LookupAdminPage() {
         </div>
       ) : null}
 
-      <footer className="lookup-admin-page__footer">
-        <p className="lookup-admin-page__registry-note">
-          API: <code>GET /api/v1/lookups/types</code>, <code>GET …/types/&#123;id&#125;/values</code>,{" "}
-          <code>PUT /api/v1/lookups/values/&#123;valueId&#125;</code> (edit row); mutating routes require{" "}
-          <code>Authorization: Bearer …</code>. Optional dev seed: <code>CommerceDevDataSeeder</code>.
-        </p>
+      <footer className="lookup-admin-page__footer lookup-admin-page__footer--compact">
         <Link to="/">← Home</Link>
       </footer>
     </div>

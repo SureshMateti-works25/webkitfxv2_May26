@@ -10,7 +10,8 @@
 
 param(
     [switch] $SkipBuild,
-    [switch] $StopExisting
+    [switch] $StopExisting,
+    [switch] $UseRemoteDatabase
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,6 +35,13 @@ $dll = Join-Path $apiDir "bin/Release/net10.0/Commerce.Api.dll"
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 # Single URL — listing both 127.0.0.1 and localhost in ASPNETCORE_URLS can double-bind the same port on Windows.
 $env:ASPNETCORE_URLS = "http://localhost:5055"
+
+# Env from Azure scripts (clear:commerce-*:azure) overrides appsettings.Development.json and makes
+# localhost:5055 serve an empty remote DB while Docker still has local demo rows.
+if (-not $UseRemoteDatabase) {
+    $env:ConnectionStrings__Commerce = "Host=localhost;Port=54330;Database=catalog;Username=catalog;Password=catalog"
+    Remove-Item Env:COMMERCE_DATABASE_CONNECTION_STRING -ErrorAction SilentlyContinue
+}
 
 if (-not $SkipBuild) {
     Write-Host "Building Commerce.Api (Release)..." -ForegroundColor Cyan

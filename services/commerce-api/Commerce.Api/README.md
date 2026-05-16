@@ -174,16 +174,38 @@ Open solution: `services/commerce-api/Commerce.slnx`.
 
 See also: `services/ARCHITECTURE.md`.
 
+## Local reset (recommended after lookup/catalog changes)
+
+From repo root (stops Commerce.Api, clears tenant `t1` DB rows, reseeds, writes JPEGs under `Commerce.Api/uploads/media`):
+
+```powershell
+npm run reset:commerce:local
+npm run api:commerce:exec
+npm run dev:commerce:apps
+```
+
+Idempotent upsert without wiping data: `npm run seed:commerce:local`.
+
+`appsettings.Development.json` may keep `Commerce:SkipLookupReseed` / `SkipProductReseed` **true** — the reset/seed scripts use **Commerce.OneTimeSeed** instead of API startup.
+
 ## One-time demo data + media (Azure or any Postgres)
 
-Production **does not** run `CommerceDevDataSeeder` on startup. To copy the **same demo catalog** you get locally (tenant `t1`, saree + grocery rows, lookups, tiny JPEGs for `/media` keys):
+Production **does not** run full `CommerceDevDataSeeder` on startup, but **does** idempotently ensure `product_types`, `app_type`, and grocery aisle lookups. To copy the **same demo catalog** you get locally (tenant `t1`, saree + grocery rows, lookups, tiny JPEGs for `/media` keys):
 
 1. **GitHub secret:** `COMMERCE_DATABASE_CONNECTION_STRING` — full Npgsql string to the target Postgres (`catalog` DB). The DB must accept inbound connections from **GitHub-hosted runners** (public access + firewall; see workflow comments if using Azure).
 
 2. **Recommended — GitHub Actions (migrate + seed in one run):**  
    **Actions → “Commerce Azure bootstrap (migrate + seed)” → Run workflow.**  
+   Enable **Clear tenant t1 products + lookups before seed** when replacing an old Azure catalogue.  
    This applies **EF migrations**, runs **Commerce.OneTimeSeed**, then uploads artifact **`commerce-seed-media-for-azure`**.  
    Download the artifact, deploy its contents under the App Service **`wwwroot/uploads/media`** tree (or use `scripts/push-commerce-seed-media-to-azure.ps1` locally with the extracted folder as `-LocalMediaRoot`), then **restart** the Web App.
+
+   **From your PC (clear Azure + seed + optional media push):**
+
+   ```powershell
+   $env:COMMERCE_DATABASE_CONNECTION_STRING = "Host=....postgres.database.azure.com;...;Database=catalog;..."
+   npm run reset:commerce:azure -- -ResourceGroup <rg> -WebAppName <commerce-web-app>
+   ```
 
    _Smaller workflows still exist:_ “Apply Commerce DB migrations” (migrate only) and “Commerce one-time demo seed” (seed only, assumes schema is current).
 

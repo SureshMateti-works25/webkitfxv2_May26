@@ -26,6 +26,9 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
     public DbSet<ProductRating> ProductRatings => Set<ProductRating>();
     public DbSet<ProductComment> ProductComments => Set<ProductComment>();
     public DbSet<StorefrontSponsoredProduct> StorefrontSponsoredProducts => Set<StorefrontSponsoredProduct>();
+    public DbSet<ShopperCart> ShopperCarts => Set<ShopperCart>();
+    public DbSet<ShopperCartLine> ShopperCartLines => Set<ShopperCartLine>();
+    public DbSet<ShopperProductView> ShopperProductViews => Set<ShopperProductView>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -309,6 +312,42 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.HasIndex(x => new { x.TenantId, x.ProductId }).IsUnique();
             e.HasIndex(x => new { x.TenantId, x.SortOrder });
             e.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ShopperCart>(e =>
+        {
+            e.ToTable("shopper_carts");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.PortalUserId).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => new { x.TenantId, x.PortalUserId }).IsUnique();
+        });
+
+        modelBuilder.Entity<ShopperCartLine>(e =>
+        {
+            e.ToTable("shopper_cart_lines");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.CartId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ProductId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.SkuId).HasMaxLength(64);
+            e.Property(x => x.Currency).HasMaxLength(8);
+            e.Property(x => x.PackLabel).HasMaxLength(128);
+            e.Property(x => x.PackUnitType).HasMaxLength(32);
+            e.HasOne(x => x.Cart).WithMany(c => c.Lines).HasForeignKey(x => x.CartId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.CartId, x.ProductId, x.SkuId });
+        });
+
+        modelBuilder.Entity<ShopperProductView>(e =>
+        {
+            e.ToTable("shopper_product_views");
+            e.HasKey(x => new { x.TenantId, x.PortalUserId, x.ProductId });
+            e.Property(x => x.TenantId).HasMaxLength(64);
+            e.Property(x => x.PortalUserId).HasMaxLength(64);
+            e.Property(x => x.ProductId).HasMaxLength(64);
+            e.HasIndex(x => new { x.TenantId, x.PortalUserId, x.ViewedAt });
         });
 
         modelBuilder.Entity<AuditLog>(e =>

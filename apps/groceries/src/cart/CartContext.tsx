@@ -1,3 +1,12 @@
+import { useAuth } from "../auth/AuthContext.js";
+import {
+  clearShopperCart,
+  fetchShopperCart,
+  removeShopperCartLine,
+  setShopperCartLineQuantity,
+  upsertShopperCartLine,
+  type ShopperCartLineDto,
+} from "../lib/commerceApi.js";
 import {
   createContext,
   useCallback,
@@ -8,8 +17,7 @@ import {
   type ReactNode,
 } from "react";
 
-const STORAGE_KEY = "groceries.storefront.cart.v1";
-const MAX_LINES = 60;
+const LEGACY_CART_STORAGE_KEY = "groceries.storefront.cart.v1";
 
 export type CartLineInput = {
   lineId?: string;
@@ -36,177 +44,177 @@ export type CartLine = {
   titleDisplay: string;
   skuId: string | null;
   skuCode: string | null;
-  /** Number of sellable packs (same SKU merges on this count). */
   quantity: number;
   unitPriceMinor: number | null;
   currency: string | null;
   heroStorageKey: string | null;
   vendorCode: string | null;
-  /** Pack-size label at add time (e.g. "500 g"). */
   packLabel: string | null;
   packUnitType: string | null;
   packQuantity: number | null;
   unitsPerPack: number | null;
 };
 
-function newLineId(): string {
-  return `ln_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function normalizeLine(raw: unknown): CartLine | null {
-  if (raw == null || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const productId = String(o.productId ?? o.ProductId ?? "").trim();
-  if (!productId) return null;
-  const qty = Math.max(1, Math.min(999, Math.floor(Number(o.quantity ?? o.Quantity ?? 1)) || 1));
+function fromDto(d: ShopperCartLineDto): CartLine {
   return {
-    lineId: String(o.lineId ?? o.LineId ?? newLineId()),
-    productId,
-    slug: String(o.slug ?? o.Slug ?? ""),
-    titleDisplay: String(o.titleDisplay ?? o.TitleDisplay ?? ""),
-    skuId: o.skuId == null || o.skuId === "" ? null : String(o.skuId),
-    skuCode: o.skuCode == null || o.skuCode === "" ? null : String(o.skuCode),
-    quantity: qty,
-    unitPriceMinor:
-      o.unitPriceMinor != null || o.UnitPriceMinor != null
-        ? Number(o.unitPriceMinor ?? o.UnitPriceMinor)
-        : null,
-    currency: o.currency == null ? null : String(o.currency ?? o.Currency),
-    heroStorageKey: o.heroStorageKey == null ? null : String(o.heroStorageKey ?? o.HeroStorageKey),
-    vendorCode: o.vendorCode == null ? null : String(o.vendorCode ?? o.VendorCode),
-    packLabel:
-      o.packLabel == null || o.packLabel === ""
-        ? null
-        : String(o.packLabel ?? o.PackLabel).trim() || null,
-    packUnitType:
-      o.packUnitType == null || o.packUnitType === ""
-        ? null
-        : String(o.packUnitType ?? o.PackUnitType).trim() || null,
-    packQuantity: (() => {
-      const v = o.packQuantity ?? o.PackQuantity;
-      if (v == null || v === "") return null;
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    })(),
-    unitsPerPack: (() => {
-      const v = o.unitsPerPack ?? o.UnitsPerPack;
-      if (v == null || v === "") return null;
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    })(),
+    lineId: d.lineId,
+    productId: d.productId,
+    slug: d.slug,
+    titleDisplay: d.titleDisplay,
+    skuId: d.skuId,
+    skuCode: d.skuCode,
+    quantity: d.quantity,
+    unitPriceMinor: d.unitPriceMinor,
+    currency: d.currency,
+    heroStorageKey: d.heroStorageKey,
+    vendorCode: d.vendorCode,
+    packLabel: d.packLabel,
+    packUnitType: d.packUnitType,
+    packQuantity: d.packQuantity,
+    unitsPerPack: d.unitsPerPack,
   };
 }
 
-function readLines(): CartLine[] {
+function purgeLegacyCartStorage(): void {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeLine).filter((x): x is CartLine => x != null);
+    localStorage.removeItem(LEGACY_CART_STORAGE_KEY);
   } catch {
-    return [];
-  }
-}
-
-function writeLines(lines: CartLine[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lines.slice(0, MAX_LINES)));
-  } catch {
-    /* quota */
+    /* private mode */
   }
 }
 
 type CartContextValue = {
   lines: CartLine[];
+  loading: boolean;
   totalQuantity: number;
-  addOrMergeLine: (input: CartLineInput) => void;
-  setLineQuantity: (lineId: string, quantity: number) => void;
-  removeLine: (lineId: string) => void;
-  clearCart: () => void;
+  addOrMergeLine: (input: CartLineInput) => Promise<void>;
+  setLineQuantity: (lineId: string, quantity: number) => Promise<void>;
+  removeLine: (lineId: string) => Promise<void>;
+  clearCart: () => Promise<void>;
+  refreshCart: () => Promise<void>;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<CartLine[]>(() => readLines());
+  const { auth, getAccessToken } = useAuth();
+  const [lines, setLines] = useState<CartLine[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const isShopperSignedIn =
+    auth.status === "signedIn" && auth.role === "shopper" && Boolean(getAccessToken());
 
   useEffect(() => {
-    writeLines(lines);
-    window.dispatchEvent(new CustomEvent("groceries-cart-changed", { detail: { count: lines.length } }));
+    purgeLegacyCartStorage();
+  }, []);
+
+  const refreshCart = useCallback(async () => {
+    const token = getAccessToken();
+    if (auth.status !== "signedIn" || auth.role !== "shopper" || !token) {
+      setLines([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const dtos = await fetchShopperCart(token);
+      setLines(dtos.map(fromDto));
+    } catch {
+      setLines([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [auth.status, auth.role, getAccessToken]);
+
+  useEffect(() => {
+    void refreshCart();
+  }, [refreshCart, isShopperSignedIn]);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("groceries-cart-changed", { detail: { count: lines.length } })
+    );
   }, [lines]);
 
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setLines(readLines());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  const requireShopperToken = useCallback((): string => {
+    const token = getAccessToken();
+    if (auth.status !== "signedIn" || auth.role !== "shopper" || !token) {
+      throw new Error("Sign in as a shopper to use the cart.");
+    }
+    return token;
+  }, [auth.status, auth.role, getAccessToken]);
 
   const totalQuantity = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines]);
 
-  const addOrMergeLine = useCallback((input: CartLineInput) => {
-    const line: CartLine = {
-      lineId: newLineId(),
-      productId: input.productId,
-      slug: input.slug,
-      titleDisplay: input.titleDisplay,
-      skuId: input.skuId,
-      skuCode: input.skuCode,
-      quantity: input.quantity,
-      unitPriceMinor: input.unitPriceMinor,
-      currency: input.currency,
-      heroStorageKey: input.heroStorageKey,
-      vendorCode: input.vendorCode,
-      packLabel: input.packLabel ?? null,
-      packUnitType: input.packUnitType ?? null,
-      packQuantity: input.packQuantity ?? null,
-      unitsPerPack: input.unitsPerPack ?? null,
-    };
-    setLines((prev) => {
-      const skuKey = line.skuCode?.trim() || "";
-      const idx = prev.findIndex(
-        (l) =>
-          l.productId === line.productId &&
-          (l.skuCode?.trim() || "") === skuKey &&
-          (l.skuId ?? "") === (line.skuId ?? "")
-      );
-      if (idx >= 0) {
-        const next = [...prev];
-        const merged = {
-          ...next[idx]!,
-          quantity: Math.min(999, next[idx]!.quantity + line.quantity),
-          unitPriceMinor: line.unitPriceMinor ?? next[idx]!.unitPriceMinor,
-          packLabel: line.packLabel ?? next[idx]!.packLabel,
-          packUnitType: line.packUnitType ?? next[idx]!.packUnitType,
-          packQuantity: line.packQuantity ?? next[idx]!.packQuantity,
-          unitsPerPack: line.unitsPerPack ?? next[idx]!.unitsPerPack,
-        };
-        next[idx] = merged;
-        return next;
+  const addOrMergeLine = useCallback(
+    async (input: CartLineInput) => {
+      const token = requireShopperToken();
+      const dtos = await upsertShopperCartLine(token, {
+        productId: input.productId,
+        skuId: input.skuId,
+        quantity: input.quantity,
+        unitPriceMinor: input.unitPriceMinor,
+        currency: input.currency,
+        packLabel: input.packLabel,
+        packUnitType: input.packUnitType,
+        packQuantity: input.packQuantity,
+        unitsPerPack: input.unitsPerPack,
+      });
+      setLines(dtos.map(fromDto));
+    },
+    [requireShopperToken]
+  );
+
+  const setLineQuantity = useCallback(
+    async (lineId: string, quantity: number) => {
+      const token = requireShopperToken();
+      const q = Math.max(0, Math.min(999, Math.floor(quantity)));
+      if (q <= 0) {
+        await removeShopperCartLine(token, lineId);
+        setLines((prev) => prev.filter((l) => l.lineId !== lineId));
+        return;
       }
-      return [...prev, line];
-    });
-  }, []);
+      const dtos = await setShopperCartLineQuantity(token, lineId, q);
+      setLines(dtos.map(fromDto));
+    },
+    [requireShopperToken]
+  );
 
-  const setLineQuantity = useCallback((lineId: string, quantity: number) => {
-    const q = Math.max(0, Math.min(999, Math.floor(quantity)));
-    setLines((prev) => {
-      if (q <= 0) return prev.filter((l) => l.lineId !== lineId);
-      return prev.map((l) => (l.lineId === lineId ? { ...l, quantity: q } : l));
-    });
-  }, []);
+  const removeLine = useCallback(
+    async (lineId: string) => {
+      const token = requireShopperToken();
+      await removeShopperCartLine(token, lineId);
+      setLines((prev) => prev.filter((l) => l.lineId !== lineId));
+    },
+    [requireShopperToken]
+  );
 
-  const removeLine = useCallback((lineId: string) => {
-    setLines((prev) => prev.filter((l) => l.lineId !== lineId));
-  }, []);
-
-  const clearCart = useCallback(() => setLines([]), []);
+  const clearCart = useCallback(async () => {
+    const token = requireShopperToken();
+    await clearShopperCart(token);
+    setLines([]);
+  }, [requireShopperToken]);
 
   const value = useMemo(
-    () => ({ lines, totalQuantity, addOrMergeLine, setLineQuantity, removeLine, clearCart }),
-    [lines, totalQuantity, addOrMergeLine, setLineQuantity, removeLine, clearCart]
+    () => ({
+      lines,
+      loading,
+      totalQuantity,
+      addOrMergeLine,
+      setLineQuantity,
+      removeLine,
+      clearCart,
+      refreshCart,
+    }),
+    [
+      lines,
+      loading,
+      totalQuantity,
+      addOrMergeLine,
+      setLineQuantity,
+      removeLine,
+      clearCart,
+      refreshCart,
+    ]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

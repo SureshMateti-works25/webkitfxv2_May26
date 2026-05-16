@@ -638,6 +638,8 @@ public static class CommerceDevDataSeeder
 
         await db.SaveChangesAsync(ct);
 
+        await EnsureProductCategoriesLookupTypeAsync(db, ct);
+
         var catType = await db.LookupTypes.FirstOrDefaultAsync(t => t.TenantId == tid && t.Id == "product_categories", ct);
         if (catType is null)
             return;
@@ -747,6 +749,32 @@ public static class CommerceDevDataSeeder
     }
 
     /// <summary>
+    /// Idempotent: ensures the <c>product_categories</c> lookup type exists (required before aisle/category values).
+    /// Safe when <see cref="EnsureConfigurableLookupSeedAsync"/> was skipped (<c>Commerce:SkipLookupReseed</c>).
+    /// </summary>
+    public static async Task EnsureProductCategoriesLookupTypeAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string lt = "product_categories";
+        const string deptPlural = "product_departments";
+
+        if (await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == lt, ct))
+            return;
+
+        db.LookupTypes.Add(new LookupType
+        {
+            TenantId = tid,
+            Id = lt,
+            Title = "Product categories",
+            Description = "Merchandising categories; code doubles as storefront slug where applicable.",
+            ParentLookupTypeId = deptPlural,
+            ParentFieldLabel = "Department",
+            EntryIdPrefix = "cat_"
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
     /// Idempotent: Groceries home grid aisles under <c>cat_grocery_dept</c> (Fresh vegetables, Atta, dairy, …).
     /// Does not remove admin-created rows; only upserts known ids. Re-run safe on every dev API start.
     /// </summary>
@@ -755,6 +783,7 @@ public static class CommerceDevDataSeeder
         const string tid = "t1";
         const string dept = "cat_grocery_dept";
 
+        await EnsureProductCategoriesLookupTypeAsync(db, ct);
         await UpsertProductCategoryLookupAsync(db, tid, dept, "groceries", "Groceries & food", 5, null, null, ct);
         await UpsertProductCategoryLookupAsync(db, tid, "cat_grocery_produce", "fresh-vegetables", "Fresh vegetables", 10, dept, "t1/p_gr_demo_produce/hero.jpg", ct);
         await UpsertProductCategoryLookupAsync(db, tid, "cat_gr_fresh_fruits", "fresh-fruits", "Fresh fruits", 15, dept, null, ct);
@@ -896,6 +925,123 @@ public static class CommerceDevDataSeeder
             });
             await db.SaveChangesAsync(ct);
         }
+    }
+
+    /// <summary>
+    /// Idempotent <c>app_type</c> lookup (Groceries vendor form). Codes <c>gr</c> / <c>sr</c> map to
+    /// <c>pt_grocery</c> / <c>pt_saree</c> on the client when saving products.
+    /// </summary>
+    public static async Task EnsureAppTypeLookupSeedAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string lt = "app_type";
+
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == lt, ct))
+        {
+            db.LookupTypes.Add(new LookupType
+            {
+                TenantId = tid,
+                Id = lt,
+                Title = "Application type",
+                Description = "Storefront vertical (maps to products.product_type_id on save).",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "app_"
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        await UpsertAppTypeValueAsync(db, tid, lt, "app_gr", "gr", "Groceries", 10, ct);
+        await UpsertAppTypeValueAsync(db, tid, lt, "app_sr", "sr", "Sarees", 20, ct);
+    }
+
+    private static async Task UpsertAppTypeValueAsync(
+        CommerceDbContext db,
+        string tenantId,
+        string lookupTypeId,
+        string id,
+        string code,
+        string label,
+        int sortOrder,
+        CancellationToken ct)
+    {
+        var row = await db.LookupValues.FirstOrDefaultAsync(
+            v => v.TenantId == tenantId && v.LookupTypeId == lookupTypeId && v.Id == id,
+            ct);
+        if (row is null)
+        {
+            db.LookupValues.Add(new LookupValue
+            {
+                Id = id,
+                TenantId = tenantId,
+                LookupTypeId = lookupTypeId,
+                Code = code,
+                Label = label,
+                SortOrder = sortOrder,
+                ParentValueId = null
+            });
+        }
+        else
+        {
+            row.Code = code;
+            row.Label = label;
+            row.SortOrder = sortOrder;
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Removes tenant catalogue data (products, SKUs, lookups, attributes, media rows). Keeps <c>tenants</c> and
+    /// <c>portal_users</c>. Use before <see cref="EnsureConfigurableLookupSeedAsync"/> when re-seeding from scratch.
+    /// </summary>
+    public static async Task ClearTenantCatalogDataAsync(
+        CommerceDbContext db,
+        string tenantId = "t1",
+        CancellationToken ct = default)
+    {
+        var tid = tenantId.Trim();
+        if (tid.Length == 0)
+            throw new ArgumentException("tenantId is required.", nameof(tenantId));
+
+        await db.StorefrontSponsoredProducts.Where(s => s.TenantId == tid).ExecuteDeleteAsync(ct);
+        await db.ProductEngagementSummaries.Where(s => s.TenantId == tid).ExecuteDeleteAsync(ct);
+        await db.ProductRatings.Where(s => s.TenantId == tid).ExecuteDeleteAsync(ct);
+        await db.ProductComments.Where(s => s.TenantId == tid).ExecuteDeleteAsync(ct);
+
+        var skuIds = db.Skus.Where(s => s.TenantId == tid).Select(s => s.Id);
+        await db.InventoryPositions.Where(ip => skuIds.Contains(ip.SkuId)).ExecuteDeleteAsync(ct);
+
+        var productIds = db.Products.Where(p => p.TenantId == tid).Select(p => p.Id);
+        await db.ProductMedia.Where(pm => productIds.Contains(pm.ProductId)).ExecuteDeleteAsync(ct);
+        await db.ProductCategories.Where(pc => productIds.Contains(pc.ProductId)).ExecuteDeleteAsync(ct);
+        await db.CollectionItems.Where(ci => productIds.Contains(ci.ProductId)).ExecuteDeleteAsync(ct);
+        await db.ProductFacets.Where(pf => productIds.Contains(pf.ProductId)).ExecuteDeleteAsync(ct);
+        await db.Skus.Where(s => s.TenantId == tid).ExecuteDeleteAsync(ct);
+        await db.Products.Where(p => p.TenantId == tid).ExecuteDeleteAsync(ct);
+
+        var collectionIds = db.Collections.Where(c => c.TenantId == tid).Select(c => c.Id);
+        await db.CollectionItems.Where(ci => collectionIds.Contains(ci.CollectionId)).ExecuteDeleteAsync(ct);
+        await db.Collections.Where(c => c.TenantId == tid).ExecuteDeleteAsync(ct);
+
+        var attrDefIds = db.AttributeDefs.Where(d => d.TenantId == tid).Select(d => d.Id);
+        await db.AttributeValues.Where(v => attrDefIds.Contains(v.AttributeDefId)).ExecuteDeleteAsync(ct);
+        await db.AttributeDefs.Where(d => d.TenantId == tid).ExecuteDeleteAsync(ct);
+
+        await db.Locations.Where(l => l.TenantId == tid).ExecuteDeleteAsync(ct);
+        await db.MediaAssets.Where(m => m.TenantId == tid).ExecuteDeleteAsync(ct);
+
+        await db.ProductCategories.ExecuteDeleteAsync(ct);
+
+        await db.LookupValues
+            .Where(v => v.TenantId == tid)
+            .ExecuteUpdateAsync(
+                s => s
+                    .SetProperty(v => v.ParentValueId, (string?)null)
+                    .SetProperty(v => v.MerchandisingParentId, (string?)null),
+                ct);
+        await db.LookupValues.Where(v => v.TenantId == tid).ExecuteDeleteAsync(ct);
+        await db.LookupTypes.Where(t => t.TenantId == tid).ExecuteDeleteAsync(ct);
     }
 
     /// <summary>Idempotent dev row so the storefront sponsored rail has one sample placement.</summary>

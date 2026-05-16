@@ -82,7 +82,7 @@ function offerTypeLabel(offerType: string | null | undefined): string | null {
 export function ProductDetailPage() {
   const { productSlug, productKey } = useParams<{ productSlug?: string; productKey?: string }>();
   const navigate = useNavigate();
-  const { auth } = useAuth();
+  const { auth, getAccessToken } = useAuth();
   const shell = getShell();
   const rawKey = productSlug ?? productKey ?? "";
   const key = rawKey ? safeDecodePathParam(rawKey) : "";
@@ -186,10 +186,10 @@ export function ProductDetailPage() {
   }, [key]);
 
   useEffect(() => {
-    if (product && product.id) {
-      recordProductVisit(product);
+    if (product?.id) {
+      void recordProductVisit(product, getAccessToken());
     }
-  }, [product]);
+  }, [product, getAccessToken]);
 
   const refreshEngagement = useCallback(async () => {
     if (!product?.id) return;

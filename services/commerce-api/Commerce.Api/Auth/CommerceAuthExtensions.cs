@@ -95,6 +95,7 @@ public static class CommerceAuthExtensions
         {
             o.AddPolicy("Vendor", p => p.RequireRole("vendor"));
             o.AddPolicy("Admin", p => p.RequireRole("admin"));
+            o.AddPolicy("Shopper", p => p.RequireRole("shopper"));
         });
         return services;
     }

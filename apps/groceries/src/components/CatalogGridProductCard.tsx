@@ -35,22 +35,28 @@ export function CatalogGridProductCard({ product, compactAddLabel, skin = "groce
     (e: MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       e.stopPropagation();
-      const codes = (product.skuCodes ?? []).map((c) => c.trim()).filter(Boolean);
-      const skuCode = codes.length > 0 ? codes[0]! : null;
-      addOrMergeLine({
-        productId: product.id,
-        slug: product.slug,
-        titleDisplay: product.titleDisplay,
-        skuId: null,
-        skuCode,
-        quantity: 1,
-        unitPriceMinor: snapshotCardUnitPriceMinor(product),
-        currency: product.currency,
-        heroStorageKey: product.heroStorageKey?.trim() || null,
-        vendorCode: product.vendorCode?.trim() || null,
-      });
-      setAddedFlash(true);
-      window.setTimeout(() => setAddedFlash(false), 1400);
+      void (async () => {
+        try {
+          const codes = (product.skuCodes ?? []).map((c) => c.trim()).filter(Boolean);
+          const skuCode = codes.length > 0 ? codes[0]! : null;
+          await addOrMergeLine({
+            productId: product.id,
+            slug: product.slug,
+            titleDisplay: product.titleDisplay,
+            skuId: null,
+            skuCode,
+            quantity: 1,
+            unitPriceMinor: snapshotCardUnitPriceMinor(product),
+            currency: product.currency,
+            heroStorageKey: product.heroStorageKey?.trim() || null,
+            vendorCode: product.vendorCode?.trim() || null,
+          });
+          setAddedFlash(true);
+          window.setTimeout(() => setAddedFlash(false), 1400);
+        } catch {
+          /* signed-out or API error */
+        }
+      })();
     },
     [addOrMergeLine, product]
   );

@@ -1,38 +1,50 @@
-import { normalizeCatalogProductCard, type CatalogProductCard } from "./commerceApi.js";
-
-const STORAGE_KEY = "webkitfx.groceries.recentVisits";
-const MAX_ITEMS = 16;
+import {
+  fetchShopperRecentProductViews,
+  recordShopperProductView,
+  type CatalogProductCard,
+} from "./commerceApi.js";
 
 export const RECENT_VISITS_EVENT = "groceries-recent-visits";
 
-export function recordProductVisit(product: CatalogProductCard): void {
+const LEGACY_STORAGE_KEY = "webkitfx.groceries.recentVisits";
+
+function purgeLegacyRecentVisitsStorage(): void {
   try {
-    const normalized = normalizeCatalogProductCard(product as unknown as Record<string, unknown>);
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const prevRaw = raw ? (JSON.parse(raw) as unknown) : [];
-    const prev: CatalogProductCard[] = Array.isArray(prevRaw)
-      ? prevRaw
-          .filter((x): x is Record<string, unknown> => x != null && typeof x === "object")
-          .map((row) => normalizeCatalogProductCard(row))
-      : [];
-    const next = [normalized, ...prev.filter((x) => x.slug !== normalized.slug)].slice(0, MAX_ITEMS);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    window.dispatchEvent(new CustomEvent(RECENT_VISITS_EVENT));
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
-    /* quota / private mode */
+    /* private mode */
   }
 }
 
-export function readRecentVisits(): CatalogProductCard[] {
+purgeLegacyRecentVisitsStorage();
+
+/** Records a PDP view for signed-in shoppers (Postgres via Commerce.Api). */
+export async function recordProductVisit(
+  product: CatalogProductCard,
+  accessToken: string | null | undefined
+): Promise<void> {
+  if (!accessToken?.trim() || !product.id?.trim()) return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((x): x is Record<string, unknown> => x != null && typeof x === "object")
-      .map((row) => normalizeCatalogProductCard(row));
+    await recordShopperProductView(accessToken, product.id);
+    window.dispatchEvent(new CustomEvent(RECENT_VISITS_EVENT));
+  } catch {
+    /* non-blocking */
+  }
+}
+
+/** Recently viewed products from the API (empty when not signed in as shopper). */
+export async function fetchRecentProductVisits(
+  accessToken: string | null | undefined
+): Promise<CatalogProductCard[]> {
+  if (!accessToken?.trim()) return [];
+  try {
+    return await fetchShopperRecentProductViews(accessToken);
   } catch {
     return [];
   }
+}
+
+/** @deprecated Use {@link fetchRecentProductVisits}. */
+export function readRecentVisits(): CatalogProductCard[] {
+  return [];
 }

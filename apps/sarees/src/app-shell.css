@@ -4281,8 +4281,50 @@
   padding: 1.25rem max(1rem, env(safe-area-inset-right)) 2rem max(1rem, env(safe-area-inset-left));
 }
 
+.lookup-admin-page--values {
+  padding-top: 0.35rem;
+}
+
 .lookup-admin-page__header {
   margin-bottom: 1.25rem;
+}
+
+.lookup-admin-page__header--compact {
+  margin-bottom: 0.35rem;
+}
+
+.lookup-admin-page__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.75rem;
+}
+
+.lookup-admin-page__title-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.55rem;
+}
+
+.lookup-admin-page__title-lookup {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--nistta-header-ink);
+}
+
+.lookup-admin-page__warn--compact {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+}
+
+.lookup-admin-page__lookup-pills {
+  margin: 0 0 0.5rem;
+}
+
+.lookup-admin-page > .vendor-pills:first-of-type {
+  margin-bottom: 0.45rem;
 }
 
 .lookup-admin-page__title {
@@ -4298,6 +4340,43 @@
   color: var(--nistta-ink-muted);
   font-size: 0.9375rem;
   max-width: 62ch;
+}
+
+.lookup-admin-page__selected-lookup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.lookup-admin-page__selected-lookup-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.65rem;
+  margin: 0;
+}
+
+.lookup-admin-page__values-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  padding: 0.12rem 0.55rem;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nistta-brand, #8b4513) 12%, var(--nistta-surface, #fff));
+  color: var(--nistta-header-ink, #2c241c);
+  border: 1px solid color-mix(in srgb, var(--nistta-brand, #8b4513) 22%, transparent);
+}
+
+.lookup-admin-page__selected-lookup-id {
+  font-size: 0.8125rem;
 }
 
 .lookup-admin-page__toolbar {
@@ -4720,6 +4799,33 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.lookup-admin-page__tab-panel--values {
+  gap: 0.65rem;
+  margin-top: 0;
+}
+
+.lookup-admin-page__panel--values-list {
+  padding-top: 0.65rem;
+}
+
+.lookup-admin-page__values-toolbar--list-only {
+  margin-bottom: 0.45rem;
+}
+
+.lookup-admin-page__values-toolbar--list-only .lookup-admin-page__values-toolbar-controls {
+  flex: 1 1 100%;
+  max-width: none;
+}
+
+.lookup-admin-page__tab-panel--values .lookup-admin-page__list--scroll {
+  max-height: min(calc(100vh - 10.5rem), 44rem);
+}
+
+.lookup-admin-page__footer--compact {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
 }
 
 .lookup-admin-page__panel--compact .lookup-admin-page__panel-title {

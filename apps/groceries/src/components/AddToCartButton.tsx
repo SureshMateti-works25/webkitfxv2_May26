@@ -76,7 +76,7 @@ export function AddToCartButton({
     [onQuantityChange, qtyCap]
   );
 
-  const onAdd = useCallback(() => {
+  const onAdd = useCallback(async () => {
     setErr(null);
     setHint(null);
     if (needsPack) {
@@ -106,24 +106,28 @@ export function AddToCartButton({
         : snapshotStorefrontUnitPriceMinor(product);
     const qty = Math.max(1, Math.min(999, Math.floor(quantity) || 1));
 
-    addOrMergeLine({
-      productId: product.id,
-      slug: product.slug,
-      titleDisplay: product.titleDisplay,
-      skuId,
-      skuCode,
-      quantity: qty,
-      unitPriceMinor: unit,
-      currency: product.currency,
-      heroStorageKey: product.heroStorageKey?.trim() || null,
-      vendorCode: product.vendorCode?.trim() || null,
-      packLabel: packSnapshot?.packLabel ?? null,
-      packUnitType: packSnapshot?.packUnitType ?? null,
-      packQuantity: packSnapshot?.packQuantity ?? null,
-      unitsPerPack: packSnapshot?.unitsPerPack ?? null,
-    });
-    setHint("Added to cart");
-    window.setTimeout(() => setHint(null), 2500);
+    try {
+      await addOrMergeLine({
+        productId: product.id,
+        slug: product.slug,
+        titleDisplay: product.titleDisplay,
+        skuId,
+        skuCode,
+        quantity: qty,
+        unitPriceMinor: unit,
+        currency: product.currency,
+        heroStorageKey: product.heroStorageKey?.trim() || null,
+        vendorCode: product.vendorCode?.trim() || null,
+        packLabel: packSnapshot?.packLabel ?? null,
+        packUnitType: packSnapshot?.packUnitType ?? null,
+        packQuantity: packSnapshot?.packQuantity ?? null,
+        unitsPerPack: packSnapshot?.unitsPerPack ?? null,
+      });
+      setHint("Added to cart");
+      window.setTimeout(() => setHint(null), 2500);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not add to cart.");
+    }
   }, [
     addOrMergeLine,
     needsPack,

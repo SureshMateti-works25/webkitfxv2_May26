@@ -51,7 +51,7 @@ export function CartPage() {
       ) : (
         <>
           <div className="cart-page__toolbar">
-            <button type="button" className="cart-page__linkish" onClick={() => clearCart()}>
+            <button type="button" className="cart-page__linkish" onClick={() => void clearCart()}>
               {copy.clearCartLabel ?? "Clear cart"}
             </button>
             <Link to="/search" className="cart-page__cta-secondary">
@@ -91,7 +91,7 @@ export function CartPage() {
                       min={1}
                       max={999}
                       value={ln.quantity}
-                      onChange={(e) => setLineQuantity(ln.lineId, Number(e.target.value))}
+                      onChange={(e) => void setLineQuantity(ln.lineId, Number(e.target.value))}
                       aria-label={
                         packLine
                           ? `Number of packs for ${ln.titleDisplay}`
@@ -99,7 +99,7 @@ export function CartPage() {
                       }
                     />
                   </label>
-                  <button type="button" className="cart-line__remove" onClick={() => removeLine(ln.lineId)}>
+                  <button type="button" className="cart-line__remove" onClick={() => void removeLine(ln.lineId)}>
                     {copy.removeLineLabel ?? "Remove"}
                   </button>
                 </li>

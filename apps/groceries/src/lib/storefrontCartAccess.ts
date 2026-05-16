@@ -1,7 +1,7 @@
 import type { AuthState } from "../auth/AuthContext.js";
 import type { CatalogProductCard, CatalogProductDetail } from "./commerceApi.js";
 
-/** Guests, anonymous browsers, and signed-in shoppers may use the local cart. */
+/** Guests may browse; cart persistence requires a signed-in shopper (Commerce.Api / Postgres). */
 export function canUseStorefrontCart(auth: AuthState): boolean {
   if (auth.status === "anonymous" || auth.status === "guest") return true;
   if (auth.status === "signedIn" && auth.role === "shopper") return true;

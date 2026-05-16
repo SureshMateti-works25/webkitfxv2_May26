@@ -41,5 +41,6 @@ if ($DeleteCategoryMedia) {
 }
 
 Write-Host "Done. lookup_types and lookup_values are empty for $TenantId."
+Write-Host "Recommended: npm run reset:commerce:local  (clear + full seed + media in one step)"
+Write-Host "Or: npm run seed:commerce:local after fixing lookups manually."
 Write-Host "Start API: npm run api:commerce:exec"
-Write-Host "Ensure appsettings.Development.json has Commerce:SkipLookupReseed=true so demo aisles are not re-seeded."

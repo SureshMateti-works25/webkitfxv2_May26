@@ -1577,6 +1577,171 @@ function isRemoteCommerceApiBase(): boolean {
 }
 
 /** User-visible message for fetch / JSON failures against Commerce.Api */
+/** Server-backed shopper cart line (GET/POST /api/v1/cart). */
+export type ShopperCartLineDto = {
+  lineId: string;
+  productId: string;
+  slug: string;
+  titleDisplay: string;
+  skuId: string | null;
+  skuCode: string | null;
+  quantity: number;
+  unitPriceMinor: number | null;
+  currency: string | null;
+  heroStorageKey: string | null;
+  vendorCode: string | null;
+  packLabel: string | null;
+  packUnitType: string | null;
+  packQuantity: number | null;
+  unitsPerPack: number | null;
+};
+
+export type ShopperCartLineInput = {
+  productId: string;
+  skuId?: string | null;
+  quantity: number;
+  unitPriceMinor?: number | null;
+  currency?: string | null;
+  packLabel?: string | null;
+  packUnitType?: string | null;
+  packQuantity?: number | null;
+  unitsPerPack?: number | null;
+};
+
+function mapShopperCartLine(raw: Record<string, unknown>): ShopperCartLineDto {
+  return {
+    lineId: String(raw.lineId ?? raw.LineId ?? ""),
+    productId: String(raw.productId ?? raw.ProductId ?? ""),
+    slug: String(raw.slug ?? raw.Slug ?? ""),
+    titleDisplay: String(raw.titleDisplay ?? raw.TitleDisplay ?? ""),
+    skuId: raw.skuId == null || raw.skuId === "" ? null : String(raw.skuId ?? raw.SkuId),
+    skuCode: raw.skuCode == null || raw.skuCode === "" ? null : String(raw.skuCode ?? raw.SkuCode),
+    quantity: Math.max(1, Math.floor(Number(raw.quantity ?? raw.Quantity ?? 1)) || 1),
+    unitPriceMinor:
+      raw.unitPriceMinor != null || raw.UnitPriceMinor != null
+        ? Number(raw.unitPriceMinor ?? raw.UnitPriceMinor)
+        : null,
+    currency: raw.currency == null ? null : String(raw.currency ?? raw.Currency),
+    heroStorageKey:
+      raw.heroStorageKey == null ? null : String(raw.heroStorageKey ?? raw.HeroStorageKey),
+    vendorCode: raw.vendorCode == null ? null : String(raw.vendorCode ?? raw.VendorCode),
+    packLabel: raw.packLabel == null ? null : String(raw.packLabel ?? raw.PackLabel),
+    packUnitType: raw.packUnitType == null ? null : String(raw.packUnitType ?? raw.PackUnitType),
+    packQuantity:
+      raw.packQuantity != null || raw.PackQuantity != null
+        ? Number(raw.packQuantity ?? raw.PackQuantity)
+        : null,
+    unitsPerPack:
+      raw.unitsPerPack != null || raw.UnitsPerPack != null
+        ? Number(raw.unitsPerPack ?? raw.UnitsPerPack)
+        : null,
+  };
+}
+
+async function parseCartLinesResponse(res: Response): Promise<ShopperCartLineDto[]> {
+  const data = (await res.json().catch(() => ({}))) as { lines?: unknown; error?: string };
+  if (!res.ok) {
+    throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+  }
+  const raw = data.lines;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((x): x is Record<string, unknown> => x != null && typeof x === "object")
+    .map((row) => mapShopperCartLine(row));
+}
+
+export async function fetchShopperCart(accessToken: string): Promise<ShopperCartLineDto[]> {
+  const res = await fetch(`${BASE}/api/v1/cart`, {
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  return parseCartLinesResponse(res);
+}
+
+export async function upsertShopperCartLine(
+  accessToken: string,
+  input: ShopperCartLineInput
+): Promise<ShopperCartLineDto[]> {
+  const res = await fetch(`${BASE}/api/v1/cart/lines`, {
+    method: "POST",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify({
+      productId: input.productId,
+      skuId: input.skuId ?? null,
+      quantity: input.quantity,
+      unitPriceMinor: input.unitPriceMinor ?? null,
+      currency: input.currency ?? null,
+      packLabel: input.packLabel ?? null,
+      packUnitType: input.packUnitType ?? null,
+      packQuantity: input.packQuantity ?? null,
+      unitsPerPack: input.unitsPerPack ?? null,
+    }),
+  });
+  return parseCartLinesResponse(res);
+}
+
+export async function setShopperCartLineQuantity(
+  accessToken: string,
+  lineId: string,
+  quantity: number
+): Promise<ShopperCartLineDto[]> {
+  const res = await fetch(`${BASE}/api/v1/cart/lines/${encodeURIComponent(lineId)}`, {
+    method: "PATCH",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify({ quantity }),
+  });
+  return parseCartLinesResponse(res);
+}
+
+export async function removeShopperCartLine(accessToken: string, lineId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/cart/lines/${encodeURIComponent(lineId)}`, {
+    method: "DELETE",
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+  }
+}
+
+export async function clearShopperCart(accessToken: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/cart`, {
+    method: "DELETE",
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok && res.status !== 204) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+  }
+}
+
+export async function recordShopperProductView(accessToken: string, productId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/cart/views/${encodeURIComponent(productId)}`, {
+    method: "POST",
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok && res.status !== 204) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+  }
+}
+
+export async function fetchShopperRecentProductViews(
+  accessToken: string
+): Promise<CatalogProductCard[]> {
+  const res = await fetch(`${BASE}/api/v1/cart/views`, {
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  const data = (await res.json().catch(() => [])) as unknown;
+  if (!res.ok) {
+    const err = data as { error?: string };
+    throw new Error(typeof err.error === "string" ? err.error : `HTTP ${res.status}`);
+  }
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter((x): x is Record<string, unknown> => x != null && typeof x === "object")
+    .map((row) => normalizeCatalogProductCard(row));
+}
+
 export function formatCommerceApiError(error: unknown): string {
   if (error instanceof TypeError && /fetch|network|failed/i.test(String(error.message))) {
     if (isRemoteCommerceApiBase()) {

@@ -23,7 +23,10 @@
     "dev:commerce:apps": "concurrently -k -n sarees,groceries -c green,cyan \"npm run dev -w sarees-market\" \"npm run dev -w groceries-market\"",
     "stop:commerce-api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-commerce-api.ps1",
     "clear:commerce-lookups": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-lookups.ps1",
+    "clear:commerce-lookups:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-lookups-remote.ps1 -DisableAzureLookupBootstrap",
+    "clear:commerce-catalog:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-catalog-remote.ps1",
     "clear:commerce-products": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-products.ps1 -DeleteProductMedia",
+    "clear:commerce:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clear-commerce-local.ps1",
     "api:commerce:exec:fresh": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-commerce-api.ps1 -StopExisting",
     "api:commerce:watch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-commerce-api-watch.ps1",
     "docker:commerce-db": "docker compose -f services/commerce-api/docker-compose.yml up -d",
@@ -39,7 +42,13 @@
     "test:catalog-api": "npm run test:commerce-api",
     "test:catalog-api:auth": "npm run test:commerce-api:auth",
     "test:catalog-api:catalog": "npm run test:commerce-api:catalog",
-    "seed:commerce:remote": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/seed-commerce-remote.ps1"
+    "seed:commerce:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/seed-commerce-local.ps1",
+    "seed:commerce:remote": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/seed-commerce-remote.ps1",
+    "reset:commerce:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-commerce-local.ps1",
+    "reset:commerce:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-commerce-azure.ps1",
+    "export:commerce:catalog": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-commerce-catalog.ps1",
+    "import:commerce:catalog:azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/import-commerce-catalog.ps1",
+    "migrate:commerce:local-to-azure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-commerce-local-to-azure.ps1"
   },
   "engines": {
     "node": ">=18"

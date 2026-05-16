@@ -107,8 +107,12 @@ if (!app.Environment.IsDevelopment()
     await using var scope = app.Services.CreateAsyncScope();
     var dbAisles = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
     var aisleLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Commerce.Api.Bootstrap");
+    await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(dbAisles);
+    await CommerceDevDataSeeder.EnsureProductCategoriesLookupTypeAsync(dbAisles);
+    await CommerceDevDataSeeder.EnsureAppTypeLookupSeedAsync(dbAisles);
     await CommerceDevDataSeeder.EnsureGroceryStorefrontAisleLookupsAsync(dbAisles);
-    aisleLogger.LogInformation("Grocery storefront aisle lookups ensured (Commerce:EnsureGroceryStorefrontAisles).");
+    aisleLogger.LogInformation(
+        "Storefront lookup bootstrap ensured (product types, app_type, grocery aisles).");
 }
 
 if (app.Environment.IsDevelopment())
@@ -152,6 +156,7 @@ if (app.Environment.IsDevelopment())
         {
             await CommerceDevDataSeeder.EnsureConfigurableLookupSeedAsync(db);
             await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
+            await CommerceDevDataSeeder.EnsureAppTypeLookupSeedAsync(db);
             await CommerceDevDataSeeder.RemoveGroceryProduceDairyDemoDepartmentValuesAsync(db, CancellationToken.None);
             await CommerceDevDataSeeder.EnsureDevSareeProductCategoryLookupsAsync(db);
             await CommerceDevDataSeeder.EnsureProductCategoryLookupParentTypesAsync(db);
@@ -175,6 +180,23 @@ if (app.Environment.IsDevelopment())
         if (!skipLookupReseed)
         {
             await CommerceDevDataSeeder.EnsureKalamkariCategoryAsync(db);
+        }
+
+        // Idempotent storefront lookups (aisles, product_types, app_type). Disable when Admin owns lookups from scratch.
+        if (!string.Equals(
+                builder.Configuration["Commerce:EnsureGroceryStorefrontAisles"],
+                "false",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
+            await CommerceDevDataSeeder.EnsureProductCategoriesLookupTypeAsync(db);
+            await CommerceDevDataSeeder.EnsureAppTypeLookupSeedAsync(db);
+            await CommerceDevDataSeeder.EnsureGroceryStorefrontAisleLookupsAsync(db);
+        }
+        else
+        {
+            bootstrapLogger.LogInformation(
+                "Skipping storefront lookup bootstrap (Commerce:EnsureGroceryStorefrontAisles=false).");
         }
 
         await CommerceDevDataSeeder.EnsureLegacySareeProductTypeAsync(db);
@@ -314,6 +336,7 @@ app.MapAdminPortalV1();
 app.MapLookupsV1();
 app.MapVendorProductsV1();
 app.MapVendorProductWorkspaceV1();
+app.MapShopperCartV1();
 
 if (app.Environment.IsDevelopment())
     app.MapDevJwt();

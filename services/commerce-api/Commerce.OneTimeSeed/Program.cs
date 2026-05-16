@@ -62,6 +62,12 @@ log.LogInformation("Media folder (JPEGs written here for /media keys): {Path}", 
 log.LogInformation("Applying EF Core migrations…");
 await db.Database.MigrateAsync();
 
+if (string.Equals(Env("SEED_CLEAR_TENANT"), "true", StringComparison.OrdinalIgnoreCase))
+{
+    log.LogWarning("SEED_CLEAR_TENANT=true — removing tenant t1 catalog + lookup rows (portal users kept).");
+    await CommerceDevDataSeeder.ClearTenantCatalogDataAsync(db);
+}
+
 if (!await db.Tenants.AnyAsync())
 {
     db.Tenants.Add(new Tenant { Id = "t1", Name = "Acme Sarees", Slug = "acme" });
@@ -74,6 +80,7 @@ else
 // Same order as Commerce.Api Program.cs (Development bootstrap).
 await CommerceDevDataSeeder.EnsureConfigurableLookupSeedAsync(db);
 await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
+await CommerceDevDataSeeder.EnsureAppTypeLookupSeedAsync(db);
 await CommerceDevDataSeeder.RemoveGroceryProduceDairyDemoDepartmentValuesAsync(db, CancellationToken.None);
 await CommerceDevDataSeeder.EnsureDevSareeProductCategoryLookupsAsync(db);
 await CommerceDevDataSeeder.EnsureProductCategoryLookupParentTypesAsync(db);

@@ -64,5 +64,5 @@ if ($DeleteProductMedia) {
 }
 
 Write-Host "Done. products, skus, media_assets, collections, and related rows cleared for $TenantId."
+Write-Host "Recommended: npm run reset:commerce:local  (clear + full seed + media in one step)"
 Write-Host "Start API: npm run api:commerce:exec"
-Write-Host "Set Commerce:SkipProductReseed=true in appsettings.Development.json so demo p_kj001 is not re-seeded."
