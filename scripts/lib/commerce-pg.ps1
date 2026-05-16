@@ -238,6 +238,17 @@ function Invoke-CommercePgDockerRun {
     if ($LASTEXITCODE -ne 0) { throw "psql failed (remote $($PgEnv['PGHOST']))." }
 }
 
+function Repair-CommerceCsvTrailingBlankLines {
+    param([string]$CsvPath)
+    if (-not (Test-Path -LiteralPath $CsvPath)) { return }
+    $lines = @(Get-Content -LiteralPath $CsvPath)
+    while ($lines.Count -gt 0 -and [string]::IsNullOrWhiteSpace($lines[-1])) {
+        $lines = $lines[0..($lines.Count - 2)]
+    }
+    if ($lines.Count -eq 0) { return }
+    Set-Content -LiteralPath $CsvPath -Value $lines -Encoding utf8
+}
+
 function Export-CommerceTableCsv {
     param(
         [string]$OutFile,
@@ -254,6 +265,7 @@ function Export-CommerceTableCsv {
     $text = ($raw | Out-String)
     if ($text -match '(?m)^ERROR:') { throw "Export failed for $OutFile`: $text" }
     $text | Out-File -LiteralPath $OutFile -Encoding utf8 -Force
+    Repair-CommerceCsvTrailingBlankLines -CsvPath $OutFile
 }
 
 function Get-CommerceAzureTableCounts {
@@ -301,6 +313,7 @@ function Import-CommerceCatalogFromDir {
         if ($table -eq 'tenants') { continue }
         $csv = Join-Path $DataDir "$table.csv"
         if (-not (Test-Path -LiteralPath $csv)) { continue }
+        Repair-CommerceCsvTrailingBlankLines -CsvPath $csv
         $lineCount = (Get-Content -LiteralPath $csv | Measure-Object -Line).Lines
         if ($lineCount -le 1) { continue }
         $dockerPath = "/data/$table.csv"
