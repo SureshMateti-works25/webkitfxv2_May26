@@ -86,6 +86,8 @@ export type LookupFormDropdownBinding = {
   lookupTypeId: string;
   /** Stored submitted value: row `id` (surrogate) or `code` (slug-style). */
   optionValueKey: "id" | "code";
+  /** `label` for dropdowns; default `labelAndCode` (label · code). */
+  optionLabelFormat?: "label" | "labelAndCode";
   placeholderOption?: string;
   label?: string;
   description?: string;

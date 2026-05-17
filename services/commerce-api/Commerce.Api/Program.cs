@@ -6,6 +6,7 @@ using Commerce.Api.Lookups;
 using Commerce.Api.Entities;
 using Microsoft.AspNetCore.Identity;
 using Commerce.Api.Features;
+using Commerce.Api.Orders;
 using Commerce.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -47,6 +48,8 @@ builder.Services.AddCommerceJwtAuthentication(builder.Configuration);
 
 builder.Services.AddSingleton<PortalJwtIssuer>();
 builder.Services.AddSingleton<IPasswordHasher<PortalUser>, PasswordHasher<PortalUser>>();
+builder.Services.Configure<OrderEmailOptions>(builder.Configuration.GetSection("Orders"));
+builder.Services.AddSingleton<IOrderEmailNotifier, DevOrderEmailNotifier>();
 
 builder.Services.AddCors(options =>
 {
@@ -63,7 +66,17 @@ builder.Services.AddCors(options =>
             }
         }
 
-        var extraOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>();
+        var extraOrigins = new List<string>();
+        var corsCsv = builder.Configuration["Cors:AllowedOrigins"];
+        if (!string.IsNullOrWhiteSpace(corsCsv))
+        {
+            extraOrigins.AddRange(
+                corsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        }
+
+        var fromArray = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>();
+        extraOrigins.AddRange(fromArray);
+
         var origins = defaultOrigins
             .Concat(extraOrigins.Where(static o => !string.IsNullOrWhiteSpace(o)).Select(static o => o.Trim()))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -181,6 +194,8 @@ if (app.Environment.IsDevelopment())
         {
             await CommerceDevDataSeeder.EnsureKalamkariCategoryAsync(db);
         }
+
+        await CommerceDevDataSeeder.EnsureOrderFulfillmentStatusLookupsAsync(db);
 
         // Idempotent storefront lookups (aisles, product_types, app_type). Disable when Admin owns lookups from scratch.
         if (!string.Equals(
@@ -337,6 +352,8 @@ app.MapLookupsV1();
 app.MapVendorProductsV1();
 app.MapVendorProductWorkspaceV1();
 app.MapShopperCartV1();
+app.MapStorefrontCheckoutV1();
+app.MapStorefrontOrderManagementV1();
 
 if (app.Environment.IsDevelopment())
     app.MapDevJwt();

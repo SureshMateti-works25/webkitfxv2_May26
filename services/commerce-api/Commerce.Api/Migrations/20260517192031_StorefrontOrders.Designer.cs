@@ -3,6 +3,7 @@ using System;
 using Commerce.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Commerce.Api.Migrations
 {
     [DbContext(typeof(CommerceDbContext))]
-    partial class CommerceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260517192031_StorefrontOrders")]
+    partial class StorefrontOrders
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -902,11 +905,6 @@ namespace Commerce.Api.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
-                    b.Property<string>("FulfillmentStatus")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -950,9 +948,6 @@ namespace Commerce.Api.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
-                    b.Property<DateTimeOffset>("StatusUpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -960,10 +955,6 @@ namespace Commerce.Api.Migrations
 
                     b.Property<long>("TotalMinor")
                         .HasColumnType("bigint");
-
-                    b.Property<string>("TrackingNote")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
 
                     b.HasKey("Id");
 

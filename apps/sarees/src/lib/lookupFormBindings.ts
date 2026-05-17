@@ -21,12 +21,13 @@ export function sortedCommerceLookupValues(rows: CommerceLookupValueDto[]): Comm
 /** Build JsonForm select options from Commerce lookup value rows. */
 export function lookupValuesToFieldOptions(
   rows: CommerceLookupValueDto[],
-  optionValueKey: LookupFormDropdownBinding["optionValueKey"]
+  optionValueKey: LookupFormDropdownBinding["optionValueKey"],
+  labelFormat: LookupFormDropdownBinding["optionLabelFormat"] = "labelAndCode"
 ): FieldOptionRow[] {
   const sorted = sortedCommerceLookupValues(rows);
   return sorted.map((r) => ({
     value: optionValueKey === "code" ? r.code : r.id,
-    label: `${r.label} · ${r.code}`,
+    label: labelFormat === "label" ? r.label : `${r.label} · ${r.code}`,
   }));
 }
 
@@ -62,11 +63,9 @@ export async function fetchResolvedLookupFieldOptions(
   for (const b of getLookupBindingsForForm(formId)) {
     const rows = await listCommerceLookupValues(b.lookupTypeId);
     const optionValueKey = (b.optionValueKey ?? "id") as "id" | "code";
+    const labelFormat = b.optionLabelFormat ?? "labelAndCode";
     const sorted = sortedCommerceLookupValues(rows);
-    const options = sorted.map((r) => ({
-      value: optionValueKey === "code" ? r.code : r.id,
-      label: `${r.label} · ${r.code}`,
-    }));
+    const options = lookupValuesToFieldOptions(sorted, optionValueKey, labelFormat);
     out[b.fieldId] = {
       options,
       label: b.label,

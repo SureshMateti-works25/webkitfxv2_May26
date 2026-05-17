@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
 import {
+  CATALOG_PRODUCT_TYPE_ID,
   createVendorProduct,
   deleteVendorProduct,
   deleteVendorProductWorkspaceMedia,
@@ -15,8 +16,16 @@ import {
   type VendorProductWorkspace,
   type VendorWorkspaceSku,
 } from "../lib/commerceApi.js";
-import { vendorProductCoreFormWithResolvedLookups } from "../lib/buildVendorProductCoreForm.js";
-import { fetchResolvedLookupFieldOptions, type ResolvedLookupSelectPatch } from "../lib/lookupFormBindings.js";
+import {
+  applicationLookupValueIdFromProductTypeId,
+  productTypeIdFromApplicationLookupValue,
+} from "../lib/applicationTypeLookup.js";
+import {
+  departmentIdForCategory,
+  vendorProductCoreFormWithResolvedLookups,
+} from "../lib/buildVendorProductCoreForm.js";
+import { fetchSareesVendorProductCoreLookups } from "../lib/fetchSareesVendorProductCoreLookups.js";
+import type { ResolvedLookupSelectPatch } from "../lib/lookupFormBindings.js";
 import {
   vendorProductCollectionsForm,
   vendorProductEnquiriesForm,
@@ -122,12 +131,20 @@ function pricingPayloadFromFormValues(values: Record<string, unknown>): Record<s
   return pricing;
 }
 
-function corePayloadFromForm(values: Record<string, unknown>): Record<string, unknown> {
+function corePayloadFromForm(
+  values: Record<string, unknown>,
+  applicationTypeRows: import("../lib/commerceApi.js").CommerceLookupValueDto[]
+): Record<string, unknown> {
   const core = { ...(values.core as Record<string, unknown>) };
   const rupees = String(core.minPriceRupees ?? "").trim();
   delete core.minPriceRupees;
+  delete core.productDepartmentId;
   if (rupees.length > 0) core.minPriceMinor = minorFromRupeesInput(rupees);
   else core.minPriceMinor = null;
+  const pc = core.primaryCategoryId;
+  core.primaryCategoryId = pc == null || pc === "" ? "" : String(pc);
+  const appLookupId = String(core.productTypeId ?? "").trim();
+  core.productTypeId = productTypeIdFromApplicationLookupValue(appLookupId, applicationTypeRows);
   return core;
 }
 
@@ -144,8 +161,8 @@ export function VendorProductEditPage() {
   const [lookupOptionsError, setLookupOptionsError] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<VendorProductWorkspace | null>(null);
   const [workspaceRev, setWorkspaceRev] = useState(0);
-  /** Drives primary category options: `product_types` id (e.g. pt_grocery) from workspace + live Product form. */
-  const [catalogCategoryScopeTypeId, setCatalogCategoryScopeTypeId] = useState<string | null>(null);
+  const [scopeApplicationTypeId, setScopeApplicationTypeId] = useState<string | null>(null);
+  const [scopeDepartmentId, setScopeDepartmentId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("product");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -154,10 +171,11 @@ export function VendorProductEditPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [newStatus, setNewStatus] = useState<"draft" | "active">("draft");
+  const [newApplicationTypeId, setNewApplicationTypeId] = useState("");
+  const [newDepartmentId, setNewDepartmentId] = useState("");
   const [newCategoryId, setNewCategoryId] = useState("");
   const [newPriceInr, setNewPriceInr] = useState("");
   const [newCurrency, setNewCurrency] = useState("INR");
-  const [newProductTypeId, setNewProductTypeId] = useState("");
 
   const [skuRows, setSkuRows] = useState<VendorWorkspaceSku[]>([]);
   const [invRows, setInvRows] = useState<
@@ -194,7 +212,7 @@ export function VendorProductEditPage() {
     (async () => {
       try {
         setLookupOptionsError(null);
-        const resolved = await fetchResolvedLookupFieldOptions("vendor-product-core");
+        const resolved = await fetchSareesVendorProductCoreLookups();
         if (!cancelled) setVendorCoreLookupResolved(resolved);
       } catch (e) {
         if (!cancelled) setLookupOptionsError(formatCommerceApiError(e));
@@ -205,41 +223,72 @@ export function VendorProductEditPage() {
     };
   }, []);
 
+  const applicationTypeRows = vendorCoreLookupResolved.applicationTypeId?.lookupRows ?? [];
+  const applicationTypeSelectOptions = vendorCoreLookupResolved.applicationTypeId?.options ?? [];
+  const departmentSelectOptions = vendorCoreLookupResolved.productDepartmentId?.options ?? [];
+  const categorySelectOptions = vendorCoreLookupResolved.productCategoryId?.options ?? [];
+
   useEffect(() => {
     if (!workspace?.core) return;
     const pt = (workspace.core as { productTypeId?: unknown }).productTypeId;
     const s = typeof pt === "string" ? pt.trim() : "";
-    setCatalogCategoryScopeTypeId(s || null);
-  }, [workspace, workspaceRev]);
+    const appLookup = applicationLookupValueIdFromProductTypeId(s, applicationTypeRows);
+    setScopeApplicationTypeId(appLookup || null);
+    const catId = String((workspace.core as { primaryCategoryId?: unknown }).primaryCategoryId ?? "").trim();
+    const dept = departmentIdForCategory(
+      catId,
+      vendorCoreLookupResolved.productCategoryId?.lookupRows,
+      vendorCoreLookupResolved.productDepartmentId?.lookupRows
+    );
+    setScopeDepartmentId(dept || null);
+  }, [workspace, workspaceRev, vendorCoreLookupResolved, applicationTypeRows]);
 
   const vendorProductCoreFormResolved = useMemo(
     () =>
       vendorProductCoreFormWithResolvedLookups(vendorCoreLookupResolved, {
-        primaryCategoryParentTypeId: catalogCategoryScopeTypeId,
+        applicationTypeId: scopeApplicationTypeId,
+        productDepartmentId: scopeDepartmentId,
       }),
-    [vendorCoreLookupResolved, catalogCategoryScopeTypeId]
+    [vendorCoreLookupResolved, scopeApplicationTypeId, scopeDepartmentId]
   );
 
-  const primaryCategorySelectOptions = vendorCoreLookupResolved.primaryCategoryId?.options ?? [];
-  const filteredNewPrimaryCategoryOptions = useMemo(() => {
-    const rows = vendorCoreLookupResolved.primaryCategoryId?.lookupRows;
-    const pid = newProductTypeId.trim();
-    if (!pid || !rows?.length) return primaryCategorySelectOptions;
-    const allow = new Set(rows.filter((r) => r.parentValueId === pid).map((r) => r.id));
-    return primaryCategorySelectOptions.filter((o) => allow.has(o.value));
-  }, [newProductTypeId, primaryCategorySelectOptions, vendorCoreLookupResolved.primaryCategoryId?.lookupRows]);
-  const productTypeSelectOptions = vendorCoreLookupResolved.productTypeId?.options ?? [];
-
-  const autoFilledNewProductType = useRef(false);
   useEffect(() => {
-    if (!isNew || autoFilledNewProductType.current || productTypeSelectOptions.length === 0) return;
-    autoFilledNewProductType.current = true;
-    setNewProductTypeId((prev) => {
-      if (prev.trim()) return prev;
-      const saree = productTypeSelectOptions.find((o) => o.value === "pt_saree");
-      return saree?.value ?? productTypeSelectOptions[0]?.value ?? "";
-    });
-  }, [isNew, productTypeSelectOptions]);
+    if (applicationTypeRows.length === 0 || newApplicationTypeId.trim()) return;
+    const defaultApp = applicationLookupValueIdFromProductTypeId(CATALOG_PRODUCT_TYPE_ID, applicationTypeRows);
+    if (defaultApp) setNewApplicationTypeId(defaultApp);
+  }, [applicationTypeRows, newApplicationTypeId]);
+
+  const filteredNewDepartmentOptions = useMemo(() => {
+    const rows = vendorCoreLookupResolved.productDepartmentId?.lookupRows;
+    if (!rows?.length) return departmentSelectOptions;
+    const app = newApplicationTypeId.trim();
+    if (app && rows.some((r) => r.parentValueId === app)) {
+      const allow = new Set(rows.filter((r) => r.parentValueId === app).map((r) => r.id));
+      return departmentSelectOptions.filter((o) => allow.has(o.value));
+    }
+    return departmentSelectOptions;
+  }, [newApplicationTypeId, departmentSelectOptions, vendorCoreLookupResolved.productDepartmentId?.lookupRows]);
+
+  const filteredNewCategoryOptions = useMemo(() => {
+    const rows = vendorCoreLookupResolved.productCategoryId?.lookupRows;
+    if (!rows?.length) return categorySelectOptions;
+    const dept = newDepartmentId.trim();
+    if (dept && rows.some((r) => r.parentValueId === dept)) {
+      const allow = new Set(rows.filter((r) => r.parentValueId === dept).map((r) => r.id));
+      return categorySelectOptions.filter((o) => allow.has(o.value));
+    }
+    const app = newApplicationTypeId.trim();
+    if (app && rows.some((r) => r.parentValueId === app)) {
+      const allow = new Set(rows.filter((r) => r.parentValueId === app).map((r) => r.id));
+      return categorySelectOptions.filter((o) => allow.has(o.value));
+    }
+    return categorySelectOptions;
+  }, [
+    newApplicationTypeId,
+    newDepartmentId,
+    categorySelectOptions,
+    vendorCoreLookupResolved.productCategoryId?.lookupRows,
+  ]);
 
   useEffect(() => {
     if (isNew || !token || !productId) return;
@@ -256,7 +305,22 @@ export function VendorProductEditPage() {
     };
   }, [isNew, productId, token, loadWorkspace]);
 
-  const formSeed = useMemo(() => (workspace ? workspaceToFormSeed(workspace) : null), [workspace]);
+  const formSeed = useMemo(() => {
+    if (!workspace) return null;
+    const seed = workspaceToFormSeed(workspace);
+    const core = seed.core as Record<string, unknown>;
+    const catId = String(core.primaryCategoryId ?? "").trim();
+    const dept = departmentIdForCategory(
+      catId,
+      vendorCoreLookupResolved.productCategoryId?.lookupRows,
+      vendorCoreLookupResolved.productDepartmentId?.lookupRows
+    );
+    if (dept) core.productDepartmentId = dept;
+    const pt = String(core.productTypeId ?? "").trim();
+    const appId = applicationLookupValueIdFromProductTypeId(pt, applicationTypeRows);
+    if (appId) core.productTypeId = appId;
+    return seed;
+  }, [workspace, vendorCoreLookupResolved, applicationTypeRows]);
 
   const productTypeIdStr = String(
     workspace?.core && typeof workspace.core === "object" && workspace.core !== null && "productTypeId" in workspace.core
@@ -286,7 +350,10 @@ export function VendorProductEditPage() {
         slug: newSlug.trim() || undefined,
         status: newStatus,
         categoryId: newCategoryId.trim() || undefined,
-        productTypeId: newProductTypeId.trim() || undefined,
+        productTypeId: productTypeIdFromApplicationLookupValue(
+          newApplicationTypeId.trim(),
+          applicationTypeRows
+        ),
         minPriceMinor: minorFromRupeesInput(newPriceInr) ?? undefined,
         currency: newCurrency.trim() || "INR",
       });
@@ -346,10 +413,10 @@ export function VendorProductEditPage() {
             </select>
           </label>
           <label className="vendor-field">
-            <span>Product type</span>
-            <select value={newProductTypeId} onChange={(e) => setNewProductTypeId(e.target.value)}>
-              <option value="">— None —</option>
-              {productTypeSelectOptions.map((o) => (
+            <span>Application type</span>
+            <select value={newApplicationTypeId} onChange={(e) => setNewApplicationTypeId(e.target.value)}>
+              <option value="">— Select —</option>
+              {applicationTypeSelectOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label ?? o.value}
                 </option>
@@ -359,15 +426,26 @@ export function VendorProductEditPage() {
               <span className="vendor-field__hint vendor-field__hint--error" role="alert">
                 {lookupOptionsError}
               </span>
-            ) : productTypeSelectOptions.length === 0 ? (
-              <span className="vendor-field__hint">Loading product types from Commerce.Api lookups…</span>
+            ) : applicationTypeSelectOptions.length === 0 ? (
+              <span className="vendor-field__hint">Loading application types from lookups…</span>
             ) : null}
           </label>
           <label className="vendor-field">
-            <span>Primary category</span>
+            <span>Department</span>
+            <select value={newDepartmentId} onChange={(e) => setNewDepartmentId(e.target.value)}>
+              <option value="">— Select —</option>
+              {filteredNewDepartmentOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label ?? o.value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="vendor-field">
+            <span>Category</span>
             <select value={newCategoryId} onChange={(e) => setNewCategoryId(e.target.value)}>
-              <option value="">— None —</option>
-              {filteredNewPrimaryCategoryOptions.map((o) => (
+              <option value="">— Select —</option>
+              {filteredNewCategoryOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label ?? o.value}
                 </option>
@@ -377,13 +455,8 @@ export function VendorProductEditPage() {
               <span className="vendor-field__hint vendor-field__hint--error" role="alert">
                 {lookupOptionsError}
               </span>
-            ) : primaryCategorySelectOptions.length === 0 ? (
-              <span className="vendor-field__hint">Loading categories from Commerce.Api lookups…</span>
-            ) : newProductTypeId.trim() && filteredNewPrimaryCategoryOptions.length === 0 ? (
-              <span className="vendor-field__hint" role="status">
-                No categories for this product type. In Admin → Lookups, set each product_categories row&apos;s parent
-                to the matching product type.
-              </span>
+            ) : categorySelectOptions.length === 0 ? (
+              <span className="vendor-field__hint">Loading categories from lookups…</span>
             ) : null}
           </label>
           <div className="vendor-field-row">
@@ -484,9 +557,17 @@ export function VendorProductEditPage() {
             seedValues={formSeed}
             resetKey={workspaceRev}
             onValuesChange={(values) => {
-              const v = getAtPath(values, "core.productTypeId");
-              const s = typeof v === "string" ? v.trim() : "";
-              setCatalogCategoryScopeTypeId(s || null);
+              const app = getAtPath(values, "core.productTypeId");
+              const appS = typeof app === "string" ? app.trim() : "";
+              setScopeApplicationTypeId(appS || null);
+              const cat = getAtPath(values, "core.primaryCategoryId");
+              const catS = typeof cat === "string" ? cat.trim() : "";
+              const dept = departmentIdForCategory(
+                catS,
+                vendorCoreLookupResolved.productCategoryId?.lookupRows,
+                vendorCoreLookupResolved.productDepartmentId?.lookupRows
+              );
+              setScopeDepartmentId(dept || null);
             }}
             onSubmit={async (values) => {
               if (!productId) return;
@@ -494,7 +575,7 @@ export function VendorProductEditPage() {
               setError(null);
               try {
                 await putVendorProductWorkspace(token, productId, {
-                  core: corePayloadFromForm(values),
+                  core: corePayloadFromForm(values, applicationTypeRows),
                 });
                 await loadWorkspace();
                 flash("Product section saved.");

@@ -1748,7 +1748,7 @@ export function formatCommerceApiError(error: unknown): string {
       return [
         `Cannot reach Commerce.Api (${apiTargetLabel}).`,
         "1) Open your API `/health` in a browser — you should see a small JSON body with status ok. If not, fix the App Service (Azure Portal → Log stream: database connection, migrations, startup errors).",
-        "2) Confirm **CORS** on Commerce.Api allows this storefront origin (`https://…azurestaticapps.net`).",
+        "2) Confirm **CORS** on Commerce.Api allows this storefront origin (Azure Portal → App Service → API → CORS, and `Cors__Origins__*` app settings).",
         "3) After changing the API URL, **redeploy** the storefront so `VITE_COMMERCE_API_URL` in GitHub Actions secrets matches production.",
       ].join(" ");
     }

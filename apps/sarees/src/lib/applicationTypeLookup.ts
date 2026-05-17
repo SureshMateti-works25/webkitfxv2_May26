@@ -1,11 +1,10 @@
 import { CATALOG_PRODUCT_TYPE_ID } from "./commerceApi.js";
 import type { CommerceLookupValueDto } from "./commerceApi.js";
 
-/** Lookup type id for application-type rows in Commerce.Api (`application_type` in groceries admin). */
+/** Lookup type id for application-type rows in Commerce.Api. */
 export const APPLICATION_TYPE_LOOKUP_TYPE_ID =
   (import.meta.env.VITE_APPLICATION_TYPE_LOOKUP_TYPE_ID as string | undefined)?.trim() || "application_type";
 
-/** Older seeds / docs; tried after primary when loading vendor dropdowns. */
 const LEGACY_APPLICATION_TYPE_LOOKUP_TYPE_IDS = ["app_type", "product_types"] as const;
 
 export function resolveApplicationTypeLookupTypeIds(): string[] {
@@ -22,9 +21,7 @@ export function resolveApplicationTypeLookupTypeIds(): string[] {
   return out;
 }
 
-/**
- * Storefront `Product.ProductTypeId` (e.g. `pt_grocery`) from an application-type lookup row id.
- */
+/** Stored `products.product_type_id` from an application-type lookup row id. */
 export function productTypeIdFromApplicationLookupValue(
   lookupValueId: string,
   rows: CommerceLookupValueDto[]
@@ -38,12 +35,11 @@ export function productTypeIdFromApplicationLookupValue(
   if (parent.startsWith("pt_")) return parent;
   const code = row.code.trim().toLowerCase();
   const label = row.label.trim().toLowerCase();
-  if (code === "gr" || code.includes("grocery") || label.includes("grocery")) return CATALOG_PRODUCT_TYPE_ID;
+  if (code === "gr" || code.includes("grocery") || label.includes("grocery")) return "pt_grocery";
   if (code === "sr" || code.includes("saree") || label.includes("saree")) return "pt_saree";
   return CATALOG_PRODUCT_TYPE_ID;
 }
 
-/** Form select value (lookup row id) from stored `productTypeId`. */
 export function applicationLookupValueIdFromProductTypeId(
   productTypeId: string,
   rows: CommerceLookupValueDto[]
@@ -54,7 +50,7 @@ export function applicationLookupValueIdFromProductTypeId(
   if (byParent) return byParent.id;
   const direct = rows.find((r) => r.id === pt);
   if (direct) return direct.id;
-  const isGrocery = pt === CATALOG_PRODUCT_TYPE_ID || pt.toLowerCase().includes("grocery");
+  const isGrocery = pt === "pt_grocery" || pt.toLowerCase().includes("grocery");
   const isSaree = pt.toLowerCase().includes("saree");
   const match = rows.find((r) => {
     const code = r.code.trim().toLowerCase();

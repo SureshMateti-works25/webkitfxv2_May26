@@ -1,8 +1,8 @@
 import type { FieldDefinition, FormDefinition } from "@webkitfxv2/core-engine";
 import type { FieldOptionRow } from "@webkitfxv2/react-renderer";
 import raw from "../config/lookups/lookup-form-bindings.json";
+import { CATALOG_PRODUCT_TYPE_ID, listCommerceLookupValues, type CommerceLookupValueDto } from "./commerceApi.js";
 import { filterProductTypeLookupRowsForGroceries } from "./groceriesLookupFilters.js";
-import { listCommerceLookupValues, type CommerceLookupValueDto } from "./commerceApi.js";
 import type { LookupFormBindingsFile, LookupFormDropdownBinding } from "./lookupDomainModel.js";
 
 const file = raw as LookupFormBindingsFile;
@@ -62,7 +62,7 @@ export async function fetchResolvedLookupFieldOptions(
   for (const b of getLookupBindingsForForm(formId)) {
     let rows = await listCommerceLookupValues(b.lookupTypeId);
     if (b.lookupTypeId === "product_types" || b.lookupTypeId === "application_type") {
-      rows = filterProductTypeLookupRowsForGroceries(rows);
+      rows = filterProductTypeLookupRowsForGroceries(rows, CATALOG_PRODUCT_TYPE_ID);
     }
     const optionValueKey = (b.optionValueKey ?? "id") as "id" | "code";
     const sorted = sortedCommerceLookupValues(rows);

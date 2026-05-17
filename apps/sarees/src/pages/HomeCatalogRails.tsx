@@ -3,65 +3,29 @@ import { Link } from "react-router-dom";
 import { CatalogGridProductCard } from "../components/CatalogGridProductCard.js";
 import {
   formatCommerceApiError,
+  getCommerceLookupBundle,
   listCatalogCategories,
   listCatalogProducts,
   mediaAssetUrl,
   type CatalogCategoryRow,
   type CatalogProductCard,
 } from "../lib/commerceApi.js";
-import { readRecentVisits, RECENT_VISITS_EVENT } from "../lib/recentVisits.js";
+import {
+  readRecentVisits,
+  reconcileRecentVisitsWithCatalog,
+  RECENT_VISITS_EVENT,
+} from "../lib/recentVisits.js";
+import {
+  categoriesForProductRailsByDepartmentParent,
+  categoriesForProductRailsMerchandising,
+  loadApplicationTypeRowsForStorefront,
+  loadDepartmentRowsForStorefront,
+  resolveStorefrontDepartmentGroups,
+  type DepartmentBrowseGroup,
+} from "../lib/storefrontDepartmentBrowse.js";
 
 const MAX_CATEGORY_RAILS = 24;
 const RAIL_PAGE_SIZE = 12;
-
-/** Merchandising tree roots (treated as departments on the landing page). */
-function rootCategories(cats: CatalogCategoryRow[]): CatalogCategoryRow[] {
-  return cats
-    .filter((c) => c.parentId == null || c.parentId === "")
-    .sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug));
-}
-
-function directChildren(cats: CatalogCategoryRow[], parentId: string): CatalogCategoryRow[] {
-  return cats
-    .filter((c) => c.parentId === parentId)
-    .sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug));
-}
-
-type DepartmentBrowseGroup = {
-  department: CatalogCategoryRow;
-  categories: CatalogCategoryRow[];
-};
-
-/** One group per root: list direct child categories, or the root alone if it has no children. */
-function departmentBrowseGroups(cats: CatalogCategoryRow[]): DepartmentBrowseGroup[] {
-  return rootCategories(cats).map((department) => {
-    const children = directChildren(cats, department.id);
-    return {
-      department,
-      categories: children.length > 0 ? children : [department],
-    };
-  });
-}
-
-/**
- * Product rails: one per “aisle” (direct child of a department). If a root has no children, rail for the root.
- */
-function categoriesForProductRails(cats: CatalogCategoryRow[]): CatalogCategoryRow[] {
-  const roots = rootCategories(cats);
-  const out: CatalogCategoryRow[] = [];
-  const seen = new Set<string>();
-  for (const r of roots) {
-    const ch = directChildren(cats, r.id);
-    const targets = ch.length > 0 ? ch : [r];
-    for (const c of targets) {
-      if (seen.has(c.id)) continue;
-      seen.add(c.id);
-      out.push(c);
-      if (out.length >= MAX_CATEGORY_RAILS) return out;
-    }
-  }
-  return out;
-}
 
 function ProductRail({
   title,
@@ -121,10 +85,17 @@ export function HomeCatalogRails() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setVisited(readRecentVisits());
+    void reconcileRecentVisitsWithCatalog().then((items) => {
+      if (!cancelled) setVisited(items);
+    });
     const onVisits = () => setVisited(readRecentVisits());
     window.addEventListener(RECENT_VISITS_EVENT, onVisits);
-    return () => window.removeEventListener(RECENT_VISITS_EVENT, onVisits);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(RECENT_VISITS_EVENT, onVisits);
+    };
   }, []);
 
   useEffect(() => {
@@ -132,18 +103,24 @@ export function HomeCatalogRails() {
     (async () => {
       setError(null);
       try {
-        const [cats, trendingPage, recentPage] = await Promise.all([
+        const [cats, trendingPage, recentPage, deptRows, bundle, appTypeRows] = await Promise.all([
           listCatalogCategories(),
           listCatalogProducts({ page: 1, pageSize: RAIL_PAGE_SIZE, sort: "trending" }),
           listCatalogProducts({ page: 1, pageSize: RAIL_PAGE_SIZE, sort: "published_desc" }),
+          loadDepartmentRowsForStorefront(),
+          getCommerceLookupBundle(),
+          loadApplicationTypeRowsForStorefront(),
         ]);
         if (cancelled) return;
 
-        const groups = departmentBrowseGroups(cats);
-        const deptRoots = rootCategories(cats);
-        const broadSlug =
-          deptRoots.find((c) => c.slug === "sarees")?.slug ?? deptRoots[0]?.slug ?? null;
-        const railCategories = categoriesForProductRails(cats);
+        const { groups, groupedByDepartment, departmentRows: scopedDeptRows } =
+          resolveStorefrontDepartmentGroups(cats, bundle, deptRows, appTypeRows);
+        const broadSlug = groupedByDepartment
+          ? (groups.find((g) => g.categories.length > 0)?.categories[0]?.slug ?? null)
+          : (groups[0]?.categories[0]?.slug ?? null);
+        const railCategories = groupedByDepartment
+          ? categoriesForProductRailsByDepartmentParent(cats, scopedDeptRows, MAX_CATEGORY_RAILS)
+          : categoriesForProductRailsMerchandising(cats, MAX_CATEGORY_RAILS);
         const railPages = await Promise.all(
           railCategories.map((c) =>
             listCatalogProducts({
@@ -156,7 +133,9 @@ export function HomeCatalogRails() {
           )
         );
         if (cancelled) return;
-        const rails: CategoryRail[] = railCategories.map((c, i) => ({ category: c, items: railPages[i]!.items }));
+        const rails: CategoryRail[] = railCategories
+          .map((c, i) => ({ category: c, items: railPages[i]!.items }))
+          .filter((rail) => rail.items.length > 0);
         setDepartmentGroups(groups);
         setSeeAllCatalogSlug(broadSlug);
         setTrending(trendingPage.items);

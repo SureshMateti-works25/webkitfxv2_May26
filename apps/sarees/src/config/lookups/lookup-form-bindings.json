@@ -1,24 +1,43 @@
 {
   "version": "1",
-  "description": "Maps JsonForm definitions (formId) + fieldId to a Commerce.Api lookup type whose values populate that select. optionValueKey: form submits id or code; primary category must use id to match categories.id / product_categories FK.",
+  "description": "Maps JsonForm definitions (formId) + fieldId to Commerce.Api lookup types.",
   "bindings": [
     {
       "formId": "vendor-product-core",
-      "fieldId": "productTypeId",
-      "lookupTypeId": "product_types",
+      "fieldId": "applicationTypeId",
+      "lookupTypeId": "application_type",
       "optionValueKey": "id",
-      "placeholderOption": "— None —",
-      "label": "Product type",
-      "description": "From Commerce.Api lookup `product_types` (value id is stored on the product as product_type_id)."
+      "placeholderOption": "— Select application type —",
+      "label": "Application type",
+      "description": "Commerce.Api lookup `application_type` (parent → product_types; saved as product_type_id on the product)."
     },
     {
       "formId": "vendor-product-core",
-      "fieldId": "primaryCategoryId",
+      "fieldId": "productDepartmentId",
+      "lookupTypeId": "product_departments",
+      "optionValueKey": "id",
+      "placeholderOption": "— Select department —",
+      "label": "Product department",
+      "description": "Narrows the category list; optional on save."
+    },
+    {
+      "formId": "vendor-product-core",
+      "fieldId": "productCategoryId",
       "lookupTypeId": "product_categories",
       "optionValueKey": "id",
-      "placeholderOption": "— None —",
-      "label": "Primary category",
-      "description": "Mirrored from Commerce.Api catalog categories into lookup type product_categories (ids align with categories.id). Each value’s parent_value_id should reference product_types so the vendor Product form filters categories when a product type is selected."
+      "placeholderOption": "— Select category —",
+      "label": "Product category",
+      "description": "Primary storefront category (saved as primaryCategoryId)."
+    },
+    {
+      "formId": "vendor-order-manage",
+      "fieldId": "fulfillmentStatus",
+      "lookupTypeId": "order_fulfillment_status_vendor",
+      "optionValueKey": "code",
+      "optionLabelFormat": "label",
+      "placeholderOption": "— Select status —",
+      "label": "Fulfillment status",
+      "description": "Vendor fulfillment statuses (manage in Admin → Lookups → order_fulfillment_status_vendor)."
     }
   ]
 }

@@ -8,6 +8,7 @@ import { LookupEntryFormActions } from "../components/LookupEntryFormActions.js"
 import { buildLookupEntryFormDefinition } from "../lib/buildLookupEntryForm.js";
 import { commerceLookupTypeToTypeDef } from "../lib/commerceLookupMappers.js";
 import {
+  CATALOG_PRODUCT_TYPE_ID,
   createCommerceLookupValue,
   deleteCommerceLookupType,
   deleteCommerceLookupValue,
@@ -20,7 +21,11 @@ import {
   type CommerceLookupTypeDto,
   type CommerceLookupValueDto,
 } from "../lib/commerceApi.js";
-import { filterProductCategoryLookupRowsForGroceries, filterProductTypeLookupRowsForGroceries } from "../lib/groceriesLookupFilters.js";
+import {
+  filterProductCategoryLookupRowsForGroceries,
+  filterProductTypeLookupRowsForGroceries,
+  loadApplicationTypeRowsForGroceriesAdmin,
+} from "../lib/groceriesLookupFilters.js";
 import { lookupTypeSupportsTileImage } from "../lib/lookupTileImage.js";
 
 const ADD_ENTRY_FORM_ID = "lookup-admin-add-entry-form";
@@ -38,6 +43,7 @@ export function LookupAdminPage() {
   const [selectedTypeId, setSelectedTypeId] = useState("");
   const [entries, setEntries] = useState<CommerceLookupValueDto[]>([]);
   const [parentRows, setParentRows] = useState<CommerceLookupValueDto[]>([]);
+  const [applicationTypeRows, setApplicationTypeRows] = useState<CommerceLookupValueDto[]>([]);
   const [listsLoading, setListsLoading] = useState(false);
   const [typesLoading, setTypesLoading] = useState(true);
   const [listVersion, setListVersion] = useState(0);
@@ -159,6 +165,21 @@ export function LookupAdminPage() {
   }, [selectedTypeId, listVersion, types]);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await loadApplicationTypeRowsForGroceriesAdmin();
+        if (!cancelled) setApplicationTypeRows(rows);
+      } catch {
+        if (!cancelled) setApplicationTypeRows([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [listVersion]);
+
+  useEffect(() => {
     setEditingEntryId(null);
     setValuesSearchQuery("");
     setShowAddEntryForm(false);
@@ -192,7 +213,7 @@ export function LookupAdminPage() {
   const parentOptions = useMemo(() => {
     let rows = parentRows;
     if (selectedDto?.parentLookupTypeId === "product_types") {
-      rows = filterProductTypeLookupRowsForGroceries(parentRows);
+      rows = filterProductTypeLookupRowsForGroceries(parentRows, CATALOG_PRODUCT_TYPE_ID);
     }
     return rows.map((e) => ({ value: e.id, label: `${e.label} (${e.code})` }));
   }, [parentRows, selectedDto?.parentLookupTypeId]);
@@ -228,10 +249,10 @@ export function LookupAdminPage() {
 
   const listableEntries = useMemo(() => {
     if (selectedDto?.id === "product_categories") {
-      return filterProductCategoryLookupRowsForGroceries(entries);
+      return filterProductCategoryLookupRowsForGroceries(entries, applicationTypeRows);
     }
     return entries;
-  }, [entries, selectedDto?.id]);
+  }, [entries, selectedDto?.id, applicationTypeRows]);
 
   const lookupValuesCount = listableEntries.length;
 

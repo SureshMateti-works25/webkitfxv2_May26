@@ -928,34 +928,122 @@ public static class CommerceDevDataSeeder
     }
 
     /// <summary>
-    /// Idempotent <c>app_type</c> lookup (Groceries vendor form). Codes <c>gr</c> / <c>sr</c> map to
-    /// <c>pt_grocery</c> / <c>pt_saree</c> on the client when saving products.
+    /// Idempotent <c>application_type</c> + legacy <c>app_type</c> lookups. Each row's <c>parent_value_id</c>
+    /// points at <c>product_types</c> so API + storefront apps stay in sync.
     /// </summary>
     public static async Task EnsureAppTypeLookupSeedAsync(CommerceDbContext db, CancellationToken ct = default)
     {
         const string tid = "t1";
-        const string lt = "app_type";
+        const string productTypes = "product_types";
+        const string typeApplication = "application_type";
+        const string typeLegacy = "app_type";
 
-        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == lt, ct))
+        foreach (var typeId in new[] { typeApplication, typeLegacy })
+        {
+            if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == typeId, ct))
+            {
+                db.LookupTypes.Add(new LookupType
+                {
+                    TenantId = tid,
+                    Id = typeId,
+                    Title = "Application type",
+                    Description = "Storefront vertical; parent_value_id references product_types.id (stored on products as product_type_id).",
+                    ParentLookupTypeId = productTypes,
+                    ParentFieldLabel = "Product type",
+                    EntryIdPrefix = "app_"
+                });
+                await db.SaveChangesAsync(ct);
+            }
+            else
+            {
+                var existing = await db.LookupTypes.FirstAsync(t => t.TenantId == tid && t.Id == typeId, ct);
+                if (!string.Equals(existing.ParentLookupTypeId, productTypes, StringComparison.Ordinal))
+                {
+                    existing.ParentLookupTypeId = productTypes;
+                    existing.ParentFieldLabel = "Product type";
+                    await db.SaveChangesAsync(ct);
+                }
+            }
+        }
+
+        const string ptGrocery = "pt_grocery";
+        const string ptSaree = "pt_saree";
+
+        foreach (var lt in new[] { typeApplication, typeLegacy })
+        {
+            await UpsertAppTypeValueAsync(db, tid, lt, "app_gr", "gr", "Groceries", 10, ptGrocery, ct);
+            await UpsertAppTypeValueAsync(db, tid, lt, "app_sr", "sr", "Sarees", 20, ptSaree, ct);
+        }
+    }
+
+    /// <summary>
+    /// Idempotent: fulfillment dropdowns for admin/vendor order screens (codes stored on <c>storefront_orders.FulfillmentStatus</c>).
+    /// </summary>
+    public static async Task EnsureOrderFulfillmentStatusLookupsAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string adminLt = "order_fulfillment_status";
+        const string vendorLt = "order_fulfillment_status_vendor";
+
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == adminLt, ct))
         {
             db.LookupTypes.Add(new LookupType
             {
                 TenantId = tid,
-                Id = lt,
-                Title = "Application type",
-                Description = "Storefront vertical (maps to products.product_type_id on save).",
+                Id = adminLt,
+                Title = "Order fulfillment status",
+                Description = "Full shopper tracking timeline (placed through delivered, cancelled). Not assigned by admins.",
                 ParentLookupTypeId = null,
                 ParentFieldLabel = null,
-                EntryIdPrefix = "app_"
+                EntryIdPrefix = "ofs_"
             });
             await db.SaveChangesAsync(ct);
         }
 
-        await UpsertAppTypeValueAsync(db, tid, lt, "app_gr", "gr", "Groceries", 10, ct);
-        await UpsertAppTypeValueAsync(db, tid, lt, "app_sr", "sr", "Sarees", 20, ct);
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == vendorLt, ct))
+        {
+            db.LookupTypes.Add(new LookupType
+            {
+                TenantId = tid,
+                Id = vendorLt,
+                Title = "Order fulfillment status (vendor)",
+                Description = "Statuses vendors may assign (in review, confirmed, pack, ship, cancel, reject).",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "ofv_"
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_placed", "placed", "Placed", 10, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_inreview", "inreview", "In review", 15, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_confirmed", "confirmed", "Confirmed", 20, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_packed", "packed", "Packed", 30, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_shipped", "shipped", "Shipped", 40, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_delivered", "delivered", "Delivered", 50, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_cancelled", "cancelled", "Cancelled", 90, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_rejected", "rejected", "Rejected", 95, ct);
+
+        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_inreview", "inreview", "In review", 15, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_confirmed", "confirmed", "Confirmed", 20, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_packed", "packed", "Packed", 30, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_shipped", "shipped", "Shipped", 40, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_cancelled", "cancelled", "Cancelled", 90, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_rejected", "rejected", "Rejected", 95, ct);
+
+        var obsoleteVendorStatusIds = new[] { "ofv_placed" };
+        var obsolete = await db.LookupValues
+            .Where(v => v.TenantId == tid && v.LookupTypeId == vendorLt && obsoleteVendorStatusIds.Contains(v.Id))
+            .ToListAsync(ct);
+        if (obsolete.Count > 0)
+        {
+            db.LookupValues.RemoveRange(obsolete);
+        }
+
+        await db.SaveChangesAsync(ct);
     }
 
-    private static async Task UpsertAppTypeValueAsync(
+    private static async Task UpsertFulfillmentStatusValueAsync(
         CommerceDbContext db,
         string tenantId,
         string lookupTypeId,
@@ -965,9 +1053,7 @@ public static class CommerceDevDataSeeder
         int sortOrder,
         CancellationToken ct)
     {
-        var row = await db.LookupValues.FirstOrDefaultAsync(
-            v => v.TenantId == tenantId && v.LookupTypeId == lookupTypeId && v.Id == id,
-            ct);
+        var row = await db.LookupValues.FirstOrDefaultAsync(v => v.TenantId == tenantId && v.Id == id, ct);
         if (row is null)
         {
             db.LookupValues.Add(new LookupValue
@@ -983,9 +1069,47 @@ public static class CommerceDevDataSeeder
         }
         else
         {
+            row.LookupTypeId = lookupTypeId;
             row.Code = code;
             row.Label = label;
             row.SortOrder = sortOrder;
+        }
+    }
+
+    private static async Task UpsertAppTypeValueAsync(
+        CommerceDbContext db,
+        string tenantId,
+        string lookupTypeId,
+        string id,
+        string code,
+        string label,
+        int sortOrder,
+        string? productTypeParentId,
+        CancellationToken ct)
+    {
+        var row = await db.LookupValues.FirstOrDefaultAsync(
+            v => v.TenantId == tenantId && v.LookupTypeId == lookupTypeId && v.Id == id,
+            ct);
+        if (row is null)
+        {
+            db.LookupValues.Add(new LookupValue
+            {
+                Id = id,
+                TenantId = tenantId,
+                LookupTypeId = lookupTypeId,
+                Code = code,
+                Label = label,
+                SortOrder = sortOrder,
+                ParentValueId = productTypeParentId
+            });
+        }
+        else
+        {
+            row.Code = code;
+            row.Label = label;
+            row.SortOrder = sortOrder;
+            if (!string.IsNullOrEmpty(productTypeParentId))
+                row.ParentValueId = productTypeParentId;
         }
 
         await db.SaveChangesAsync(ct);

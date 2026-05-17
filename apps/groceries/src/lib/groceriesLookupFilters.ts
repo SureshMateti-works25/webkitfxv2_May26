@@ -1,39 +1,63 @@
 import type { CommerceLookupValueDto } from "./commerceApi.js";
+import { CATALOG_PRODUCT_TYPE_ID } from "./commerceApi.js";
+import {
+  applicationLookupValueIdFromProductTypeId,
+  resolveApplicationTypeLookupTypeIds,
+} from "./groceriesLookupConfig.js";
+import { listCommerceLookupValues } from "./commerceApi.js";
 
-/**
- * Seeded saree **demo** category ids only. We do not walk `merchandisingParentId`:
- * real grocery rows sometimes share or mis-point parents, which would hide valid
- * categories (e.g. atta, oil, ice cream) from Admin / vendor selects.
- */
-const KNOWN_SAREE_DEMO_CATEGORY_IDS = new Set([
-  "cat_saree",
-  "cat_silk",
-  "cat_kan",
-  "pcat_kalamkari",
-]);
+let cachedApplicationTypeRows: CommerceLookupValueDto[] | null = null;
 
-/**
- * Groceries admin / vendor: hide only the fixed saree demo rows from `product_categories`.
- * Everything else from Commerce.Api stays visible.
- */
-export function filterProductCategoryLookupRowsForGroceries(rows: CommerceLookupValueDto[]): CommerceLookupValueDto[] {
-  return rows.filter((r) => !KNOWN_SAREE_DEMO_CATEGORY_IDS.has(r.id));
+async function loadApplicationTypeRows(): Promise<CommerceLookupValueDto[]> {
+  if (cachedApplicationTypeRows) return cachedApplicationTypeRows;
+  for (const typeId of resolveApplicationTypeLookupTypeIds()) {
+    try {
+      const rows = await listCommerceLookupValues(typeId);
+      if (rows.length > 0) {
+        cachedApplicationTypeRows = rows;
+        return rows;
+      }
+    } catch {
+      /* try next */
+    }
+  }
+  return [];
 }
 
 /**
- * Groceries storefront / admin: hide saree product type so category parent and
- * vendor "Product type" selects only show types relevant to this vertical.
+ * Groceries admin: hide categories parented on another application/product type (legacy product_types parent).
  */
-export function shouldHideProductTypeForGroceriesApp(row: CommerceLookupValueDto): boolean {
-  const id = row.id.trim().toLowerCase();
-  const code = (row.code ?? "").trim().toLowerCase();
-  const label = (row.label ?? "").trim().toLowerCase();
-  if (id === "pt_saree" || code === "pt_saree") return true;
-  if (id.includes("saree") || code.includes("saree")) return true;
-  if (label.includes("saree")) return true;
-  return false;
+export function filterProductCategoryLookupRowsForGroceries(
+  rows: CommerceLookupValueDto[],
+  applicationTypeRows: CommerceLookupValueDto[]
+): CommerceLookupValueDto[] {
+  const ownApp = applicationLookupValueIdFromProductTypeId(CATALOG_PRODUCT_TYPE_ID, applicationTypeRows);
+  const ownPt = CATALOG_PRODUCT_TYPE_ID.trim();
+  const otherAppIds = new Set(
+    applicationTypeRows.map((r) => r.id.trim()).filter((id) => id.length > 0 && id !== ownApp)
+  );
+  const otherPtIds = new Set(
+    applicationTypeRows
+      .map((r) => (r.parentValueId ?? "").trim())
+      .filter((pv) => pv.startsWith("pt_") && pv !== ownPt)
+  );
+  return rows.filter((r) => {
+    const pv = (r.parentValueId ?? "").trim();
+    if (!pv) return true;
+    if (otherAppIds.has(pv) || otherPtIds.has(pv)) return false;
+    return true;
+  });
 }
 
-export function filterProductTypeLookupRowsForGroceries(rows: CommerceLookupValueDto[]): CommerceLookupValueDto[] {
-  return rows.filter((r) => !shouldHideProductTypeForGroceriesApp(r));
+export async function loadApplicationTypeRowsForGroceriesAdmin(): Promise<CommerceLookupValueDto[]> {
+  return loadApplicationTypeRows();
+}
+
+export function filterProductTypeLookupRowsForGroceries(
+  rows: CommerceLookupValueDto[],
+  configuredProductTypeId: string
+): CommerceLookupValueDto[] {
+  const ownType = configuredProductTypeId.trim();
+  if (!ownType) return rows;
+  return rows.filter((r) => r.id.trim() === ownType);
 }

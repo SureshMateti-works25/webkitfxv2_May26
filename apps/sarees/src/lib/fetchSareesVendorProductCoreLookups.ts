@@ -1,16 +1,16 @@
-import { CATALOG_PRODUCT_TYPE_ID, PRODUCT_DEPARTMENTS_LOOKUP_TYPE_ID } from "./commerceApi.js";
+import { listCommerceLookupValues } from "./commerceApi.js";
 import {
   APPLICATION_TYPE_LOOKUP_TYPE_ID,
   resolveApplicationTypeLookupTypeIds,
-} from "./groceriesLookupConfig.js";
-import { filterProductTypeLookupRowsForGroceries } from "./groceriesLookupFilters.js";
+} from "./applicationTypeLookup.js";
 import {
   getLookupBindingsForForm,
   lookupValuesToFieldOptions,
   sortedCommerceLookupValues,
   type ResolvedLookupSelectPatch,
 } from "./lookupFormBindings.js";
-import { listCommerceLookupValues } from "./commerceApi.js";
+
+const PRODUCT_DEPARTMENTS_LOOKUP_TYPE_ID = "product_departments";
 
 function bindingLookupTypeId(fieldId: string, fallback: string): string {
   if (fieldId === "applicationTypeId") return APPLICATION_TYPE_LOOKUP_TYPE_ID;
@@ -21,27 +21,20 @@ function bindingLookupTypeId(fieldId: string, fallback: string): string {
 
 async function loadLookupValuesForBinding(fieldId: string, fallbackTypeId: string) {
   if (fieldId === "applicationTypeId") {
-    const typeIds = resolveApplicationTypeLookupTypeIds();
-    if (fallbackTypeId.trim() && !typeIds.includes(fallbackTypeId.trim())) {
-      typeIds.unshift(fallbackTypeId.trim());
-    }
-    for (const typeId of typeIds) {
+    for (const typeId of resolveApplicationTypeLookupTypeIds()) {
       try {
-        let rows = await listCommerceLookupValues(typeId);
-        rows = filterProductTypeLookupRowsForGroceries(rows, CATALOG_PRODUCT_TYPE_ID);
+        const rows = await listCommerceLookupValues(typeId);
         if (rows.length > 0) return rows;
       } catch {
-        /* try next type id */
+        /* try next */
       }
     }
     return [];
   }
-  const typeId = bindingLookupTypeId(fieldId, fallbackTypeId);
-  return listCommerceLookupValues(typeId);
+  return listCommerceLookupValues(bindingLookupTypeId(fieldId, fallbackTypeId));
 }
 
-/** Loads vendor-product-core dropdown options from Commerce.Api (groceries lookup type ids). */
-export async function fetchGroceriesVendorProductCoreLookups(): Promise<
+export async function fetchSareesVendorProductCoreLookups(): Promise<
   Record<string, ResolvedLookupSelectPatch>
 > {
   const out: Record<string, ResolvedLookupSelectPatch> = {};

@@ -29,6 +29,8 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
     public DbSet<ShopperCart> ShopperCarts => Set<ShopperCart>();
     public DbSet<ShopperCartLine> ShopperCartLines => Set<ShopperCartLine>();
     public DbSet<ShopperProductView> ShopperProductViews => Set<ShopperProductView>();
+    public DbSet<StorefrontOrder> StorefrontOrders => Set<StorefrontOrder>();
+    public DbSet<StorefrontOrderLine> StorefrontOrderLines => Set<StorefrontOrderLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -348,6 +350,44 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.Property(x => x.PortalUserId).HasMaxLength(64);
             e.Property(x => x.ProductId).HasMaxLength(64);
             e.HasIndex(x => new { x.TenantId, x.PortalUserId, x.ViewedAt });
+        });
+
+        modelBuilder.Entity<StorefrontOrder>(e =>
+        {
+            e.ToTable("storefront_orders");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ShopperPortalUserId).HasMaxLength(64);
+            e.Property(x => x.ShopperEmail).HasMaxLength(256).IsRequired();
+            e.Property(x => x.ShopperName).HasMaxLength(256);
+            e.Property(x => x.ShopperPhone).HasMaxLength(32);
+            e.Property(x => x.ProductTypeId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            e.Property(x => x.FulfillmentStatus).HasMaxLength(32).IsRequired();
+            e.Property(x => x.TrackingNote).HasMaxLength(512);
+            e.Property(x => x.PaymentMethod).HasMaxLength(64).IsRequired();
+            e.Property(x => x.PaymentStatus).HasMaxLength(32).IsRequired();
+            e.Property(x => x.Currency).HasMaxLength(8).IsRequired();
+            e.HasIndex(x => new { x.TenantId, x.PlacedAt });
+            e.HasIndex(x => new { x.TenantId, x.ShopperPortalUserId, x.PlacedAt });
+        });
+
+        modelBuilder.Entity<StorefrontOrderLine>(e =>
+        {
+            e.ToTable("storefront_order_lines");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.OrderId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ProductId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.SkuId).HasMaxLength(64);
+            e.Property(x => x.SkuCode).HasMaxLength(64);
+            e.Property(x => x.TitleDisplay).HasMaxLength(512).IsRequired();
+            e.Property(x => x.VendorPortalUserId).HasMaxLength(64);
+            e.Property(x => x.VendorCode).HasMaxLength(128);
+            e.Property(x => x.Currency).HasMaxLength(8).IsRequired();
+            e.HasOne(x => x.Order).WithMany(o => o.Lines).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.OrderId);
         });
 
         modelBuilder.Entity<AuditLog>(e =>

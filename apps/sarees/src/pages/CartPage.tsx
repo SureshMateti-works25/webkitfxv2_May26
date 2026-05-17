@@ -62,6 +62,11 @@ export function CartPage() {
           <p className="cart-page__units" aria-live="polite">
             {totalQuantity} {totalQuantity === 1 ? "unit" : "units"} in cart
           </p>
+          <div className="cart-page__checkout-row">
+            <Link to="/checkout" className="cart-page__cta">
+              Proceed to checkout
+            </Link>
+          </div>
           <ul className="cart-page__lines">
             {lines.map((ln) => (
               <li key={ln.lineId} className="cart-line">

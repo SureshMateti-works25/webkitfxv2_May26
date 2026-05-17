@@ -138,11 +138,13 @@
       "shopper": [
         { "label": "Profile", "path": "/account/profile" },
         { "label": "My favourites", "path": "/favourites" },
-        { "label": "Recent orders", "path": "/orders" }
+        { "label": "Recent orders", "path": "/orders" },
+        { "label": "Track order", "path": "/orders/track" }
       ],
       "vendor": [
         { "label": "Profile", "path": "/account/profile" },
         { "label": "My products", "path": "/vendor/products" },
+        { "label": "Orders", "path": "/vendor/orders" },
         { "label": "Settings", "path": "/settings" }
       ],
       "admin": [

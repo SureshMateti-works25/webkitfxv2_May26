@@ -1,0 +1,26 @@
+{
+  "id": "admin-order-manage",
+  "title": "Update order",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      { "type": "field", "fieldId": "fulfillmentStatus" },
+      { "type": "field", "fieldId": "trackingNote" }
+    ]
+  },
+  "fields": {
+    "fulfillmentStatus": {
+      "widget": "select",
+      "label": "Fulfillment status",
+      "default": ""
+    },
+    "trackingNote": {
+      "widget": "textarea",
+      "label": "Tracking note (AWB, courier, internal note)",
+      "props": { "rows": 2, "placeholder": "e.g. BlueDart AWB 1234567890" },
+      "default": ""
+    }
+  }
+}

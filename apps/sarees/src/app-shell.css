@@ -3733,6 +3733,13 @@
   margin-bottom: 1.25rem;
 }
 
+.vendor-products-page__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .vendor-products-page__title {
   margin: 0 0 0.35rem;
   font-family: var(--font-display);
@@ -5252,6 +5259,233 @@
   margin: 0 0 1rem;
   font-size: 0.875rem;
   opacity: 0.85;
+}
+
+.cart-page__checkout-row {
+  margin: 1rem 0 1.25rem;
+}
+
+.cart-page__checkout-row .cart-page__cta {
+  margin-top: 0;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cart-page__cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.checkout-page__section {
+  margin: 1.5rem 0;
+}
+
+.checkout-page__section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.checkout-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+}
+
+.checkout-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.checkout-form-grid input {
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(107, 93, 82, 0.25);
+  font: inherit;
+}
+
+.checkout-form-grid__full {
+  grid-column: 1 / -1;
+}
+
+.checkout-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+
+.checkout-payment-options {
+  border: 0;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.checkout-payment-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  cursor: pointer;
+}
+
+.checkout-page__mock-note,
+.checkout-confirmation__email-note {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.orders-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.orders-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(107, 93, 82, 0.12);
+}
+
+.order-track-timeline {
+  list-style: none;
+  margin: 1.25rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.order-track-timeline__step {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  opacity: 0.45;
+}
+
+.order-track-timeline__step--done {
+  opacity: 0.85;
+}
+
+.order-track-timeline__step--current {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.order-track-timeline__dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: rgba(107, 93, 82, 0.35);
+  flex-shrink: 0;
+}
+
+.order-track-timeline__step--done .order-track-timeline__dot,
+.order-track-timeline__step--current .order-track-timeline__dot {
+  background: #b45309;
+}
+
+.order-detail-card {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(107, 93, 82, 0.15);
+}
+
+.order-detail-card__id {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.order-detail-card__meta {
+  margin: 0.2rem 0;
+  font-size: 0.875rem;
+  opacity: 0.88;
+}
+
+.order-detail-card__status {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}
+
+.order-manage-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(107, 93, 82, 0.06);
+}
+
+.order-manage-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.order-manage-form select,
+.order-manage-form textarea {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(107, 93, 82, 0.25);
+}
+
+.portal-orders-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2.5rem;
+}
+
+.portal-orders-layout {
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .portal-orders-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.portal-orders-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.portal-orders-list__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 0.35rem;
+  border: 1px solid rgba(107, 93, 82, 0.15);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.portal-orders-list__btn--active {
+  border-color: #b45309;
+  background: rgba(180, 83, 9, 0.08);
+}
+
+.order-track-lookup {
+  margin-bottom: 1.5rem;
 }
 
 .cart-page__lines {

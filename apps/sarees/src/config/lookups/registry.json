@@ -37,6 +37,20 @@
       "parentLookupId": "product_types",
       "parentFieldLabel": "Product type",
       "entryIdPrefix": "cat_"
+    },
+    {
+      "id": "order_fulfillment_status",
+      "title": "Order fulfillment status",
+      "description": "Shopper tracking timeline (placed, in review, confirmed, packed, shipped, delivered, cancelled, rejected).",
+      "parentLookupId": null,
+      "entryIdPrefix": "ofs_"
+    },
+    {
+      "id": "order_fulfillment_status_vendor",
+      "title": "Order fulfillment status (vendor)",
+      "description": "Vendor dropdown: in review, confirmed, packed, shipped, cancelled, rejected.",
+      "parentLookupId": null,
+      "entryIdPrefix": "ofv_"
     }
   ]
 }

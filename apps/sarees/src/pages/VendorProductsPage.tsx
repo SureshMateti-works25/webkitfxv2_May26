@@ -76,9 +76,14 @@ export function VendorProductsPage() {
             catalogue.
           </p>
         </div>
-        <Link to="/vendor/products/new" className="shell-btn shell-btn--primary vendor-products-page__add">
-          Add new product
-        </Link>
+        <div className="vendor-products-page__header-actions">
+          <Link to="/vendor/orders" className="shell-btn shell-btn--secondary">
+            Orders
+          </Link>
+          <Link to="/vendor/products/new" className="shell-btn shell-btn--primary vendor-products-page__add">
+            Add new product
+          </Link>
+        </div>
       </header>
 
       {error ? (
