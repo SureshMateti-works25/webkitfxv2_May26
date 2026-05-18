@@ -40,8 +40,9 @@ jobs:
 
       - name: Build packages + cafe-market
         env:
-          VITE_COMMERCE_API_URL: ${{ secrets.VITE_COMMERCE_API_URL }}
-          VITE_CATALOG_API_URL: ${{ secrets.VITE_CATALOG_API_URL }}
+          # Unset — production uses same-origin /api via staticwebapp.config.json (no CORS).
+          VITE_COMMERCE_API_URL: ""
+          VITE_CATALOG_API_URL: ""
           VITE_COMMERCE_TENANT_ID: ${{ secrets.VITE_COMMERCE_TENANT_ID }}
           VITE_CATALOG_APPLICATION_TYPE_ID: app_cafe
           VITE_CATALOG_PRODUCT_TYPE_ID: app_cafe

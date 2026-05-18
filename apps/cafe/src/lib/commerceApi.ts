@@ -3,7 +3,8 @@
  * - If `VITE_COMMERCE_API_URL` / `VITE_CATALOG_API_URL` is set → use it (Azure CI, or override local).
  * - **Dev default:** `http://localhost:5055` for API `fetch`; **images** use same-origin `/media/...` (Vite proxies to
  *   Commerce.Api) whenever the configured API is loopback port 5055. Commerce.Api CORS allows Vite ports for JSON calls.
- * - Production build without env → `http://localhost:5055` (set `VITE_COMMERCE_API_URL` in real deploys / SWA).
+ * - **Production (Azure SWA):** leave env unset — requests use same-origin `/api` and `/media` proxied in
+ *   `public/staticwebapp.config.json` (no browser CORS). Set `VITE_COMMERCE_API_URL` only for direct API calls.
  */
 const fromEnv =
   (import.meta.env.VITE_COMMERCE_API_URL as string | undefined) ??
@@ -15,7 +16,7 @@ const BASE =
     ? trimmed
     : import.meta.env.DEV
       ? LOCAL_COMMERCE_ORIGIN
-      : "http://localhost:5055";
+      : "";
 
 export type AuthSuccess = {
   accessToken: string;
@@ -1421,9 +1422,19 @@ export async function uploadTenantMediaAsset(accessToken: string, file: File): P
 }
 
 /** Backend URL for user-visible error strings. */
-const apiTargetLabel = BASE;
+const apiTargetLabel =
+  BASE.length > 0
+    ? BASE
+    : typeof window !== "undefined"
+      ? `${window.location.origin} (/api → Commerce.Api)`
+      : "same-origin /api";
+
+function isSameOriginCommerceApi(): boolean {
+  return BASE.length === 0;
+}
 
 function isRemoteCommerceApiBase(): boolean {
+  if (isSameOriginCommerceApi()) return false;
   const b = BASE.trim().toLowerCase();
   return (
     b.startsWith("https://") && !b.includes("localhost") && !b.includes("127.0.0.1")
@@ -1433,6 +1444,14 @@ function isRemoteCommerceApiBase(): boolean {
 /** User-visible message for fetch / JSON failures against Commerce.Api */
 export function formatCommerceApiError(error: unknown): string {
   if (error instanceof TypeError && /fetch|network|failed/i.test(String(error.message))) {
+    if (isSameOriginCommerceApi()) {
+      return [
+        `Cannot reach Commerce.Api (${apiTargetLabel}).`,
+        "1) Open `/health` on this site — you should see {\"status\":\"ok\"}. If not, check `staticwebapp.config.json` routes proxy to Commerce.Api.",
+        "2) Confirm Commerce.Api is running on Azure (App Service log stream).",
+        "3) Hard-refresh (Ctrl+Shift+R) after a new deploy.",
+      ].join(" ");
+    }
     if (isRemoteCommerceApiBase()) {
       const onLocalVite =
         typeof window !== "undefined" &&
