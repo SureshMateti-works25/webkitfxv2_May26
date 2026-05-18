@@ -17,6 +17,8 @@ import {
   type ProductEngagement,
 } from "../lib/commerceApi.js";
 import { recordProductVisit } from "../lib/recentVisits.js";
+import { buildQrMenuPath } from "../lib/qrOrderUrls.js";
+import { useQrOrderSession } from "../lib/qrOrderSession.js";
 import { canUseStorefrontCart } from "../lib/storefrontCartAccess.js";
 
 type ScreenConfig = {
@@ -71,6 +73,8 @@ function offerTypeLabel(offerType: string | null | undefined): string | null {
 export function ProductDetailPage() {
   const { productSlug, productKey } = useParams<{ productSlug?: string; productKey?: string }>();
   const navigate = useNavigate();
+  const qrSession = useQrOrderSession();
+  const menuHomeTo = qrSession ? buildQrMenuPath(qrSession.tableCode) : "/";
   const { auth } = useAuth();
   const shell = getShell();
   const rawKey = productSlug ?? productKey ?? "";
@@ -286,10 +290,10 @@ export function ProductDetailPage() {
             ←
           </button>
           <Link
-            to="/"
+            to={menuHomeTo}
             className="pdp-screen-header__action pdp-screen-header__action--home"
-            aria-label={screen.copy.backLink}
-            title={screen.copy.backLink}
+            aria-label={qrSession ? "Back to table menu" : screen.copy.backLink}
+            title={qrSession ? "Back to table menu" : screen.copy.backLink}
           >
             ⌂
           </Link>

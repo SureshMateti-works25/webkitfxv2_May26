@@ -1,4 +1,4 @@
-import { formatOrderTableLabel } from "../lib/orderTableDisplay.js";
+import { formatOrderTableLabel, formatPaymentStatusLabel, orderChannelLabel } from "../lib/orderTableDisplay.js";
 import { formatMinor, type StorefrontOrderExtended } from "../lib/ordersApi.js";
 import { OrderTrackingTimeline } from "./OrderTrackingTimeline.js";
 
@@ -25,6 +25,10 @@ export function OrderDetailCard({ order }: { order: StorefrontOrderExtended }) {
         <p className="order-detail-card__meta">Ship to: {addressLine}</p>
         <p className="order-detail-card__meta">
           Table: <strong>{formatOrderTableLabel(order)}</strong>
+        </p>
+        <p className="order-detail-card__meta">
+          Channel: {orderChannelLabel(order.orderChannel)} · Payment:{" "}
+          <strong>{formatPaymentStatusLabel(order.paymentStatus)}</strong>
         </p>
         <p className="order-detail-card__status">
           Fulfillment: <strong>{order.fulfillmentStatus}</strong>

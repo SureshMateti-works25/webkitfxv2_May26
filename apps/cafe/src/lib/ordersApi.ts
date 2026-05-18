@@ -156,7 +156,7 @@ export async function listAdminOrders(token: string): Promise<StorefrontOrderExt
 export async function patchAdminOrder(
   token: string,
   orderId: string,
-  body: { fulfillmentStatus?: string; trackingNote?: string }
+  body: { fulfillmentStatus?: string; trackingNote?: string; paymentStatus?: string }
 ): Promise<StorefrontOrderExtended> {
   const res = await fetch(`${BASE}/api/v1/admin/orders/${encodeURIComponent(orderId)}`, {
     method: "PATCH",
@@ -185,7 +185,7 @@ export async function listVendorOrders(token: string): Promise<StorefrontOrderEx
 export async function patchVendorOrder(
   token: string,
   orderId: string,
-  body: { fulfillmentStatus?: string; trackingNote?: string }
+  body: { fulfillmentStatus?: string; trackingNote?: string; paymentStatus?: string }
 ): Promise<StorefrontOrderExtended> {
   const res = await fetch(`${BASE}/api/v1/vendor/orders/${encodeURIComponent(orderId)}`, {
     method: "PATCH",

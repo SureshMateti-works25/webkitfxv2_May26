@@ -190,7 +190,7 @@ export type ShellConfig = {
     favourites: { title: string; body: string };
     orders: { title: string; body: string };
     communication: { title: string; body: string };
-    search: { title: string; body: string; noResults: string };
+    search: { title: string; body: string; noResults: string; noAttributesHint?: string };
     adminVendors: { title: string; body: string };
     adminShoppers: { title: string; body: string };
     adminOrders: { title: string; body: string };

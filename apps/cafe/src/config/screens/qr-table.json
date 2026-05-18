@@ -1,0 +1,17 @@
+{
+  "copy": {
+    "pickerTitle": "Order from your table",
+    "pickerLede": "Scan the QR on your table (for example /qr/t1) or pick a table below. The table number is taken from the link — you will not enter it again at checkout.",
+    "pickerTableLabel": "Table number",
+    "pickerSubmitLabel": "Open menu",
+    "pickerHomeLink": "Browse without a table",
+    "unknownTableWarning": "This table is not in the floor plan — you can still order for local testing.",
+    "menuReadyNote": "Menu for your table",
+    "bannerBadge": "QR order",
+    "bannerHint": "We will bring your order to this table.",
+    "bannerMenuLink": "Menu",
+    "bannerEndSession": "Not at this table?",
+    "qrMenuLinkLabel": "QR menu",
+    "qrUrlCopied": "QR link copied"
+  }
+}

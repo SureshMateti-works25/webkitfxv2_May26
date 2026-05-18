@@ -145,6 +145,7 @@
       "vendor": [
         { "label": "Profile", "path": "/account/profile" },
         { "label": "My products", "path": "/vendor/products" },
+        { "label": "Floor plan", "path": "/vendor/floor" },
         { "label": "Table management", "path": "/vendor/tables" },
         { "label": "Kitchen queue", "path": "/vendor/orders" },
         { "label": "Settings", "path": "/settings" }
@@ -154,6 +155,7 @@
         { "label": "Vendors", "path": "/admin/vendors" },
         { "label": "Shoppers", "path": "/admin/shoppers" },
         { "label": "Orders", "path": "/admin/orders" },
+        { "label": "Floor plan", "path": "/vendor/floor" },
         { "label": "Table management", "path": "/vendor/tables" },
         { "label": "Admin lookups mgt", "path": "/admin/lookups" },
         { "label": "Storefront sponsored ads", "path": "/admin/storefront-ads" }
@@ -203,6 +205,10 @@
     "/vendor/tables": [
       { "label": "Home", "path": "/" },
       { "label": "Table management", "path": null }
+    ],
+    "/vendor/floor": [
+      { "label": "Home", "path": "/" },
+      { "label": "Floor plan", "path": null }
     ],
     "/admin/lookups": [
       { "label": "Home", "path": "/" },
@@ -392,9 +398,10 @@
       "body": "Messages, alerts, and announcements will be driven from your notifications configuration — placeholder for now."
     },
     "search": {
-      "title": "Search catalogue",
-      "body": "Use one or many filters to find products. Filters are configuration-driven and can be extended without changing this page component.",
-      "noResults": "No products matched the selected filters."
+      "title": "Search menu",
+      "body": "Find dishes by name, menu section, and attributes vendors set on café items (dietary, spice level, course, and more). Results are limited to this café menu.",
+      "noResults": "No menu items matched your search.",
+      "noAttributesHint": "No filterable menu attributes are configured yet. Search by dish name or menu section, or ask an admin to add filterable attributes in Commerce.Api."
     },
     "adminVendors": {
       "title": "Vendors",

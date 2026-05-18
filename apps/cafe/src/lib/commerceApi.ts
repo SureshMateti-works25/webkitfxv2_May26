@@ -534,6 +534,32 @@ export type ListCatalogProductsParams = {
   /** Exact product slug (PDP fetch). */
   slug?: string;
   q?: string;
+  /** Facet filters: comma-separated `attributeDefId:attributeValueId` pairs. */
+  filters?: string;
+};
+
+export type CatalogFacetValueOption = {
+  id: string;
+  code: string;
+  labelKey: string;
+  sortKey: number;
+  swatchHex: string | null;
+  productCount: number;
+};
+
+export type CatalogFacetGroup = {
+  attributeDefId: string;
+  code: string;
+  labelKey: string;
+  displayType: string | null;
+  values: CatalogFacetValueOption[];
+};
+
+export type ListCatalogFacetOptionsParams = {
+  q?: string;
+  categoryId?: string;
+  includeSubtree?: boolean;
+  collectionId?: string;
 };
 
 function optionalMinorField(row: Record<string, unknown>, camel: string, pascal: string): number | null {
@@ -1013,6 +1039,52 @@ export async function addProductComment(params: {
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
 }
 
+function normalizeCatalogFacetValue(row: Record<string, unknown>): CatalogFacetValueOption {
+  return {
+    id: String(row.id ?? row.Id ?? ""),
+    code: String(row.code ?? row.Code ?? ""),
+    labelKey: String(row.labelKey ?? row.LabelKey ?? ""),
+    sortKey: Number(row.sortKey ?? row.SortKey ?? 0),
+    swatchHex: optionalStringField(row, "swatchHex", "SwatchHex"),
+    productCount: Number(row.productCount ?? row.ProductCount ?? 0),
+  };
+}
+
+function normalizeCatalogFacetGroup(row: Record<string, unknown>): CatalogFacetGroup {
+  const valuesRaw = row.values ?? row.Values;
+  const values: CatalogFacetValueOption[] = Array.isArray(valuesRaw)
+    ? (valuesRaw as Record<string, unknown>[]).map(normalizeCatalogFacetValue)
+    : [];
+  return {
+    attributeDefId: String(row.attributeDefId ?? row.AttributeDefId ?? ""),
+    code: String(row.code ?? row.Code ?? ""),
+    labelKey: String(row.labelKey ?? row.LabelKey ?? ""),
+    displayType: optionalStringField(row, "displayType", "DisplayType"),
+    values,
+  };
+}
+
+/** Attribute definitions + value options for storefront search (scoped to café catalog). */
+export async function listCatalogFacetOptions(
+  params?: ListCatalogFacetOptionsParams
+): Promise<CatalogFacetGroup[]> {
+  const qs = new URLSearchParams();
+  appendStorefrontCatalogScopeParam(qs);
+  if (params?.q?.trim()) qs.set("q", params.q.trim());
+  if (params?.categoryId?.trim()) qs.set("categoryId", params.categoryId.trim());
+  if (params?.includeSubtree) qs.set("includeSubtree", "true");
+  if (params?.collectionId?.trim()) qs.set("collectionId", params.collectionId.trim());
+  const res = await fetch(`${BASE}/api/v1/catalog/facet-options?${qs}`, {
+    cache: "no-store",
+    headers: commerceTenantHeaders(),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const raw = (await res.json()) as Record<string, unknown>;
+  const facetsRaw = raw.facets ?? raw.Facets;
+  if (!Array.isArray(facetsRaw)) return [];
+  return (facetsRaw as Record<string, unknown>[]).map(normalizeCatalogFacetGroup);
+}
+
 export async function listCatalogProducts(params?: ListCatalogProductsParams): Promise<CatalogProductsPage> {
   const qs = new URLSearchParams();
   qs.set("view", "card");
@@ -1024,6 +1096,7 @@ export async function listCatalogProducts(params?: ListCatalogProductsParams): P
   if (params?.includeSubtree) qs.set("includeSubtree", "true");
   if (params?.slug?.trim()) qs.set("slug", params.slug.trim());
   if (params?.q?.trim()) qs.set("q", params.q.trim());
+  if (params?.filters?.trim()) qs.set("filters", params.filters.trim());
   const res = await fetch(`${BASE}/api/v1/catalog/products?${qs}`, {
     cache: "no-store",
     headers: commerceTenantHeaders(),

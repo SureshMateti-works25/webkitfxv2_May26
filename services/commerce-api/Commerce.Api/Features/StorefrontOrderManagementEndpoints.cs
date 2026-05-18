@@ -219,6 +219,22 @@ public static class StorefrontOrderManagementEndpoints
                 return "Invalid fulfillmentStatus for this role. Add or enable the value in Admin → Lookups.";
             order.FulfillmentStatus = next;
             changed = true;
+
+            if (string.Equals(next, "payment_captured", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(next, "invoice_finalized", StringComparison.OrdinalIgnoreCase))
+            {
+                order.PaymentStatus = "captured";
+            }
+        }
+
+        if (body.PaymentStatus is not null)
+        {
+            var ps = body.PaymentStatus.Trim();
+            if (ps.Length > 0)
+            {
+                order.PaymentStatus = ps;
+                changed = true;
+            }
         }
 
         if (body.TrackingNote is not null)
@@ -254,6 +270,7 @@ public static class StorefrontOrderManagementEndpoints
     public sealed class PatchOrderRequest
     {
         public string? FulfillmentStatus { get; set; }
+        public string? PaymentStatus { get; set; }
         public string? TrackingNote { get; set; }
     }
 }

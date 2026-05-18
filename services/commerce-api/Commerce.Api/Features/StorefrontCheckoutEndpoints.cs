@@ -136,6 +136,18 @@ public static class StorefrontCheckoutEndpoints
         var tableCode = isCafe && !string.IsNullOrWhiteSpace(body.TableCode)
             ? body.TableCode.Trim()[..Math.Min(32, body.TableCode.Trim().Length)]
             : null;
+        var paymentStatus = (body.PaymentStatus ?? "captured").Trim();
+        if (paymentStatus.Length == 0) paymentStatus = "captured";
+
+        var paymentMethod = (body.PaymentMethod ?? "mock").Trim();
+        if (isCafe && CafeOrderWorkflow.UsesPayAtTableSettlement(orderChannel, paymentStatus))
+        {
+            paymentStatus = "pending";
+            if (paymentMethod.Length == 0
+                || paymentMethod.Equals("mock", StringComparison.OrdinalIgnoreCase))
+                paymentMethod = "pay_at_table";
+        }
+
         var initialFulfillment = isCafe
             ? CafeOrderWorkflow.InitialStatusForChannel(orderChannel)
             : Placed;
@@ -158,8 +170,8 @@ public static class StorefrontCheckoutEndpoints
             FulfillmentStatus = initialFulfillment,
             TrackingNote = null,
             StatusUpdatedAt = now,
-            PaymentMethod = (body.PaymentMethod ?? "mock").Trim(),
-            PaymentStatus = (body.PaymentStatus ?? "captured").Trim(),
+            PaymentMethod = paymentMethod,
+            PaymentStatus = paymentStatus,
             TotalMinor = totalMinor,
             Currency = currency,
             PlacedAt = now,

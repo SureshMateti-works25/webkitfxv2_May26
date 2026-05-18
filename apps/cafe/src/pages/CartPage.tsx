@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
+import { QrOrderBanner } from "../components/QrOrderBanner.js";
 import { getScreenConfig } from "../config/getScreenConfig.js";
 import { useCart } from "../cart/CartContext.js";
+import { useQrOrderSession } from "../lib/qrOrderSession.js";
+import { buildQrMenuPath } from "../lib/qrOrderUrls.js";
 
 function formatMinor(minor: number | null, currency: string | null): string {
   if (minor == null) return "—";
@@ -12,7 +15,9 @@ function formatMinor(minor: number | null, currency: string | null): string {
 
 export function CartPage() {
   const copy = getScreenConfig("cart");
+  const qrSession = useQrOrderSession();
   const { lines, totalQuantity, setLineQuantity, removeLine, clearCart } = useCart();
+  const continueShoppingTo = qrSession ? buildQrMenuPath(qrSession.tableCode) : "/search";
 
   const subtotalHint = useMemo(() => {
     if (lines.length === 0) return null;
@@ -31,6 +36,7 @@ export function CartPage() {
 
   return (
     <div className="cart-page">
+      <QrOrderBanner />
       <header className="cart-page__header">
         <h1>{String(copy.title ?? "")}</h1>
         <p className="cart-page__lede">{String(copy.body ?? "")}</p>
@@ -39,7 +45,7 @@ export function CartPage() {
       {lines.length === 0 ? (
         <div className="cart-page__empty">
           <p>{copy.emptyHint ?? "Your cart is empty."}</p>
-          <Link to="/search" className="cart-page__cta">
+          <Link to={continueShoppingTo} className="cart-page__cta">
             {copy.continueShoppingLabel ?? "Continue shopping"}
           </Link>
         </div>
@@ -49,7 +55,7 @@ export function CartPage() {
             <button type="button" className="cart-page__linkish" onClick={() => clearCart()}>
               {copy.clearCartLabel ?? "Clear cart"}
             </button>
-            <Link to="/search" className="cart-page__cta-secondary">
+            <Link to={continueShoppingTo} className="cart-page__cta-secondary">
               {copy.continueShoppingLabel ?? "Continue shopping"}
             </Link>
           </div>

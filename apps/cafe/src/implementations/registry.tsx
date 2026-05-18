@@ -22,7 +22,9 @@ import { VendorOrdersPage } from "../pages/VendorOrdersPage.js";
 import { VendorProductEditPage } from "../pages/VendorProductEditPage.js";
 import { VendorProductStorefrontPage } from "../pages/VendorProductStorefrontPage.js";
 import { VendorProductsPage } from "../pages/VendorProductsPage.js";
+import { QrTableMenuPage } from "../pages/QrTableMenuPage.js";
 import { TableManagementPage } from "../pages/TableManagementPage.js";
+import { TableFloorPlanPage } from "../pages/TableFloorPlanPage.js";
 import { VendorSignupPage } from "../pages/VendorSignupPage.js";
 
 function AdminVendorsPage() {
@@ -36,6 +38,7 @@ function AdminShoppersPage() {
 /** Route manifest `implementation` id → screen component. Copy lives in JSON only. */
 export const implementationRegistry: ImplementationRegistry = {
   home: HomePage,
+  qrTableMenu: QrTableMenuPage,
   categoryBrowse: CategoryBrowsePage,
   productDetail: ProductDetailPage,
   cart: CartPage,
@@ -61,4 +64,5 @@ export const implementationRegistry: ImplementationRegistry = {
   orderTracking: OrderTrackingPage,
   vendorOrders: VendorOrdersPage,
   tableManagement: TableManagementPage,
+  tableFloorPlan: TableFloorPlanPage,
 };

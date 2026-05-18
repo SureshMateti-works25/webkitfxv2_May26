@@ -83,6 +83,9 @@ export function VendorOrdersPage() {
         <p className="cart-page__lede cart-page__lede--muted">
           {String(copy.workflowHint ?? "")}
         </p>
+        <Link to="/vendor/floor" className="cart-page__cta-secondary">
+          Floor plan
+        </Link>
         <Link to="/vendor/tables" className="cart-page__cta-secondary">
           Table management
         </Link>

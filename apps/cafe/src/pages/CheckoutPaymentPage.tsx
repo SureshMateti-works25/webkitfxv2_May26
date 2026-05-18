@@ -11,6 +11,9 @@ import {
   writeCheckoutDraft,
   type CheckoutDraft,
 } from "../lib/checkoutApi.js";
+import { requiresOnlinePaymentAtCheckout } from "../lib/cafeCheckoutFlow.js";
+import { orderChannelLabel } from "../lib/orderTableDisplay.js";
+import { clearQrOrderSession } from "../lib/qrOrderSession.js";
 
 export function CheckoutPaymentPage() {
   const { lines, clearCart } = useCart();
@@ -33,6 +36,9 @@ export function CheckoutPaymentPage() {
   }, [lines]);
 
   if (lines.length === 0 || !draft) return <Navigate to="/cart" replace />;
+  if (!requiresOnlinePaymentAtCheckout(draft.orderChannel)) {
+    return <Navigate to="/checkout" replace />;
+  }
 
   const onPay = async () => {
     setError(null);
@@ -48,6 +54,7 @@ export function CheckoutPaymentPage() {
       });
       clearCart();
       clearCheckoutDraft();
+      if (nextDraft.orderChannel === "qr") clearQrOrderSession();
       persistLastOrderEmail(nextDraft.shopperEmail);
       navigate(`/checkout/confirmation/${encodeURIComponent(order.id)}`, {
         replace: true,
@@ -78,8 +85,10 @@ export function CheckoutPaymentPage() {
           {draft.tableCode ? (
             <>
               {" "}
-              · Dine-in · <strong>Table {draft.tableCode}</strong>
+              · {orderChannelLabel(draft.orderChannel)} · <strong>Table {draft.tableCode}</strong>
             </>
+          ) : draft.orderChannel === "qr" ? (
+            <> · {orderChannelLabel(draft.orderChannel)}</>
           ) : null}
         </p>
       </section>

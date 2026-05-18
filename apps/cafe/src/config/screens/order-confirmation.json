@@ -2,6 +2,10 @@
   "copy": {
     "title": "Order placed",
     "lede": "We're preparing your order. Save your order id to track status.",
+    "dineInTitle": "Order sent to kitchen",
+    "dineInLede": "Your table order is in the queue. Pay at the table when you are finished — no online payment was taken.",
+    "qrTitle": "Order placed",
+    "qrLede": "Thank you. Payment was received online and your order is confirmed.",
     "trackCta": "Track order",
     "homeCta": "Back to menu"
   }

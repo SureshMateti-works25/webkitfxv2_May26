@@ -42,10 +42,18 @@ function writeFavorite(pid: string, on: boolean) {
   }
 }
 
-/** Lucide-style stroke icons — reads clearly at small sizes on the pill row. */
+/** Lucide-style stroke icons — padded viewBox so round caps are not clipped in pills/cards. */
 function IconThumbUpStroke({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="none">
+    <svg
+      className="pdp-engagement-icon-svg"
+      width={size}
+      height={size}
+      viewBox="-2 -2 28 28"
+      overflow="visible"
+      aria-hidden
+      fill="none"
+    >
       <path
         d="M7 10v12"
         stroke="currentColor"
@@ -66,7 +74,15 @@ function IconThumbUpStroke({ size = 18 }: { size?: number }) {
 
 function IconThumbDownStroke({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="none">
+    <svg
+      className="pdp-engagement-icon-svg"
+      width={size}
+      height={size}
+      viewBox="-2 -2 28 28"
+      overflow="visible"
+      aria-hidden
+      fill="none"
+    >
       <path
         d="M17 14V2"
         stroke="currentColor"
@@ -197,11 +213,11 @@ function PdpEngagementPills({
         aria-controls="pdp-engagement-drawer"
       >
         <span className="pdp-engagement-toolbar__vote-preview" aria-hidden>
-          <IconThumbUpStroke size={16} />
+          <IconThumbUpStroke size={18} />
           <span className="pdp-engagement-toolbar__vote-preview-count">
             {likes.toLocaleString("en-IN")} / {dislikes.toLocaleString("en-IN")}
           </span>
-          <IconThumbDownStroke size={16} />
+          <IconThumbDownStroke size={18} />
         </span>
         <span className="pdp-sr-only">Likes and dislikes. Opens voting panel.</span>
       </button>
@@ -319,7 +335,7 @@ function VoteDrawerBody() {
 
   return (
     <div className="pdp-engagement-drawer__vote">
-      <p className="pdp-engagement-drawer__hint">Tell others if this piece worked for you.</p>
+      <p className="pdp-engagement-drawer__hint">Tell others if you liked this dish.</p>
       <div className="pdp-engagement-drawer__vote-actions">
         <button
           type="button"
@@ -328,7 +344,7 @@ function VoteDrawerBody() {
           disabled={Boolean(voteBusy)}
           aria-busy={voteBusy === "like"}
         >
-          <IconThumbUpStroke size={28} />
+          <IconThumbUpStroke size={32} />
           <span className="pdp-engagement-drawer__vote-label">Like</span>
         </button>
         <button
@@ -338,7 +354,7 @@ function VoteDrawerBody() {
           disabled={Boolean(voteBusy)}
           aria-busy={voteBusy === "dislike"}
         >
-          <IconThumbDownStroke size={28} />
+          <IconThumbDownStroke size={32} />
           <span className="pdp-engagement-drawer__vote-label">Not for me</span>
         </button>
       </div>

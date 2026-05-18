@@ -1,0 +1,18 @@
+{
+  "copy": {
+    "title": "Floor plan",
+    "lede": "Live view of dining tables by area. Occupied tables show active dine-in and QR orders until they are invoiced or cancelled.",
+    "legendVacant": "Vacant",
+    "legendOccupied": "Occupied",
+    "legendUnmapped": "Active order (table not in plan)",
+    "refreshLabel": "Refresh",
+    "autoRefreshHint": "Updates every 30 seconds",
+    "emptySections": "No table sections defined yet.",
+    "emptySectionsCta": "Set up sections and tables",
+    "noTablesInSection": "No tables in this area.",
+    "seatsLabel": "seats",
+    "manageTablesLink": "Manage tables",
+    "kitchenQueueLink": "Kitchen queue",
+    "unmappedTitle": "Active orders without a matching table"
+  }
+}

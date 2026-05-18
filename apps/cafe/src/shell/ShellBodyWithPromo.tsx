@@ -7,6 +7,8 @@ import {
   listCommerceSponsoredStorefront,
   type CommerceSponsoredProductPublic,
 } from "../lib/commerceApi.js";
+import { QrOrderBanner } from "../components/QrOrderBanner.js";
+import { useQrOrderSession } from "../lib/qrOrderSession.js";
 import { PromotionSidebar } from "./PromotionSidebar.js";
 import { SponsoredVendorRail } from "./SponsoredVendorRail.js";
 
@@ -18,6 +20,9 @@ export function ShellBodyWithPromo() {
   const shell = getShell();
   const edge = shell.edgeChrome;
   const { pathname } = useLocation();
+  const qrSession = useQrOrderSession();
+  const showQrBanner =
+    qrSession != null && !pathname.startsWith("/qr") && !pathname.startsWith("/checkout");
   const { auth } = useAuth();
   const audience = useMemo(() => resolveEdgeChromeAudience(auth), [auth]);
 
@@ -51,6 +56,7 @@ export function ShellBodyWithPromo() {
   return (
     <div className={`shell-page-with-promo${twoCol ? " shell-page-with-promo--cols" : ""}`}>
       <main className="shell-body">
+        {showQrBanner ? <QrOrderBanner /> : null}
         <Outlet />
       </main>
       {twoCol ? (

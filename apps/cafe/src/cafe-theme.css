@@ -420,6 +420,119 @@ body:has(.shell-root--cafe) {
   font-style: italic;
 }
 
+.shell-root.shell-root--cafe .storefront-rail-section {
+  background: var(--cafe-paper);
+  border-color: var(--cafe-line);
+  box-shadow: var(--cafe-shadow-sm);
+}
+
+.shell-root.shell-root--cafe .storefront-rail-section--category-browse {
+  margin-bottom: 2rem;
+}
+
+.shell-root.shell-root--cafe .storefront-rail-section--category-browse .storefront-rail-section__title {
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .storefront-category-grid--cafe-box {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.25rem, 1fr));
+  gap: 0.85rem 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .shell-root.shell-root--cafe .storefront-category-grid--cafe-box {
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 1rem 0.75rem;
+  }
+}
+
+.shell-root.shell-root--cafe .storefront-category-card--cafe-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-height: unset;
+  padding: 0.45rem 0.45rem 0.55rem;
+  gap: 0.45rem;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  background: var(--cafe-latte);
+  border: 1px solid var(--cafe-line);
+  border-radius: var(--cafe-radius-md);
+  box-shadow: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.shell-root.shell-root--cafe .storefront-category-card--cafe-tile:hover {
+  border-color: var(--cafe-caramel);
+  box-shadow: var(--cafe-shadow-sm);
+  transform: translateY(-2px);
+}
+
+.shell-root.shell-root--cafe .storefront-category-card--cafe-tile .storefront-category-card__visual {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  margin: 0;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--cafe-radius-sm);
+  background: var(--cafe-paper);
+  border: 1px solid var(--cafe-line);
+}
+
+.shell-root.shell-root--cafe .storefront-category-card--cafe-tile .storefront-category-card__visual::before {
+  content: none;
+  display: none;
+}
+
+.shell-root.shell-root--cafe .storefront-category-card--cafe-tile .storefront-category-card__img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: none;
+}
+
+.shell-root.shell-root--cafe .storefront-category-card--cafe-tile .storefront-category-card__placeholder {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 0;
+  font-family: var(--cafe-font-display);
+  font-size: 1.5rem;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--cafe-mocha);
+  background: var(--cafe-latte);
+}
+
+.shell-root.shell-root--cafe .storefront-category-card--cafe-tile .storefront-category-card__name {
+  font-family: var(--cafe-font-display);
+  font-size: 0.8125rem;
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--cafe-espresso);
+  max-width: none;
+  margin: 0;
+}
+
 /* ─── Rails, browse, PDP ────────────────────────────────────────────────────── */
 .shell-root.shell-root--cafe .storefront-rail__title,
 .shell-root.shell-root--cafe .storefront-categories__title {
@@ -435,6 +548,226 @@ body:has(.shell-root--cafe) {
 .shell-root.shell-root--cafe .pdp-page__title {
   font-family: var(--cafe-font-display);
   font-style: italic;
+}
+
+.shell-root.shell-root--cafe .pdp-engagement-toolbar-wrap,
+.shell-root.shell-root--cafe .pdp-engagement-drawer {
+  overflow: visible;
+}
+
+.shell-root.shell-root--cafe .pdp-engagement-toolbar__vote-preview svg {
+  color: var(--cafe-mocha);
+}
+
+.shell-root.shell-root--cafe .pdp-engagement-drawer__vote-card {
+  background: var(--cafe-latte);
+  border-color: var(--cafe-line);
+}
+
+.shell-root.shell-root--cafe .pdp-engagement-drawer__vote-card:hover:not(:disabled) {
+  background: var(--cafe-paper);
+  border-color: var(--cafe-caramel);
+}
+
+/* ─── Menu search (SearchPage) ─────────────────────────────────────────────── */
+.shell-root.shell-root--cafe .search-attribute-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+  margin-bottom: 0.85rem;
+}
+
+.shell-root.shell-root--cafe .search-attribute-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: min(100%, 10rem);
+}
+
+.shell-root.shell-root--cafe .search-attribute-form__field--grow {
+  flex: 1 1 14rem;
+  min-width: min(100%, 14rem);
+}
+
+.shell-root.shell-root--cafe .search-attribute-form__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--cafe-muted);
+}
+
+.shell-root.shell-root--cafe .search-attribute-form__input,
+.shell-root.shell-root--cafe .search-attribute-form__select {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--cafe-line);
+  border-radius: var(--cafe-radius-sm);
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: var(--cafe-paper);
+  color: var(--cafe-ink);
+}
+
+.shell-root.shell-root--cafe .search-attribute-form__input:focus-visible,
+.shell-root.shell-root--cafe .search-attribute-form__select:focus-visible {
+  outline: 2px solid var(--cafe-caramel);
+  outline-offset: 1px;
+}
+
+.shell-root.shell-root--cafe .search-attribute-form__attributes {
+  border: 1px solid var(--cafe-line);
+  border-radius: var(--cafe-radius-md);
+  padding: 0.75rem 0.85rem 0.85rem;
+  margin: 0 0 0.85rem;
+  background: var(--cafe-latte);
+}
+
+.shell-root.shell-root--cafe .search-attribute-form__legend {
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--cafe-espresso);
+  padding: 0 0.35rem;
+}
+
+.shell-root.shell-root--cafe .search-attribute-form__attr-grid {
+  display: grid;
+  gap: 0.75rem 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+}
+
+.shell-root.shell-root--cafe .search-attribute-form__hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  color: var(--cafe-muted);
+}
+
+.shell-root.shell-root--cafe .search-page__form-panel {
+  background: var(--cafe-paper);
+  border: 1px solid var(--cafe-line);
+  border-radius: var(--cafe-radius-lg);
+  box-shadow: var(--cafe-shadow-sm);
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ─── QR table ordering ───────────────────────────────────────────────────── */
+.shell-root.shell-root--cafe .qr-order-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--cafe-radius-md);
+  border: 1px solid var(--cafe-line);
+  background: linear-gradient(135deg, var(--cafe-latte) 0%, var(--cafe-paper) 100%);
+}
+
+.shell-root.shell-root--cafe .qr-order-banner__badge {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--cafe-espresso);
+  color: var(--cafe-cream);
+}
+
+.shell-root.shell-root--cafe .qr-order-banner__table {
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .qr-order-banner__hint {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--cafe-muted);
+}
+
+.shell-root.shell-root--cafe .qr-order-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}
+
+.shell-root.shell-root--cafe .qr-order-banner__link,
+.shell-root.shell-root--cafe .qr-order-banner__end {
+  font-size: 0.85rem;
+}
+
+.shell-root.shell-root--cafe .qr-order-banner__end {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--cafe-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.shell-root.shell-root--cafe .qr-table-page__warn {
+  margin: 0 1rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.shell-root.shell-root--cafe .qr-table-page__intro {
+  max-width: 28rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.shell-root.shell-root--cafe .qr-table-page__hero {
+  margin: 0 1rem 1rem;
+  padding: 1rem 1.15rem;
+  border-radius: var(--cafe-radius-md);
+  border: 1px solid var(--cafe-line);
+  background: linear-gradient(145deg, var(--cafe-latte) 0%, var(--cafe-paper) 100%);
+  text-align: center;
+}
+
+.shell-root.shell-root--cafe .qr-table-page__hero-kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cafe-caramel);
+}
+
+.shell-root.shell-root--cafe .qr-table-page__hero-title {
+  margin: 0.25rem 0 0.35rem;
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .qr-table-page__hero-lede {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--cafe-mocha);
+  max-width: 36rem;
+  margin-inline: auto;
+}
+
+.shell-root.shell-root--cafe .checkout-qr-table-readonly {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.shell-root.shell-root--cafe .checkout-qr-table-readonly__channel {
+  color: var(--cafe-muted);
+  font-weight: 600;
 }
 
 /* ─── Cart, checkout, login ─────────────────────────────────────────────────── */
@@ -482,6 +815,301 @@ body:has(.shell-root--cafe) {
 
 .shell-root.shell-root--cafe .kds-order-header__table-value {
   color: var(--cafe-espresso);
+}
+
+/* ─── Floor plan (TableFloorPlanPage) ───────────────────────────────────────── */
+.shell-root.shell-root--cafe .floor-plan-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 0 2rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-page__title {
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+  font-size: clamp(1.65rem, 3.5vw, 2.1rem);
+  margin: 0 0 0.35rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-page__lede {
+  margin: 0 0 1rem;
+  color: var(--cafe-mocha);
+  max-width: 42rem;
+  line-height: 1.5;
+}
+
+.shell-root.shell-root--cafe .floor-plan-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-page__hint {
+  margin: 0 0 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--cafe-mocha);
+}
+
+.shell-root.shell-root--cafe .floor-plan-legend {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.shell-root.shell-root--cafe .floor-plan-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.shell-root.shell-root--cafe .floor-plan-legend__item::before {
+  content: "";
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 4px;
+  border: 1px solid var(--cafe-line);
+}
+
+.shell-root.shell-root--cafe .floor-plan-legend__item--vacant::before {
+  background: linear-gradient(145deg, #e8f5e9, #c8e6c9);
+}
+
+.shell-root.shell-root--cafe .floor-plan-legend__item--occupied::before {
+  background: linear-gradient(145deg, #fff3e0, #ffcc80);
+}
+
+.shell-root.shell-root--cafe .floor-plan-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-section {
+  border-radius: var(--cafe-radius-md);
+  border: 1px solid var(--cafe-line);
+  padding: 1rem 1.1rem 1.25rem;
+  background: var(--cafe-paper);
+  box-shadow: 0 10px 32px -24px rgba(62, 39, 35, 0.35);
+}
+
+.shell-root.shell-root--cafe .floor-plan-section--indoor {
+  background: linear-gradient(165deg, var(--cafe-paper) 0%, #f3ebe3 48%, var(--cafe-latte) 100%);
+  border-color: rgba(93, 64, 55, 0.2);
+}
+
+.shell-root.shell-root--cafe .floor-plan-section--outdoor {
+  background: linear-gradient(165deg, #f8faf6 0%, #e8f0e4 55%, #dce8d4 100%);
+  border-color: rgba(76, 104, 68, 0.28);
+}
+
+.shell-root.shell-root--cafe .floor-plan-section--outdoor .floor-plan-section__title,
+.shell-root.shell-root--cafe .floor-plan-section--outdoor .floor-plan-section__icon {
+  color: #3d5c36;
+}
+
+.shell-root.shell-root--cafe .floor-plan-section--bar {
+  background: linear-gradient(165deg, #faf8f5 0%, #efe6dc 100%);
+}
+
+.shell-root.shell-root--cafe .floor-plan-section__header {
+  margin-bottom: 0.85rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-section__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-section__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.shell-root.shell-root--cafe .floor-plan-section__stats {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--cafe-mocha);
+}
+
+.shell-root.shell-root--cafe .floor-plan-section__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.65rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table {
+  border-radius: 12px;
+  border: 2px solid var(--cafe-line);
+  padding: 0.65rem 0.7rem;
+  min-height: 6.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table--vacant {
+  background: rgba(232, 245, 233, 0.65);
+  border-color: rgba(76, 175, 80, 0.35);
+}
+
+.shell-root.shell-root--cafe .floor-plan-table--occupied {
+  background: rgba(255, 243, 224, 0.85);
+  border-color: rgba(255, 152, 0, 0.45);
+  box-shadow: 0 4px 14px -8px rgba(230, 126, 34, 0.45);
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__code {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__badge--vacant {
+  background: rgba(76, 175, 80, 0.18);
+  color: #2e7d32;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__badge--occupied {
+  background: rgba(255, 152, 0, 0.22);
+  color: #e65100;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__name {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cafe-mocha);
+  line-height: 1.3;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__meta {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: var(--cafe-mocha);
+  opacity: 0.85;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__order {
+  margin-top: auto;
+  padding-top: 0.35rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__order-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(230, 126, 34, 0.35);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0.35rem 0.45rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__order-btn:hover {
+  border-color: var(--cafe-caramel);
+  background: #fff;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__order-id {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__order-detail {
+  display: block;
+  font-size: 0.625rem;
+  color: var(--cafe-mocha);
+  margin-top: 0.1rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__order-amount {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 0.15rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-table__more {
+  margin: 0.25rem 0 0;
+  font-size: 0.625rem;
+  color: var(--cafe-mocha);
+}
+
+.shell-root.shell-root--cafe .floor-plan-unmapped {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: var(--cafe-radius-md);
+  border: 1px dashed var(--cafe-caramel);
+  background: rgba(255, 248, 240, 0.9);
+}
+
+.shell-root.shell-root--cafe .floor-plan-unmapped__title {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-unmapped__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.shell-root.shell-root--cafe .floor-plan-unmapped__btn {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--cafe-line);
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.shell-root.shell-root--cafe .floor-plan-page__empty {
+  padding: 2rem 1rem;
+  text-align: center;
 }
 
 /* ─── Edge chrome & promos ──────────────────────────────────────────────────── */

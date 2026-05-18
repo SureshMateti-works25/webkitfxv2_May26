@@ -1,4 +1,4 @@
-import type { KdsOrderMeta } from "../lib/orderTableDisplay.js";
+import { formatPaymentStatusLabel, type KdsOrderMeta } from "../lib/orderTableDisplay.js";
 
 type Props = {
   order: KdsOrderMeta;
@@ -25,6 +25,7 @@ export function KdsOrderHeader({ order }: Props) {
       <div className="kds-order-header__meta">
         <span className="kds-order-header__id">{order.id}</span>
         <span className="kds-order-header__channel">{order.displayChannelLabel}</span>
+        <span className="kds-order-header__payment">{formatPaymentStatusLabel(order.paymentStatus)}</span>
         <span className="kds-order-header__status">{order.fulfillmentStatus}</span>
       </div>
     </header>

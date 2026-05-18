@@ -1,6 +1,7 @@
 {
   "copy": {
     "menuRailTitle": "Menu",
+    "categoriesRailTitle": "Browse by category",
     "featuredTitle": "Chef's picks",
     "tableOrderHint": "Dine in? Add your table number at checkout."
   }

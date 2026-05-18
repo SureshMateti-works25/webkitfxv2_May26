@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CatalogGridProductCard } from "../components/CatalogGridProductCard.js";
 import {
@@ -6,6 +6,7 @@ import {
   getCommerceLookupBundle,
   listCatalogCategories,
   listCatalogProducts,
+  mediaAssetUrl,
   type CatalogCategoryRow,
   type CatalogProductCard,
 } from "../lib/commerceApi.js";
@@ -21,24 +22,76 @@ import {
   filterProductsForStorefrontApplication,
 } from "../lib/cafeLookupFilters.js";
 import {
+  categoriesForProductRailsByDepartmentParent,
+  categoriesForProductRailsMerchandising,
   loadApplicationTypeRowsForStorefront,
   loadDepartmentRowsForStorefront,
   resolveStorefrontDepartmentGroups,
-  type DepartmentBrowseGroup,
 } from "../lib/storefrontDepartmentBrowse.js";
 
-const MENU_PRODUCTS_PAGE_SIZE = 24;
+const MAX_CATEGORY_RAILS = 24;
 const RAIL_PAGE_SIZE = 12;
 
-type CategoryMenuRow = {
-  category: CatalogCategoryRow;
-  products: CatalogProductCard[];
-};
+function CategoryTile({ category }: { category: CatalogCategoryRow }) {
+  const initial = category.label.trim().charAt(0).toUpperCase() || "?";
+  return (
+    <Link
+      to={`/browse/${encodeURIComponent(category.slug)}`}
+      className="storefront-category-card storefront-category-card--cafe-tile"
+      aria-label={category.label}
+    >
+      <span className="storefront-category-card__visual">
+        {category.imageStorageKey ? (
+          <img
+            src={mediaAssetUrl(category.imageStorageKey)}
+            alt=""
+            className="storefront-category-card__img"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <span className="storefront-category-card__placeholder" aria-hidden="true">
+            {initial}
+          </span>
+        )}
+      </span>
+      <span className="storefront-category-card__name">{category.label}</span>
+    </Link>
+  );
+}
 
-type DepartmentMenuSection = {
-  department: DepartmentBrowseGroup["department"];
-  categories: CategoryMenuRow[];
-};
+function CategoryBrowseBox({
+  categories,
+  title,
+  titleId,
+}: {
+  categories: CatalogCategoryRow[];
+  title: string;
+  titleId: string;
+}) {
+  if (categories.length === 0) return null;
+  return (
+    <section
+      className="storefront-rail-section storefront-rail-section--category-browse"
+      aria-labelledby={titleId}
+    >
+      <div className="storefront-rail-section__head">
+        <div className="storefront-rail-section__titles">
+          <h2 className="storefront-rail-section__title" id={titleId}>
+            {title}
+          </h2>
+        </div>
+      </div>
+      <ul className="storefront-category-grid storefront-category-grid--cafe-box">
+        {categories.map((category) => (
+          <li key={category.id}>
+            <CategoryTile category={category} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function ProductRail({
   title,
@@ -85,52 +138,27 @@ function ProductRail({
   );
 }
 
-async function loadDepartmentMenuSections(
-  groups: DepartmentBrowseGroup[],
-  scope: ReturnType<typeof buildStorefrontApplicationScope>
-): Promise<DepartmentMenuSection[]> {
-  const categoryById = new Map<string, CatalogCategoryRow>();
-  for (const g of groups) {
-    for (const c of g.categories) categoryById.set(c.id, c);
-  }
-  const uniqueCategories = [...categoryById.values()];
-  const pages = await Promise.all(
-    uniqueCategories.map((c) =>
-      listCatalogProducts({
-        categoryId: c.id,
-        includeSubtree: true,
-        page: 1,
-        pageSize: MENU_PRODUCTS_PAGE_SIZE,
-        sort: "published_desc",
-      })
-    )
-  );
-  const productsByCategoryId = new Map<string, CatalogProductCard[]>();
-  uniqueCategories.forEach((c, i) => {
-    productsByCategoryId.set(
-      c.id,
-      filterProductsForStorefrontApplication(pages[i]!.items, scope)
-    );
-  });
+type CategoryRail = { category: CatalogCategoryRow; items: CatalogProductCard[] };
 
-  return groups.map((g) => ({
-    department: g.department,
-    categories: g.categories.map((category) => ({
-      category,
-      products: productsByCategoryId.get(category.id) ?? [],
-    })),
-  }));
+function flattenBrowseCategories(groups: { categories: CatalogCategoryRow[] }[]): CatalogCategoryRow[] {
+  const seen = new Set<string>();
+  const out: CatalogCategoryRow[] = [];
+  for (const g of groups) {
+    for (const c of g.categories) {
+      if (seen.has(c.id)) continue;
+      seen.add(c.id);
+      out.push(c);
+    }
+  }
+  return out;
 }
 
 export function HomeCatalogRails() {
   const homeCopy = getScreenConfig("home");
-  const menuLabel = String(homeCopy.menuRailTitle ?? "Our menu");
-  const menuIntro = String(
-    homeCopy.menuIntro ?? "Browse by section — add items straight from the menu."
-  );
   const baseId = useId().replace(/:/g, "");
-  const [menuSections, setMenuSections] = useState<DepartmentMenuSection[] | null>(null);
+  const [browseCategories, setBrowseCategories] = useState<CatalogCategoryRow[] | null>(null);
   const [seeAllCatalogSlug, setSeeAllCatalogSlug] = useState<string | null>(null);
+  const [categoryRails, setCategoryRails] = useState<CategoryRail[] | null>(null);
   const [recent, setRecent] = useState<CatalogProductCard[] | null>(null);
   const [trending, setTrending] = useState<CatalogProductCard[] | null>(null);
   const [visited, setVisited] = useState<CatalogProductCard[]>([]);
@@ -167,23 +195,67 @@ export function HomeCatalogRails() {
 
         const scope = buildStorefrontApplicationScope(appTypeRows, deptRows);
         const scopedCats = filterCategoriesForStorefrontApplication(cats, scope);
-        const { groups } = resolveStorefrontDepartmentGroups(scopedCats, bundle, deptRows, appTypeRows);
+        const { groups, groupedByDepartment, departmentRows } = resolveStorefrontDepartmentGroups(
+          scopedCats,
+          bundle,
+          deptRows,
+          appTypeRows
+        );
         const broadSlug = groups.find((g) => g.categories.length > 0)?.categories[0]?.slug ?? null;
-        const sections = await loadDepartmentMenuSections(groups, scope);
+        const railCategories = groupedByDepartment
+          ? categoriesForProductRailsByDepartmentParent(scopedCats, departmentRows, MAX_CATEGORY_RAILS)
+          : categoriesForProductRailsMerchandising(scopedCats, MAX_CATEGORY_RAILS);
+        const railPages = await Promise.all(
+          railCategories.map((c) =>
+            listCatalogProducts({
+              categoryId: c.id,
+              includeSubtree: true,
+              page: 1,
+              pageSize: RAIL_PAGE_SIZE,
+              sort: "published_desc",
+            })
+          )
+        );
         if (cancelled) return;
 
-        setMenuSections(sections);
+        const rails: CategoryRail[] = railCategories
+          .map((c, i) => ({
+            category: c,
+            items: filterProductsForStorefrontApplication(railPages[i]!.items, scope),
+          }))
+          .filter((rail) => rail.items.length > 0);
+
+        setBrowseCategories(flattenBrowseCategories(groups));
         setSeeAllCatalogSlug(broadSlug);
+        setCategoryRails(rails);
         setTrending(filterProductsForStorefrontApplication(trendingPage.items, scope));
         setRecent(filterProductsForStorefrontApplication(recentPage.items, scope));
       } catch (e) {
-        if (!cancelled) setError(formatCommerceApiError(e));
+        if (!cancelled) {
+          setError(formatCommerceApiError(e));
+          setBrowseCategories([]);
+          setCategoryRails([]);
+          setTrending([]);
+          setRecent([]);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const categoryTiles = useMemo(() => {
+    if (!browseCategories) return [];
+    const fromRails = categoryRails?.map((r) => r.category.id) ?? [];
+    const railOrder = new Map(fromRails.map((id, i) => [id, i]));
+    return [...browseCategories].sort((a, b) => {
+      const ai = railOrder.get(a.id) ?? 9999;
+      const bi = railOrder.get(b.id) ?? 9999;
+      if (ai !== bi) return ai - bi;
+      return a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug);
+    });
+  }, [browseCategories, categoryRails]);
 
   if (error) {
     return (
@@ -197,7 +269,7 @@ export function HomeCatalogRails() {
     );
   }
 
-  if (menuSections === null || recent === null || trending === null) {
+  if (browseCategories === null || recent === null || trending === null || categoryRails === null) {
     return (
       <div className="storefront-wrap">
         <div className="storefront-inner">
@@ -210,77 +282,26 @@ export function HomeCatalogRails() {
   const browseAllHref = seeAllCatalogSlug
     ? `/browse/${encodeURIComponent(seeAllCatalogSlug)}`
     : undefined;
-  const hasMenuItems = menuSections.some((s) =>
-    s.categories.some((row) => row.products.length > 0)
-  );
 
   return (
     <div className="storefront-wrap">
       <div className="storefront-inner">
-        <header className="storefront-cafe-hero">
-          <h1 className="storefront-cafe-hero__title">{menuLabel}</h1>
-          <p className="storefront-cafe-hero__intro">{menuIntro}</p>
-          {browseAllHref ? (
-            <Link to={browseAllHref} className="storefront-cafe-hero__cta">
-              View full menu
-            </Link>
-          ) : null}
-        </header>
+        <CategoryBrowseBox
+          titleId={`${baseId}-categories`}
+          title={String(homeCopy.categoriesRailTitle ?? "Browse by category")}
+          categories={categoryTiles}
+        />
 
-        {menuSections.length > 0 ? (
-          <div className="storefront-cafe-menu" aria-label={menuLabel}>
-            {menuSections.map(({ department, categories }) => (
-              <div key={department.id} className="storefront-cafe-menu__dept">
-                <h2 className="storefront-cafe-menu__dept-title">{department.label}</h2>
-                {categories.map(({ category, products }) => (
-                  <div
-                    key={category.id}
-                    className="storefront-cafe-menu__category"
-                    aria-labelledby={`${baseId}-cat-${category.id}`}
-                  >
-                    <div className="storefront-cafe-menu__category-head">
-                      <h3
-                        className="storefront-cafe-menu__category-title"
-                        id={`${baseId}-cat-${category.id}`}
-                      >
-                        <Link to={`/browse/${encodeURIComponent(category.slug)}`}>
-                          {category.label}
-                        </Link>
-                      </h3>
-                      <Link
-                        to={`/browse/${encodeURIComponent(category.slug)}`}
-                        className="storefront-cafe-menu__category-see-all"
-                      >
-                        See all
-                      </Link>
-                    </div>
-                    {products.length === 0 ? (
-                      <p className="storefront-cafe-menu__empty">
-                        No items listed in {category.label} yet.
-                      </p>
-                    ) : (
-                      <ul className="storefront-cafe-menu__products">
-                        {products.map((p) => (
-                          <li key={p.id} className="storefront-cafe-menu__product">
-                            <CatalogGridProductCard
-                              product={p}
-                              compactAddLabel
-                              skin="storefront"
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        ) : !hasMenuItems ? (
-          <p className="storefront-cafe-menu__empty storefront-cafe-menu__empty--page">
-            Your menu sections will appear here once categories and products are published in Admin.
-          </p>
-        ) : null}
+        {categoryRails.map(({ category, items }) => (
+          <ProductRail
+            key={category.id}
+            titleId={`${baseId}-cat-${category.id}`}
+            title={category.label}
+            products={items}
+            seeAllHref={`/browse/${encodeURIComponent(category.slug)}`}
+            emptyHint={`No items in ${category.label} yet.`}
+          />
+        ))}
 
         <ProductRail
           titleId={`${baseId}-trending`}

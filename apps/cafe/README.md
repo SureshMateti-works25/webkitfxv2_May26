@@ -46,7 +46,13 @@ Provision (or re-print token instructions):
 
 GitHub secrets: `AZURE_STATIC_WEB_APPS_API_TOKEN_CAFE`, `AZURE_STATIC_WEB_APPS_API_TOKEN_ICY_BAY_016BA6000`, plus shared `VITE_COMMERCE_API_URL`. Build sets `VITE_CATALOG_APPLICATION_TYPE_ID=app_cafe`.
 
-Add the SWA URL to **Commerce.Api** CORS (`appsettings.Production.json`) and redeploy the API so the browser can call the backend.
+Add the SWA URL to **Commerce.Api** CORS (`appsettings.Production.json`) **and** App Service platform CORS:
+
+```powershell
+.\scripts\sync-commerce-api-cors-azure.ps1
+```
+
+Set GitHub secret `VITE_COMMERCE_API_URL` to your App Service URL (e.g. `https://commerce-api-webkitfx-dev-a6asafebfmgcctak.southindia-01.azurewebsites.net`), then redeploy the storefront.
 
 ## Application type (storefront scope)
 

@@ -359,6 +359,7 @@ app.MapVendorProductWorkspaceV1();
 app.MapShopperCartV1();
 app.MapStorefrontCheckoutV1();
 app.MapStorefrontOrderManagementV1();
+app.MapCafeFloorV1();
 
 if (app.Environment.IsDevelopment())
     app.MapDevJwt();

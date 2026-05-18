@@ -9,6 +9,8 @@ import orderTrackingScreen from "./order-tracking.json";
 import productDetailScreen from "./product-detail.json";
 import vendorOrdersScreen from "./vendor-orders.json";
 import tableManagementScreen from "./table-management.json";
+import floorPlanScreen from "./floor-plan.json";
+import qrTableScreen from "./qr-table.json";
 
 export type AppScreenDefinition = CatalogScreenDefinition | { copy: Record<string, string> };
 
@@ -22,5 +24,7 @@ export const screenDefinitions: Record<string, AppScreenDefinition> = {
   orderTracking: orderTrackingScreen as AppScreenDefinition,
   vendorOrders: vendorOrdersScreen as AppScreenDefinition,
   tableManagement: tableManagementScreen as AppScreenDefinition,
+  floorPlan: floorPlanScreen as AppScreenDefinition,
+  qrTable: qrTableScreen as AppScreenDefinition,
   productDetail: productDetailScreen as CatalogScreenDefinition,
 };

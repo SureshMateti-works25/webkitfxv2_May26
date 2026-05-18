@@ -2,6 +2,8 @@
   "version": "1",
   "routes": [
     { "path": "/", "implementation": "home" },
+    { "path": "/qr/:tableCode", "implementation": "qrTableMenu" },
+    { "path": "/qr", "implementation": "qrTableMenu" },
     { "path": "/browse/:categorySlug", "implementation": "categoryBrowse" },
     { "path": "/p/:productSlug", "implementation": "productDetail" },
     { "path": "/productDetail/:productKey", "implementation": "productDetail" },
@@ -32,6 +34,7 @@
     { "path": "/orders/track/:orderId", "implementation": "orderTracking" },
     { "path": "/vendor/orders", "implementation": "vendorOrders" },
     { "path": "/vendor/tables", "implementation": "tableManagement" },
+    { "path": "/vendor/floor", "implementation": "tableFloorPlan" },
     { "path": "/communication", "template": "shellCopy", "screen": "communication" },
     { "path": "/support", "template": "shellCopy", "screen": "support" },
     { "path": "/legal/privacy", "template": "shellCopy", "screen": "legalPrivacy" },

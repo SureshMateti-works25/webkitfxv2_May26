@@ -1,10 +1,18 @@
 {
   "copy": {
     "title": "Checkout",
-    "lede": "Choose pickup or dine-in, add a table number if you're in the café, and confirm contact details.",
+    "lede": "Choose pickup or dine-in. QR table orders pay online; dine-in guests pay at the table after their meal.",
     "tableNumberLabel": "Table number",
-    "pickupLabel": "Pickup",
-    "dineInLabel": "Dine in",
-    "submitLabel": "Continue to payment"
+    "pickupLabel": "Pickup (pay online)",
+    "dineInLabel": "Dine in (pay at table)",
+    "dineInPayNote": "No online payment now. Your bill is settled at the table after you have eaten. The kitchen receives this order immediately.",
+    "submitLabel": "Continue to payment",
+    "dineInSubmitLabel": "Send order to kitchen",
+    "qrTitle": "Checkout",
+    "qrLede": "Confirm contact details for your table order. Payment is online; we deliver to your table.",
+    "qrTableLabel": "Your table",
+    "qrAtTableSection": "Service",
+    "qrContactSection": "Contact",
+    "qrSubmitLabel": "Continue to payment"
   }
 }

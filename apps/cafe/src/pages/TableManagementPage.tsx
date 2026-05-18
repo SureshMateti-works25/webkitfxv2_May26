@@ -3,6 +3,7 @@ import type { FormDefinition } from "@webkitfxv2/core-engine";
 import { JsonForm } from "@webkitfxv2/react-renderer";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { buildQrMenuPath, buildQrMenuUrl } from "../lib/qrOrderUrls.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { LookupEntryFormActions } from "../components/LookupEntryFormActions.js";
 import { getScreenConfig } from "../config/getScreenConfig.js";
@@ -230,9 +231,9 @@ export function TableManagementPage() {
         <h1 className="lookup-admin-page__title">{String(copy.title ?? "Table management")}</h1>
         <p className="lookup-admin-page__lede">{String(copy.lede ?? "")}</p>
         <p className="lookup-admin-page__registry-note">
-          Driven by{" "}
-          <code>config/workspaces/table-management.json</code> and JsonForm definitions in{" "}
-          <code>config/forms/</code>.{" "}
+          <Link to="/vendor/floor">View floor plan</Link>
+          {" · "}
+          Driven by <code>config/workspaces/table-management.json</code>.{" "}
           <Link to="/admin/lookups">Full lookup admin</Link>
         </p>
       </header>
@@ -458,6 +459,24 @@ export function TableManagementPage() {
                           <td>{parent?.label ?? "—"}</td>
                           <td className="lookup-admin-page__types-table-actions">
                             <div className="lookup-admin-page__types-table-actions-inner">
+                              <Link
+                                to={buildQrMenuPath(row.code)}
+                                className="shell-btn shell-btn--ghost"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {String(copy.qrMenuLinkLabel ?? "QR menu")}
+                              </Link>
+                              <button
+                                type="button"
+                                className="shell-btn shell-btn--ghost"
+                                title={buildQrMenuUrl(row.code)}
+                                onClick={() => {
+                                  void navigator.clipboard?.writeText(buildQrMenuUrl(row.code));
+                                }}
+                              >
+                                Copy QR URL
+                              </button>
                               <button
                                 type="button"
                                 className="shell-btn shell-btn--ghost"

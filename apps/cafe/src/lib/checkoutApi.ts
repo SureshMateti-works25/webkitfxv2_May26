@@ -61,8 +61,8 @@ export type CheckoutDraft = {
   tableCode?: string;
 };
 
-const DRAFT_KEY = "sarees.checkout.draft.v1";
-const LAST_ORDER_EMAIL_KEY = "sarees.checkout.lastOrderEmail";
+const DRAFT_KEY = "cafe.checkout.draft.v1";
+const LAST_ORDER_EMAIL_KEY = "cafe.checkout.lastOrderEmail";
 
 export function persistLastOrderEmail(email: string): void {
   try {
@@ -101,7 +101,7 @@ export function clearCheckoutDraft(): void {
 export async function placeStorefrontOrder(params: {
   draft: CheckoutDraft;
   lines: CartLine[];
-  paymentStatus: "captured" | "failed";
+  paymentStatus: "captured" | "failed" | "pending";
   accessToken?: string | null;
 }): Promise<StorefrontOrder> {
   const headers: HeadersInit = {
@@ -209,6 +209,14 @@ function normalizeOrder(row: Record<string, unknown>): StorefrontOrder {
     shopperPhone: row.shopperPhone == null ? null : String(row.shopperPhone ?? row.ShopperPhone),
     shippingAddress,
     productTypeId: String(row.productTypeId ?? row.ProductTypeId ?? ""),
+    orderChannel:
+      row.orderChannel == null && row.OrderChannel == null
+        ? null
+        : String(row.orderChannel ?? row.OrderChannel ?? "").trim() || null,
+    tableCode:
+      row.tableCode == null && row.TableCode == null
+        ? null
+        : String(row.tableCode ?? row.TableCode ?? "").trim() || null,
     status: String(row.status ?? row.Status ?? ""),
     paymentMethod: String(row.paymentMethod ?? row.PaymentMethod ?? ""),
     paymentStatus: String(row.paymentStatus ?? row.PaymentStatus ?? ""),

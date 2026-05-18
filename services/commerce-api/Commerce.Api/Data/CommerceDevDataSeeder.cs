@@ -1303,11 +1303,94 @@ public static class CommerceDevDataSeeder
                     Id = "tsec_patio",
                     TenantId = tid,
                     LookupTypeId = sections,
-                    Code = "patio",
-                    Label = "Patio",
+                    Code = "outdoor",
+                    Label = "Outdoor / Patio",
                     SortOrder = 20,
                     ParentValueId = null
                 });
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (!await db.LookupValues.AnyAsync(v => v.TenantId == tid && v.LookupTypeId == tables, ct))
+        {
+            db.LookupValues.AddRange(
+                new LookupValue
+                {
+                    Id = "tbl_qr_t1",
+                    TenantId = tid,
+                    LookupTypeId = tables,
+                    Code = "t1",
+                    Label = "Table t1 (QR demo)",
+                    SortOrder = 1,
+                    ParentValueId = "tsec_indoor"
+                },
+                new LookupValue
+                {
+                    Id = "tbl_in_01",
+                    TenantId = tid,
+                    LookupTypeId = tables,
+                    Code = "1",
+                    Label = "Indoor table 1",
+                    SortOrder = 2,
+                    ParentValueId = "tsec_indoor"
+                },
+                new LookupValue
+                {
+                    Id = "tbl_in_02",
+                    TenantId = tid,
+                    LookupTypeId = tables,
+                    Code = "2",
+                    Label = "Indoor table 2",
+                    SortOrder = 4,
+                    ParentValueId = "tsec_indoor"
+                },
+                new LookupValue
+                {
+                    Id = "tbl_in_03",
+                    TenantId = tid,
+                    LookupTypeId = tables,
+                    Code = "3",
+                    Label = "Indoor table 3",
+                    SortOrder = 6,
+                    ParentValueId = "tsec_indoor"
+                },
+                new LookupValue
+                {
+                    Id = "tbl_out_01",
+                    TenantId = tid,
+                    LookupTypeId = tables,
+                    Code = "P1",
+                    Label = "Patio table P1",
+                    SortOrder = 4,
+                    ParentValueId = "tsec_patio"
+                },
+                new LookupValue
+                {
+                    Id = "tbl_out_02",
+                    TenantId = tid,
+                    LookupTypeId = tables,
+                    Code = "P2",
+                    Label = "Patio table P2",
+                    SortOrder = 4,
+                    ParentValueId = "tsec_patio"
+                });
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (!await db.LookupValues.AnyAsync(
+                v => v.TenantId == tid && v.LookupTypeId == tables && v.Code == "t1", ct)
+            && await db.LookupValues.AnyAsync(v => v.TenantId == tid && v.LookupTypeId == sections, ct))
+        {
+            db.LookupValues.Add(new LookupValue
+            {
+                Id = "tbl_qr_t1",
+                TenantId = tid,
+                LookupTypeId = tables,
+                Code = "t1",
+                Label = "Table t1 (QR demo)",
+                SortOrder = 1,
+                ParentValueId = "tsec_indoor"
+            });
             await db.SaveChangesAsync(ct);
         }
     }

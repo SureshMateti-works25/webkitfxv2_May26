@@ -29,6 +29,14 @@ export function formatOrderTableLabel(
   return code.match(/^\d+$/) ? `Table ${code}` : code;
 }
 
+export function formatPaymentStatusLabel(status: string | null | undefined): string {
+  const s = (status ?? "").trim().toLowerCase();
+  if (s === "pending" || s === "pay_at_table") return "Pay at table";
+  if (s === "captured") return "Paid";
+  if (s === "failed") return "Payment failed";
+  return s || "—";
+}
+
 export function orderChannelLabel(channel: string | null | undefined): string {
   const c = (channel ?? "").trim().toLowerCase();
   if (c === "qr") return "QR";

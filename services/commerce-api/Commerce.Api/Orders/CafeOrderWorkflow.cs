@@ -75,8 +75,18 @@ public static class CafeOrderWorkflow
         {
             ChannelQr => "order_placed",
             ChannelAggregator => "webhook_received",
-            _ => "pos_order_created",
+            _ => "kot_generated",
         };
+    }
+
+    /// <summary>Dine-in and QR table orders; payment captured online at checkout for QR only.</summary>
+    public static bool UsesPayAtTableSettlement(string? channel, string? paymentStatus)
+    {
+        if (NormalizeChannel(channel) != ChannelDineIn) return false;
+        var ps = (paymentStatus ?? "").Trim();
+        return ps.Length == 0
+            || ps.Equals("pending", StringComparison.OrdinalIgnoreCase)
+            || ps.Equals("pay_at_table", StringComparison.OrdinalIgnoreCase);
     }
 
     public static IReadOnlyList<FulfillmentStatusLookupRow> VendorAssignableRows()
