@@ -1,30 +1,7 @@
 {
-  "routes": [
-    {
-      "route": "/api/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://commerce-api-webkitfx-dev-a6asafebfmgcctak.southindia-01.azurewebsites.net/api/*"
-    },
-    {
-      "route": "/media/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://commerce-api-webkitfx-dev-a6asafebfmgcctak.southindia-01.azurewebsites.net/media/*"
-    },
-    {
-      "route": "/health",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://commerce-api-webkitfx-dev-a6asafebfmgcctak.southindia-01.azurewebsites.net/health"
-    }
-  ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": [
-      "/api/*",
-      "/media/*",
-      "/health",
-      "/assets/*",
-      "/*.{css,js,map,png,jpg,jpeg,gif,svg,ico,webp,woff,woff2,ttf,eot,json}"
-    ]
+    "exclude": ["/assets/*", "/media/*", "/*.{css,js,map,png,jpg,jpeg,gif,svg,ico,webp,woff,woff2,ttf,eot,json}"]
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",

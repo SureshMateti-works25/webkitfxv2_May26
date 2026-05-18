@@ -3,20 +3,22 @@
  * - If `VITE_COMMERCE_API_URL` / `VITE_CATALOG_API_URL` is set → use it (Azure CI, or override local).
  * - **Dev default:** `http://localhost:5055` for API `fetch`; **images** use same-origin `/media/...` (Vite proxies to
  *   Commerce.Api) whenever the configured API is loopback port 5055. Commerce.Api CORS allows Vite ports for JSON calls.
- * - **Production (Azure SWA):** leave env unset — requests use same-origin `/api` and `/media` proxied in
- *   `public/staticwebapp.config.json` (no browser CORS). Set `VITE_COMMERCE_API_URL` only for direct API calls.
+ * - Production: set `VITE_COMMERCE_API_URL` in GitHub Actions to your App Service URL (see azure-swa-cafe.yml).
  */
 const fromEnv =
   (import.meta.env.VITE_COMMERCE_API_URL as string | undefined) ??
   (import.meta.env.VITE_CATALOG_API_URL as string | undefined);
 const trimmed = fromEnv?.trim().replace(/\/$/, "");
 const LOCAL_COMMERCE_ORIGIN = "http://localhost:5055";
+/** Baked into CI builds when VITE_COMMERCE_API_URL secret is set at deploy time. */
+const PRODUCTION_COMMERCE_API_FALLBACK =
+  "https://commerce-api-webkitfx-dev-a6asafebfmgcctak.southindia-01.azurewebsites.net";
 const BASE =
   trimmed && trimmed.length > 0
     ? trimmed
     : import.meta.env.DEV
       ? LOCAL_COMMERCE_ORIGIN
-      : "";
+      : PRODUCTION_COMMERCE_API_FALLBACK;
 
 export type AuthSuccess = {
   accessToken: string;
