@@ -29,6 +29,25 @@ npm run build:cafe
 
 Dev server: **http://localhost:5190** (proxies `/api` and `/media` to Commerce.Api on **5055**).
 
+## Azure Static Web App
+
+| Resource | Value |
+|----------|--------|
+| SWA name | `swa-cafe-dev` |
+| URL | https://icy-bay-016ba6000.7.azurestaticapps.net |
+| Resource group | `rg-nistta-prod` |
+| Workflows | `.github/workflows/azure-swa-cafe.yml`, `azure-static-web-apps-icy-bay-016ba6000.yml` |
+
+Provision (or re-print token instructions):
+
+```powershell
+.\scripts\create-azure-swa-cafe.ps1 -SetGitHubSecrets
+```
+
+GitHub secrets: `AZURE_STATIC_WEB_APPS_API_TOKEN_CAFE`, `AZURE_STATIC_WEB_APPS_API_TOKEN_ICY_BAY_016BA6000`, plus shared `VITE_COMMERCE_API_URL`. Build sets `VITE_CATALOG_APPLICATION_TYPE_ID=app_cafe`.
+
+Add the SWA URL to **Commerce.Api** CORS (`appsettings.Production.json`) and redeploy the API so the browser can call the backend.
+
 ## Application type (storefront scope)
 
 Default storefront scope: **`application_type`** lookup row **`app_cafe`** (`VITE_CATALOG_APPLICATION_TYPE_ID`). Products store the resolved **`pt_cafe`** on `product_type_id` (override with `VITE_STOREFRONT_PRODUCT_TYPE_ID`). Seed **Application type → Categories → menu products** in Admin → Lookups.
