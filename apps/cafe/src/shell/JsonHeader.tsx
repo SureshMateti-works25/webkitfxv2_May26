@@ -46,6 +46,11 @@ export function JsonHeader({
   const profileWrapRef = useRef<HTMLDivElement>(null);
   const labels = shell.header.sessionLabels;
   const centerNav = useMemo(() => navForAuth(shell, auth), [shell, auth]);
+  const cartItem = useMemo(() => centerNav.find((item) => item.path === "/cart"), [centerNav]);
+  const centerNavWithoutCart = useMemo(
+    () => centerNav.filter((item) => item.path !== "/cart"),
+    [centerNav]
+  );
 
   const profileItems = auth.status === "signedIn" ? shell.header.profileMenu[auth.role] : [];
   const signedInLabel = useMemo(() => {
@@ -105,7 +110,7 @@ export function JsonHeader({
         </div>
 
         <nav className="shell-nav shell-nav--icons" aria-label="Primary">
-          {centerNav.map((item) => {
+          {centerNavWithoutCart.map((item) => {
             const to = resolveNavPath(item.path);
             const navEnd = to === "/vendor/products" ? false : to === "/";
             return (
@@ -137,7 +142,27 @@ export function JsonHeader({
           })}
         </nav>
 
-        <div className="shell-header-actions">
+        <div className="shell-header-end">
+          {cartItem ? (
+            <NavLink
+              to={resolveNavPath("/cart")}
+              title={cartItem.label}
+              aria-label={cartQty > 0 ? `${cartItem.label}, ${cartQty} items` : cartItem.label}
+              className={({ isActive }) =>
+                ["shell-header-cart", isActive ? "shell-header-cart--active" : ""].filter(Boolean).join(" ")
+              }
+              onClick={() => setMobileOpen(false)}
+            >
+              <span className="shell-nav-icon-stack" aria-hidden>
+                <IconGlyph name="cart" className="shell-header-cart__icon" />
+                {cartQty > 0 ? (
+                  <span className="shell-cart-badge">{cartQty > 99 ? "99+" : cartQty}</span>
+                ) : null}
+              </span>
+              <span className="shell-header-cart__label">{cartItem.label}</span>
+            </NavLink>
+          ) : null}
+          <div className="shell-header-actions">
           {auth.status === "signedIn" ? (
             <>
               <div className="shell-profile-cluster" ref={profileWrapRef}>
@@ -182,12 +207,13 @@ export function JsonHeader({
               </button>
             </>
           ) : null}
+          </div>
         </div>
       </div>
 
       {mobileOpen ? (
         <nav className="shell-mobile-nav" aria-label="Mobile primary">
-          {centerNav.map((item) => {
+          {centerNavWithoutCart.map((item) => {
             const to = resolveNavPath(item.path);
             const navEnd = to === "/vendor/products" ? false : to === "/";
             return (
@@ -198,7 +224,7 @@ export function JsonHeader({
                 className={({ isActive }) => (isActive ? "shell-nav-active" : undefined)}
                 onClick={() => setMobileOpen(false)}
               >
-                {item.path === "/cart" && cartQty > 0 ? `${item.label} (${cartQty})` : item.label}
+                {item.label}
               </NavLink>
             );
           })}

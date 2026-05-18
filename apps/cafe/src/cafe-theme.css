@@ -144,8 +144,15 @@ body:has(.shell-root--cafe) {
 
 .shell-root.shell-root--cafe .shell-nav a,
 .shell-root.shell-root--cafe .shell-header-actions button,
-.shell-root.shell-root--cafe .shell-menu-toggle {
+.shell-root.shell-root--cafe .shell-menu-toggle,
+.shell-root.shell-root--cafe .shell-header-cart {
   color: var(--cafe-header-muted);
+}
+
+.shell-root.shell-root--cafe .shell-header .shell-cart-badge {
+  background: var(--cafe-caramel);
+  color: var(--cafe-espresso);
+  box-shadow: 0 0 0 2px var(--cafe-mocha);
 }
 
 .shell-root.shell-root--cafe .shell-nav a:hover,
