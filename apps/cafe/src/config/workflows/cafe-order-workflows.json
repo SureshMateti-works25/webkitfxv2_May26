@@ -1,0 +1,71 @@
+{
+  "version": "1",
+  "description": "Café POS / QR / aggregator order lifecycles. Status codes map to cafe_order_status lookup rows (seeded in Commerce.Api).",
+  "channels": [
+    {
+      "id": "dine_in",
+      "label": "Dine-in (POS)",
+      "lookupCode": "dine_in",
+      "description": "Customer seated → table → POS → KOT → kitchen → serve → invoice → inventory → loyalty."
+    },
+    {
+      "id": "qr",
+      "label": "QR order",
+      "lookupCode": "qr",
+      "description": "Scan QR → branch menu → pay → KDS → prep → table delivery."
+    },
+    {
+      "id": "aggregator",
+      "label": "Aggregator (Swiggy / Zomato)",
+      "lookupCode": "aggregator",
+      "description": "Webhook → ingest → menu mapping → KOT → prep → pickup → rider → delivered."
+    }
+  ],
+  "workflows": {
+    "dine_in": {
+      "steps": [
+        { "code": "customer_seated", "label": "Customer seated", "sortOrder": 10, "actor": "floor", "systemOnly": true },
+        { "code": "table_assigned", "label": "Table assigned", "sortOrder": 20, "actor": "pos", "systemOnly": true },
+        { "code": "pos_order_created", "label": "POS order created", "sortOrder": 30, "actor": "pos", "systemOnly": true },
+        { "code": "payment_pending", "label": "Payment pending", "sortOrder": 40, "actor": "pos", "systemOnly": true },
+        { "code": "payment_captured", "label": "Payment captured", "sortOrder": 50, "actor": "pos", "systemOnly": true },
+        { "code": "kot_generated", "label": "KOT generated", "sortOrder": 100, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "kitchen_accepted", "label": "Kitchen accepted", "sortOrder": 110, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "preparation", "label": "Preparation", "sortOrder": 120, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "ready_to_serve", "label": "Ready for serving", "sortOrder": 130, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "served", "label": "Served", "sortOrder": 140, "actor": "floor", "vendorAssignable": true },
+        { "code": "invoice_finalized", "label": "Invoice finalized", "sortOrder": 200, "actor": "system", "systemOnly": true },
+        { "code": "inventory_deducted", "label": "Inventory deducted", "sortOrder": 210, "actor": "system", "systemOnly": true },
+        { "code": "loyalty_credited", "label": "Loyalty points credited", "sortOrder": 220, "actor": "system", "systemOnly": true }
+      ]
+    },
+    "qr": {
+      "steps": [
+        { "code": "qr_scanned", "label": "QR scanned", "sortOrder": 10, "actor": "customer", "systemOnly": true },
+        { "code": "menu_fetched", "label": "Menu fetched (branch)", "sortOrder": 20, "actor": "system", "systemOnly": true },
+        { "code": "order_placed", "label": "Order placed", "sortOrder": 30, "actor": "customer", "systemOnly": true },
+        { "code": "payment_captured", "label": "Online payment", "sortOrder": 40, "actor": "system", "systemOnly": true },
+        { "code": "routed_to_kds", "label": "Routed to KDS", "sortOrder": 90, "actor": "system", "systemOnly": true },
+        { "code": "kot_generated", "label": "KOT generated", "sortOrder": 100, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "kitchen_accepted", "label": "Kitchen accepted", "sortOrder": 110, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "preparation", "label": "Preparation", "sortOrder": 120, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "ready_to_serve", "label": "Ready for serving", "sortOrder": 130, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "table_delivery", "label": "Table delivery", "sortOrder": 140, "actor": "floor", "vendorAssignable": true },
+        { "code": "invoice_finalized", "label": "Invoice finalized", "sortOrder": 200, "actor": "system", "systemOnly": true }
+      ]
+    },
+    "aggregator": {
+      "steps": [
+        { "code": "webhook_received", "label": "Webhook received", "sortOrder": 10, "actor": "aggregator", "systemOnly": true },
+        { "code": "order_ingested", "label": "Order ingested", "sortOrder": 20, "actor": "system", "systemOnly": true },
+        { "code": "menu_mapping_validated", "label": "Menu mapping validated", "sortOrder": 30, "actor": "system", "systemOnly": true },
+        { "code": "kot_generated", "label": "KOT generated", "sortOrder": 100, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "preparation", "label": "Preparation", "sortOrder": 120, "actor": "kitchen", "kds": true, "vendorAssignable": true },
+        { "code": "pickup_ready", "label": "Pickup ready", "sortOrder": 130, "actor": "kitchen", "vendorAssignable": true },
+        { "code": "rider_assigned", "label": "Rider assigned", "sortOrder": 140, "actor": "aggregator", "vendorAssignable": true },
+        { "code": "delivered", "label": "Delivered", "sortOrder": 150, "actor": "aggregator", "vendorAssignable": true }
+      ]
+    }
+  },
+  "terminalStatuses": ["cancelled", "rejected"]
+}

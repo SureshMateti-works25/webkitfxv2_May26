@@ -1,0 +1,69 @@
+{
+  "meta": {
+    "schemaVersion": "1.0",
+    "description": "Example lookup bundle for the café app. Authoritative data is in Commerce.Api (lookup_types / lookup_values). registry.json and lookup-form-bindings.json drive JsonForm dropdowns.",
+    "tenantId": "t1",
+    "invariants": {
+      "typeParent": "lookupTypes[].parentLookupId references another type id (acyclic).",
+      "valueParent": "For dependent types, value parentId references a row in the parent lookup type.",
+      "storefrontScope": "Catalog and categories are scoped by application_type lookup row id (e.g. app_cafe), not product_types directly."
+    }
+  },
+  "formDropdownBindings": {
+    "version": "1",
+    "bindings": [
+      {
+        "formId": "vendor-product-core",
+        "fieldId": "applicationTypeId",
+        "lookupTypeId": "application_type",
+        "optionValueKey": "id",
+        "placeholderOption": "— Select application type —",
+        "label": "Application type",
+        "description": "Storefront vertical; parent_value_id on the row resolves to products.product_type_id."
+      },
+      {
+        "formId": "vendor-product-core",
+        "fieldId": "productCategoryId",
+        "lookupTypeId": "product_categories",
+        "optionValueKey": "id",
+        "placeholderOption": "— Select category —",
+        "label": "Product category",
+        "description": "Parent is an application_type row (e.g. app_cafe)."
+      }
+    ]
+  },
+  "registry": {
+    "version": "1",
+    "lookupTypes": [
+      {
+        "id": "application_type",
+        "title": "Application type",
+        "description": "Storefront vertical.",
+        "parentLookupId": null,
+        "entryIdPrefix": "app_"
+      },
+      {
+        "id": "product_categories",
+        "title": "Product categories",
+        "description": "Menu categories; parent is application_type.",
+        "parentLookupId": "application_type",
+        "parentFieldLabel": "Application type",
+        "entryIdPrefix": "cat_"
+      }
+    ]
+  },
+  "valuesByLookupTypeId": {
+    "application_type": [
+      { "id": "app_cafe", "code": "cafe", "label": "Café", "sortOrder": 10, "parentId": "pt_cafe" }
+    ],
+    "product_categories": [
+      {
+        "id": "cat_beverages",
+        "code": "beverages",
+        "label": "Beverages",
+        "sortOrder": 10,
+        "parentId": "app_cafe"
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "screenId": "tableManagement",
+  "roles": ["vendor", "admin"],
+  "sections": {
+    "lookupTypeId": "cafe_table_sections",
+    "formId": "cafeTableSectionEntry",
+    "listColumns": [
+      { "id": "code", "label": "Code", "binding": "entry.code" },
+      { "id": "label", "label": "Section name", "binding": "entry.label" },
+      { "id": "sortOrder", "label": "Order", "binding": "entry.sortOrder" }
+    ]
+  },
+  "tables": {
+    "lookupTypeId": "cafe_tables",
+    "formId": "cafeTableEntry",
+    "parentLookupTypeId": "cafe_table_sections",
+    "parentFieldLabel": "Section",
+    "listColumns": [
+      { "id": "code", "label": "Table #", "binding": "entry.code" },
+      { "id": "label", "label": "Name", "binding": "entry.label" },
+      { "id": "seats", "label": "Seats", "binding": "entry.sortOrder" },
+      { "id": "section", "label": "Section", "source": "parentLabel" }
+    ]
+  }
+}

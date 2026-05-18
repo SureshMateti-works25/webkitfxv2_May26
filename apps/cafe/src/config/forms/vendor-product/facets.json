@@ -1,0 +1,35 @@
+{
+  "id": "vendor-product-facets",
+  "title": "Catalog attributes",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Facets (attribute value ids)",
+        "children": [
+          { "type": "field", "fieldId": "colorValueId" },
+          { "type": "field", "fieldId": "borderValueId" }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "colorValueId": {
+      "binding": "attributes.attr_color",
+      "widget": "text",
+      "label": "Color (attribute value id)",
+      "description": "e.g. av_maroon",
+      "default": ""
+    },
+    "borderValueId": {
+      "binding": "attributes.attr_border",
+      "widget": "text",
+      "label": "Border (attribute value id)",
+      "description": "e.g. av_gold",
+      "default": ""
+    }
+  }
+}

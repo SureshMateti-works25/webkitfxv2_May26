@@ -15,6 +15,41 @@
   background: var(--g-bg);
 }
 
+/* Groceries shell chrome — fresh green (overrides shared app-shell saree-brown tokens). */
+.shell-root.shell-root--groceries {
+  --nistta-header: #2d6a4f;
+  --nistta-header-deep: #1b4d36;
+  --nistta-header-ink: #0f2918;
+  --nistta-cream: #f6fbf7;
+  --nistta-cream-muted: #eef6f0;
+  --nistta-cream-bar: #dce9df;
+  --nistta-ink: #1b1f1c;
+  --nistta-ink-muted: #5a635b;
+  --nistta-gold: #8fbc8f;
+  --nistta-brand: #2d6a4f;
+  --nistta-surface: #ffffff;
+  --theme-focus: #8fbc8f;
+  --theme-link: #2d6a4f;
+  --theme-link-hover: #1b4d36;
+  --theme-accent-soft: rgba(45, 106, 79, 0.1);
+  --theme-accent-soft-strong: rgba(45, 106, 79, 0.16);
+  --theme-accent-border: rgba(45, 106, 79, 0.28);
+  --theme-accent-border-strong: rgba(27, 77, 54, 0.42);
+  --theme-primary-gradient: linear-gradient(180deg, #3d7a5c 0%, #2d6a4f 100%);
+  --theme-primary-shadow: rgba(15, 41, 24, 0.2);
+  --theme-primary-shadow-strong: rgba(15, 41, 24, 0.3);
+  --theme-strap-bar: var(--nistta-cream-bar);
+  --theme-strap-text: var(--nistta-ink);
+  --theme-header-chrome: #2d6a4f;
+}
+
+.shell-root.shell-root--groceries .webkitfx-json-form.webkitfx-theme:not(.webkitfx-theme--dark) {
+  --fx-accent: #2d6a4f;
+  --fx-accent-soft: rgba(45, 106, 79, 0.12);
+  --fx-accent-hover: #1b4d36;
+  --fx-focus: 0 0 0 3px rgba(143, 188, 143, 0.45);
+}
+
 *,
 *::before,
 *::after {

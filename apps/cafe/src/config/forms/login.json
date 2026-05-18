@@ -1,0 +1,48 @@
+{
+  "id": "auth-login",
+  "title": "Sign in",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Sign in",
+        "children": [
+          { "type": "field", "fieldId": "loginName" },
+          { "type": "field", "fieldId": "password" }
+        ]
+      },
+      { "type": "field", "fieldId": "rememberMe" }
+    ]
+  },
+  "fields": {
+    "loginName": {
+      "binding": "credentials.loginName",
+      "widget": "text",
+      "label": "Email",
+      "props": {
+        "placeholder": "you@example.com",
+        "autoComplete": "email",
+        "inputMode": "email"
+      },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 3 }]
+    },
+    "password": {
+      "binding": "credentials.password",
+      "widget": "password",
+      "label": "Password",
+      "props": { "placeholder": "••••••••", "autoComplete": "current-password" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 8 }]
+    },
+    "rememberMe": {
+      "binding": "session.rememberMe",
+      "widget": "checkbox",
+      "label": "Stay signed in on this device",
+      "default": true
+    }
+  }
+}

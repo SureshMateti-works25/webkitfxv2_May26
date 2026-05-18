@@ -1,0 +1,43 @@
+{
+  "version": "1",
+  "description": "Maps JsonForm definitions (formId) + fieldId to Commerce.Api lookup types.",
+  "bindings": [
+    {
+      "formId": "vendor-product-core",
+      "fieldId": "applicationTypeId",
+      "lookupTypeId": "application_type",
+      "optionValueKey": "id",
+      "placeholderOption": "— Select application type —",
+      "label": "Application type",
+      "description": "Storefront vertical (`application_type` lookup, e.g. app_cafe). Saved on the product as product_type_id."
+    },
+    {
+      "formId": "vendor-product-core",
+      "fieldId": "productDepartmentId",
+      "lookupTypeId": "product_departments",
+      "optionValueKey": "id",
+      "placeholderOption": "— Select department —",
+      "label": "Product department",
+      "description": "Narrows the category list; optional on save."
+    },
+    {
+      "formId": "vendor-product-core",
+      "fieldId": "productCategoryId",
+      "lookupTypeId": "product_categories",
+      "optionValueKey": "id",
+      "placeholderOption": "— Select category —",
+      "label": "Product category",
+      "description": "Primary storefront category (saved as primaryCategoryId)."
+    },
+    {
+      "formId": "vendor-order-manage",
+      "fieldId": "fulfillmentStatus",
+      "lookupTypeId": "cafe_order_status",
+      "optionValueKey": "code",
+      "optionLabelFormat": "label",
+      "placeholderOption": "— Kitchen status —",
+      "label": "Kitchen status",
+      "description": "Café workflow statuses (KOT → prep → serve). Defined in config/workflows/cafe-order-workflows.json."
+    }
+  ]
+}

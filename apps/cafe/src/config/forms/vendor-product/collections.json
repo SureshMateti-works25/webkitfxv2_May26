@@ -1,0 +1,26 @@
+{
+  "id": "vendor-product-collections",
+  "title": "Collections",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Membership",
+        "children": [{ "type": "field", "fieldId": "idsCsv" }]
+      }
+    ]
+  },
+  "fields": {
+    "idsCsv": {
+      "binding": "collections.idsCsv",
+      "widget": "textarea",
+      "label": "Collection ids (comma-separated)",
+      "description": "e.g. col_pongal — must exist for your tenant.",
+      "props": { "rows": 3 },
+      "default": ""
+    }
+  }
+}

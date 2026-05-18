@@ -149,11 +149,16 @@ export const DEFAULT_COMMERCE_TENANT_ID =
   (import.meta.env.VITE_COMMERCE_TENANT_ID as string | undefined)?.trim() || "t1";
 
 /**
- * Only `Product` rows with this `ProductTypeId` (Commerce.Api) appear in this storefront's catalogue.
- * Same Commerce.Api as sarees; this vertical filters the shared catalog.
+ * Storefront vertical: `application_type` lookup row id (e.g. `app_gr`).
  */
-export const CATALOG_PRODUCT_TYPE_ID =
-  (import.meta.env.VITE_CATALOG_PRODUCT_TYPE_ID as string | undefined)?.trim() || "pt_grocery";
+export const CATALOG_APPLICATION_TYPE_LOOKUP_ID =
+  (
+    (import.meta.env.VITE_CATALOG_APPLICATION_TYPE_ID as string | undefined) ??
+    (import.meta.env.VITE_CATALOG_PRODUCT_TYPE_ID as string | undefined)
+  )?.trim() || "app_gr";
+
+/** @deprecated Use {@link CATALOG_APPLICATION_TYPE_LOOKUP_ID}. */
+export const CATALOG_PRODUCT_TYPE_ID = CATALOG_APPLICATION_TYPE_LOOKUP_ID;
 
 /**
  * Lookup type id for department rows when `product_categories` declares `product_departments` as

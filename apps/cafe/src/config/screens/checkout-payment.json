@@ -1,0 +1,8 @@
+{
+  "copy": {
+    "title": "Payment",
+    "lede": "Pay at counter or complete online payment when enabled.",
+    "payAtCounterLabel": "Pay at counter",
+    "submitLabel": "Place order"
+  }
+}

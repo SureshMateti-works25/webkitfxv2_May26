@@ -48,19 +48,19 @@ public static class StorefrontOrderManagementEndpoints
 
         var order = await LoadOrderAsync(db, tenantId, orderId.Trim(), ct);
         if (order is null) return Results.NotFound();
-        var progression = await FulfillmentStatusLookup.LoadAsync(db, tenantId, FulfillmentStatusLookup.AdminLookupTypeId, ct);
-
         var shopperUserId = UserId(req.HttpContext.User);
         if (!string.IsNullOrEmpty(shopperUserId)
             && string.Equals(order.ShopperPortalUserId, shopperUserId, StringComparison.Ordinal))
         {
-            return Results.Ok(StorefrontOrderDtoMapper.ToDto(order, fulfillmentProgression: progression));
+            var progressionShopper = await FulfillmentStatusLookup.LoadProgressionForOrderAsync(db, tenantId, order, ct);
+            return Results.Ok(StorefrontOrderDtoMapper.ToDto(order, fulfillmentProgression: progressionShopper));
         }
 
         var emailNorm = NormalizeEmail(email);
         if (emailNorm is null || !string.Equals(NormalizeEmail(order.ShopperEmail), emailNorm, StringComparison.Ordinal))
             return Results.Json(new { error = "Enter the email used at checkout to view this order." }, statusCode: 403);
 
+        var progression = await FulfillmentStatusLookup.LoadProgressionForOrderAsync(db, tenantId, order, ct);
         return Results.Ok(StorefrontOrderDtoMapper.ToDto(order, fulfillmentProgression: progression));
     }
 
@@ -103,7 +103,7 @@ public static class StorefrontOrderManagementEndpoints
 
         var order = await LoadOrderAsync(db, tenantId, orderId.Trim(), ct);
         if (order is null) return Results.NotFound();
-        var progression = await FulfillmentStatusLookup.LoadAsync(db, tenantId, FulfillmentStatusLookup.AdminLookupTypeId, ct);
+        var progression = await FulfillmentStatusLookup.LoadProgressionForOrderAsync(db, tenantId, order, ct);
         return Results.Ok(StorefrontOrderDtoMapper.ToDto(order, fulfillmentProgression: progression));
     }
 
@@ -172,7 +172,7 @@ public static class StorefrontOrderManagementEndpoints
         if (order is null || !order.Lines.Any(l => l.VendorPortalUserId == vendorId))
             return Results.NotFound();
 
-        var progression = await FulfillmentStatusLookup.LoadAsync(db, tenantId, FulfillmentStatusLookup.AdminLookupTypeId, ct);
+        var progression = await FulfillmentStatusLookup.LoadProgressionForOrderAsync(db, tenantId, order, ct);
         return Results.Ok(StorefrontOrderDtoMapper.ToDto(order, vendorScoped: true, vendorPortalUserId: vendorId, fulfillmentProgression: progression));
     }
 
@@ -197,12 +197,12 @@ public static class StorefrontOrderManagementEndpoints
         if (order is null || !order.Lines.Any(l => l.VendorPortalUserId == vendorId))
             return Results.NotFound();
 
-        var allowed = await FulfillmentStatusLookup.LoadAsync(db, tenantId, FulfillmentStatusLookup.VendorLookupTypeId, ct);
+        var allowed = await FulfillmentStatusLookup.LoadVendorAssignableForOrderAsync(db, tenantId, order, ct);
         var err = ApplyPatch(order, body, allowed);
         if (err is not null) return Results.BadRequest(new { error = err });
 
         await db.SaveChangesAsync(ct);
-        var progression = await FulfillmentStatusLookup.LoadAsync(db, tenantId, FulfillmentStatusLookup.AdminLookupTypeId, ct);
+        var progression = await FulfillmentStatusLookup.LoadProgressionForOrderAsync(db, tenantId, order, ct);
         return Results.Ok(StorefrontOrderDtoMapper.ToDto(order, vendorScoped: true, vendorPortalUserId: vendorId, fulfillmentProgression: progression));
     }
 

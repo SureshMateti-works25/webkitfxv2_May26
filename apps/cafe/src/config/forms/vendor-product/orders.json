@@ -1,0 +1,25 @@
+{
+  "id": "vendor-product-orders",
+  "title": "Orders",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Pipeline (stub)",
+        "children": [{ "type": "field", "fieldId": "note" }]
+      }
+    ]
+  },
+  "fields": {
+    "note": {
+      "binding": "commerce.orders.note",
+      "widget": "textarea",
+      "label": "Note",
+      "props": { "rows": 3 },
+      "default": ""
+    }
+  }
+}

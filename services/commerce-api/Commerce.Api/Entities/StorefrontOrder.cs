@@ -10,6 +10,10 @@ public sealed class StorefrontOrder
     public string? ShopperPhone { get; set; }
     public string? ShippingAddressJson { get; set; }
     public required string ProductTypeId { get; set; }
+    /// <summary>Café order channel: dine_in, qr, aggregator.</summary>
+    public string? OrderChannel { get; set; }
+    /// <summary>Dine-in table code/number from checkout or POS.</summary>
+    public string? TableCode { get; set; }
     public required string Status { get; set; }
     /// <summary>Shopper-facing fulfillment code (lookup-driven: placed, inreview, confirmed, packed, shipped, delivered, cancelled, rejected).</summary>
     public required string FulfillmentStatus { get; set; }

@@ -1,0 +1,10 @@
+{
+  "copy": {
+    "title": "Checkout",
+    "lede": "Choose pickup or dine-in, add a table number if you're in the café, and confirm contact details.",
+    "tableNumberLabel": "Table number",
+    "pickupLabel": "Pickup",
+    "dineInLabel": "Dine in",
+    "submitLabel": "Continue to payment"
+  }
+}

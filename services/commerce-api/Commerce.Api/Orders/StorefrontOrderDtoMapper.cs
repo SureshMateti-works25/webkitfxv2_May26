@@ -29,14 +29,15 @@ public static class StorefrontOrderDtoMapper
             shopperPhone = order.ShopperPhone,
             shippingAddress = DeserializeAddress(order.ShippingAddressJson),
             productTypeId = order.ProductTypeId,
+            orderChannel = order.OrderChannel,
+            tableCode = order.TableCode,
             status = order.Status,
             fulfillmentStatus = fulfillment,
             trackingNote = order.TrackingNote,
             statusUpdatedAt = order.StatusUpdatedAt,
             trackingTimeline = fulfillmentProgression is { Count: > 0 }
                 ? FulfillmentStatusLookup.BuildTimeline(fulfillmentProgression, fulfillment)
-                : FulfillmentStatusLookup.BuildTimeline(FulfillmentStatusLookup.DefaultRows(
-                    FulfillmentStatusLookup.AdminLookupTypeId), fulfillment),
+                : FulfillmentStatusLookup.BuildTimeline(FulfillmentStatusLookup.DefaultRows(), fulfillment),
             paymentMethod = order.PaymentMethod,
             paymentStatus = order.PaymentStatus,
             totalMinor = vendorScoped ? vendorTotal : order.TotalMinor,

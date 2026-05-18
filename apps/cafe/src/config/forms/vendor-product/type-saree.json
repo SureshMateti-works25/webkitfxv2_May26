@@ -1,0 +1,47 @@
+{
+  "id": "vendor-product-type-saree",
+  "title": "Saree attributes",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Additional (product-type specific)",
+        "children": [
+          { "type": "field", "fieldId": "fabric" },
+          { "type": "field", "fieldId": "lengthMeters" },
+          { "type": "field", "fieldId": "blouseIncluded" }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "fabric": {
+      "binding": "commerce.typeAttributes.fabric",
+      "widget": "text",
+      "label": "Fabric / weave",
+      "default": ""
+    },
+    "lengthMeters": {
+      "binding": "commerce.typeAttributes.lengthMeters",
+      "widget": "text",
+      "label": "Length (m)",
+      "default": ""
+    },
+    "blouseIncluded": {
+      "binding": "commerce.typeAttributes.blouseIncluded",
+      "widget": "select",
+      "label": "Blouse piece",
+      "props": {
+        "options": [
+          { "value": "", "label": "—" },
+          { "value": "yes", "label": "Yes" },
+          { "value": "no", "label": "No" }
+        ]
+      },
+      "default": ""
+    }
+  }
+}

@@ -363,6 +363,8 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.Property(x => x.ShopperName).HasMaxLength(256);
             e.Property(x => x.ShopperPhone).HasMaxLength(32);
             e.Property(x => x.ProductTypeId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.OrderChannel).HasMaxLength(32);
+            e.Property(x => x.TableCode).HasMaxLength(32);
             e.Property(x => x.Status).HasMaxLength(32).IsRequired();
             e.Property(x => x.FulfillmentStatus).HasMaxLength(32).IsRequired();
             e.Property(x => x.TrackingNote).HasMaxLength(512);

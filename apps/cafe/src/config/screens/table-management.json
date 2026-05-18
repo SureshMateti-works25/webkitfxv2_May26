@@ -1,0 +1,15 @@
+{
+  "copy": {
+    "title": "Table management",
+    "lede": "Define dining sections and table numbers for dine-in orders. Tables appear at checkout when customers choose dine-in.",
+    "sectionsPanelTitle": "Sections",
+    "sectionsPanelHint": "Group tables by area (indoor, patio, bar).",
+    "tablesPanelTitle": "Tables",
+    "tablesPanelHint": "Each table has a number, display name, seat count, and section.",
+    "addSectionLabel": "Add section",
+    "addTableLabel": "Add table",
+    "emptySections": "No sections yet — add one to organize your floor plan.",
+    "emptyTables": "No tables yet — add tables and assign them to a section.",
+    "manageLookupsLink": "Advanced: full lookup admin"
+  }
+}

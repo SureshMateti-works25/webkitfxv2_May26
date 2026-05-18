@@ -1,0 +1,11 @@
+{
+  "copy": {
+    "title": "Your order",
+    "body": "Review items before checkout. Pickup and dine-in options are on the next step.",
+    "emptyHint": "Your tray is empty — browse the menu to add drinks and bites.",
+    "continueShoppingLabel": "Back to menu",
+    "clearCartLabel": "Clear tray",
+    "subtotalLabel": "Estimated total",
+    "checkoutCta": "Proceed to checkout"
+  }
+}

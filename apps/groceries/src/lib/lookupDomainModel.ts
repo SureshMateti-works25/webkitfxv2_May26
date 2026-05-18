@@ -89,6 +89,7 @@ export type LookupFormDropdownBinding = {
   placeholderOption?: string;
   label?: string;
   description?: string;
+  excludeOptionCodes?: string[];
 };
 
 export type LookupFormBindingsFile = {

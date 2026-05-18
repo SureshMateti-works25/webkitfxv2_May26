@@ -9,7 +9,7 @@
       "optionValueKey": "id",
       "placeholderOption": "— Select application type —",
       "label": "Application type",
-      "description": "Commerce.Api lookup `application_type` (parent → product_types; saved as product_type_id on the product)."
+      "description": "Commerce.Api `application_type` lookup (saved as product_type_id on the product, e.g. app_sr)."
     },
     {
       "formId": "vendor-product-core",
@@ -32,12 +32,13 @@
     {
       "formId": "vendor-order-manage",
       "fieldId": "fulfillmentStatus",
-      "lookupTypeId": "order_fulfillment_status_vendor",
+      "lookupTypeId": "order_fulfillment_status",
       "optionValueKey": "code",
       "optionLabelFormat": "label",
+      "excludeOptionCodes": ["placed", "delivered"],
       "placeholderOption": "— Select status —",
       "label": "Fulfillment status",
-      "description": "Vendor fulfillment statuses (manage in Admin → Lookups → order_fulfillment_status_vendor)."
+      "description": "Vendor-assignable statuses from Admin → Lookups → order_fulfillment_status (excludes placed and delivered)."
     }
   ]
 }

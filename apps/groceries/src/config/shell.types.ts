@@ -121,7 +121,7 @@ export type ShellEdgeChromeConfig = {
 };
 
 export type ShellConfig = {
-  app: { name: string; tagline: string };
+  app: { name: string; tagline: string; applicationTypeLabel?: string };
   brand: { logoAlt: string; logoSrc: string };
   /** Optional consumer storefront integrations (WhatsApp, etc.). */
   storefront?: ShellStorefrontConfig;

@@ -1,0 +1,13 @@
+{
+  "version": "1",
+  "copy": {
+    "screenTitle": "Menu item",
+    "screenDescription": "Ingredients, size options, and add to tray.",
+    "backLink": "Back to menu",
+    "backPrevious": "Back",
+    "loading": "Loading…",
+    "notFound": "This item is not on the menu right now.",
+    "trustNote": "Allergen info and prep time shown when provided by the kitchen."
+  },
+  "sections": ["gallery", "title", "prices", "addToCart", "meta"]
+}

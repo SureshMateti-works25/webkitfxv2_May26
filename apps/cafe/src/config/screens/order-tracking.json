@@ -1,0 +1,8 @@
+{
+  "copy": {
+    "title": "Track order",
+    "lede": "Enter your order id and email to see kitchen status.",
+    "submitLabel": "Track",
+    "timelineTitle": "Status"
+  }
+}

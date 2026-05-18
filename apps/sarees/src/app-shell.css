@@ -109,9 +109,39 @@
   display: block;
   height: clamp(1.95rem, 6.5vw, 2.55rem);
   width: auto;
-  max-width: min(13rem, 46vw);
+  max-width: min(9.5rem, 36vw);
   object-fit: contain;
   object-position: left center;
+  flex-shrink: 0;
+}
+
+.shell-brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.1rem;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.shell-brand-name {
+  font-size: clamp(0.8rem, 2.2vw, 0.95rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(11rem, 42vw);
+}
+
+.shell-brand-app-type {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.82;
+  white-space: nowrap;
 }
 
 .shell-brand-sr {

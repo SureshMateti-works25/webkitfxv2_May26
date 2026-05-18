@@ -24,33 +24,34 @@
       "entryIdPrefix": "pay_"
     },
     {
-      "id": "product_types",
-      "title": "Product types",
-      "description": "Vertical / catalogue family (e.g. saree, grocery). Product rows store the value id as product_type_id; vendor Product tab binds to this lookup.",
+      "id": "application_type",
+      "title": "Application type",
+      "description": "Storefront vertical (Sarees, Groceries, Café). Saved on products as product_type_id (e.g. app_sr). Departments and categories are parented on these rows.",
       "parentLookupId": null,
-      "entryIdPrefix": "pt_"
+      "entryIdPrefix": "app_"
+    },
+    {
+      "id": "product_departments",
+      "title": "Product departments",
+      "description": "Storefront departments; parent is an application_type row.",
+      "parentLookupId": "application_type",
+      "parentFieldLabel": "Application type",
+      "entryIdPrefix": "dept_"
     },
     {
       "id": "product_categories",
       "title": "Product categories",
-      "description": "Merchandising categories for the storefront. Use Code as the URL slug (e.g. kanjivaram) and Label as the shopper-facing name. Browse uses /browse/:categorySlug — keep Code unique and slug-safe.",
-      "parentLookupId": "product_types",
-      "parentFieldLabel": "Product type",
+      "description": "Merchandising categories. Parent is a department or application_type. Code = URL slug for /browse/:categorySlug.",
+      "parentLookupId": "product_departments",
+      "parentFieldLabel": "Department",
       "entryIdPrefix": "cat_"
     },
     {
       "id": "order_fulfillment_status",
       "title": "Order fulfillment status",
-      "description": "Shopper tracking timeline (placed, in review, confirmed, packed, shipped, delivered, cancelled, rejected).",
+      "description": "Full order lifecycle (placed → delivered, cancelled, rejected). Vendor forms use in review–rejected only.",
       "parentLookupId": null,
       "entryIdPrefix": "ofs_"
-    },
-    {
-      "id": "order_fulfillment_status_vendor",
-      "title": "Order fulfillment status (vendor)",
-      "description": "Vendor dropdown: in review, confirmed, packed, shipped, cancelled, rejected.",
-      "parentLookupId": null,
-      "entryIdPrefix": "ofv_"
     }
   ]
 }

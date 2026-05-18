@@ -7,7 +7,7 @@ import { ShellBodyWithPromo } from "./ShellBodyWithPromo.js";
 
 export function AppChrome() {
   return (
-    <div className="shell-root">
+    <div className="shell-root shell-root--groceries">
       <Header />
       <ChromeNoticeBar />
       <Breadcrumbs />

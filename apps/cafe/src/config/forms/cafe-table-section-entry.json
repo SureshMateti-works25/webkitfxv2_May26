@@ -1,0 +1,41 @@
+{
+  "id": "cafe-table-section-entry",
+  "title": "Table section",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      { "type": "field", "fieldId": "code" },
+      { "type": "field", "fieldId": "label" },
+      { "type": "field", "fieldId": "sortOrder" }
+    ]
+  },
+  "fields": {
+    "code": {
+      "binding": "entry.code",
+      "widget": "text",
+      "label": "Code",
+      "description": "Stable key (e.g. indoor, patio).",
+      "props": { "placeholder": "e.g. patio", "autoComplete": "off" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 1 }, { "kind": "maxLength", "value": 64 }]
+    },
+    "label": {
+      "binding": "entry.label",
+      "widget": "text",
+      "label": "Section name",
+      "props": { "placeholder": "e.g. Patio" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 1 }, { "kind": "maxLength", "value": 120 }]
+    },
+    "sortOrder": {
+      "binding": "entry.sortOrder",
+      "widget": "integer",
+      "label": "Display order",
+      "props": { "min": 0, "step": 1 },
+      "default": 0,
+      "rules": [{ "kind": "minimum", "value": 0 }]
+    }
+  }
+}

@@ -61,7 +61,11 @@ export async function fetchResolvedLookupFieldOptions(
 ): Promise<Record<string, ResolvedLookupSelectPatch>> {
   const out: Record<string, ResolvedLookupSelectPatch> = {};
   for (const b of getLookupBindingsForForm(formId)) {
-    const rows = await listCommerceLookupValues(b.lookupTypeId);
+    let rows = await listCommerceLookupValues(b.lookupTypeId);
+    if (b.excludeOptionCodes?.length) {
+      const excluded = new Set(b.excludeOptionCodes.map((c) => c.trim().toLowerCase()));
+      rows = rows.filter((r) => !excluded.has(r.code.trim().toLowerCase()));
+    }
     const optionValueKey = (b.optionValueKey ?? "id") as "id" | "code";
     const labelFormat = b.optionLabelFormat ?? "labelAndCode";
     const sorted = sortedCommerceLookupValues(rows);

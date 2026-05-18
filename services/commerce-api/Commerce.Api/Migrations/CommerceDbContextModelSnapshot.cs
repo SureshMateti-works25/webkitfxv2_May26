@@ -907,6 +907,10 @@ namespace Commerce.Api.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("OrderChannel")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -952,6 +956,10 @@ namespace Commerce.Api.Migrations
 
                     b.Property<DateTimeOffset>("StatusUpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TableCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("TenantId")
                         .IsRequired()

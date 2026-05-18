@@ -144,14 +144,20 @@ export const DEFAULT_COMMERCE_TENANT_ID =
   (import.meta.env.VITE_COMMERCE_TENANT_ID as string | undefined)?.trim() || "t1";
 
 /**
- * Nistta storefront only lists active products (and category shells) for this Commerce.Api product type.
- * Default `pt_saree`; override with `VITE_CATALOG_PRODUCT_TYPE_ID` if your tenant uses another id.
+ * Storefront vertical: `application_type` lookup row id (e.g. `app_sr`).
+ * Commerce.Api accepts this on `productTypeId` query params and resolves catalog scope.
  */
-export const CATALOG_PRODUCT_TYPE_ID =
-  (import.meta.env.VITE_CATALOG_PRODUCT_TYPE_ID as string | undefined)?.trim() || "pt_saree";
+export const CATALOG_APPLICATION_TYPE_LOOKUP_ID =
+  (
+    (import.meta.env.VITE_CATALOG_APPLICATION_TYPE_ID as string | undefined) ??
+    (import.meta.env.VITE_CATALOG_PRODUCT_TYPE_ID as string | undefined)
+  )?.trim() || "app_sr";
+
+/** @deprecated Use {@link CATALOG_APPLICATION_TYPE_LOOKUP_ID}. */
+export const CATALOG_PRODUCT_TYPE_ID = CATALOG_APPLICATION_TYPE_LOOKUP_ID;
 
 function appendStorefrontCatalogScopeParam(qs: URLSearchParams): void {
-  const id = CATALOG_PRODUCT_TYPE_ID.trim();
+  const id = CATALOG_APPLICATION_TYPE_LOOKUP_ID.trim();
   if (id) qs.set("productTypeId", id);
 }
 
@@ -1425,11 +1431,16 @@ function isRemoteCommerceApiBase(): boolean {
 export function formatCommerceApiError(error: unknown): string {
   if (error instanceof TypeError && /fetch|network|failed/i.test(String(error.message))) {
     if (isRemoteCommerceApiBase()) {
+      const onLocalVite =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
       return [
         `Cannot reach Commerce.Api (${apiTargetLabel}).`,
         "1) Open your API `/health` in a browser — you should see a small JSON body with status ok. If not, fix the App Service (Azure Portal → Log stream: database connection, migrations, startup errors).",
         "2) Confirm **CORS** on Commerce.Api allows this storefront origin (`https://…azurestaticapps.net`).",
-        "3) After changing the API URL, **redeploy** the storefront so `VITE_COMMERCE_API_URL` in GitHub Actions secrets matches production.",
+        onLocalVite
+          ? "3) **Local Vite dev:** remove `VITE_COMMERCE_API_URL` from `.env` so requests use the Vite proxy to localhost:5055, or add your dev origin (e.g. http://localhost:5175) to Commerce.Api CORS on Azure."
+          : "3) After changing the API URL, **redeploy** the storefront so `VITE_COMMERCE_API_URL` in GitHub Actions secrets matches production.",
       ].join(" ");
     }
     return [

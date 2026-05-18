@@ -73,15 +73,14 @@ public static class CatalogListingQueries
         string? search,
         DateTimeOffset? now,
         string? slug = null,
-        string? productTypeId = null,
+        HashSet<string>? verticalProductTypeIds = null,
         string? excludeProductTypeId = null)
     {
         var q = db.Products.AsNoTracking().Where(p => p.TenantId == tenantId && p.Status == "active");
 
-        if (!string.IsNullOrWhiteSpace(productTypeId))
+        if (verticalProductTypeIds is { Count: > 0 })
         {
-            var tid = productTypeId.Trim();
-            q = q.Where(p => p.ProductTypeId == tid);
+            q = q.Where(p => p.ProductTypeId != null && verticalProductTypeIds.Contains(p.ProductTypeId));
         }
         else if (!string.IsNullOrWhiteSpace(excludeProductTypeId))
         {

@@ -1,0 +1,53 @@
+{
+  "id": "cafe-table-entry",
+  "title": "Dining table",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      { "type": "field", "fieldId": "tableNumber" },
+      { "type": "field", "fieldId": "tableName" },
+      { "type": "field", "fieldId": "sectionId" },
+      { "type": "field", "fieldId": "seats" }
+    ]
+  },
+  "fields": {
+    "tableNumber": {
+      "binding": "entry.code",
+      "widget": "text",
+      "label": "Table number",
+      "description": "Shown at checkout (e.g. 12, A3). Stored as a stable code.",
+      "props": { "placeholder": "e.g. 12", "autoComplete": "off" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 1 }, { "kind": "maxLength", "value": 32 }]
+    },
+    "tableName": {
+      "binding": "entry.label",
+      "widget": "text",
+      "label": "Display name",
+      "props": { "placeholder": "e.g. Window table 12" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 1 }, { "kind": "maxLength", "value": 120 }]
+    },
+    "sectionId": {
+      "binding": "entry.parentId",
+      "widget": "select",
+      "label": "Section",
+      "props": {
+        "options": [],
+        "placeholderOption": "— Select section —"
+      },
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "seats": {
+      "binding": "entry.sortOrder",
+      "widget": "integer",
+      "label": "Seats",
+      "props": { "min": 1, "max": 99, "step": 1 },
+      "default": 4,
+      "rules": [{ "kind": "required" }, { "kind": "minimum", "value": 1 }, { "kind": "maximum", "value": 99 }]
+    }
+  }
+}

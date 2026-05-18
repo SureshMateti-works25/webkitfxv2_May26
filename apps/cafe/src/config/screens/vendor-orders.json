@@ -1,0 +1,8 @@
+{
+  "copy": {
+    "title": "Kitchen queue (KDS)",
+    "lede": "Dine-in, QR, and aggregator orders use café workflows from config/workflows/cafe-order-workflows.json. Advance kitchen status as KOT moves through prep and serve.",
+    "saveLabel": "Save kitchen status",
+    "workflowHint": "Statuses follow your channel workflow: POS dine-in, QR self-order, or Swiggy/Zomato aggregator."
+  }
+}

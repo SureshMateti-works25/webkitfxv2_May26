@@ -61,6 +61,10 @@ export async function fetchResolvedLookupFieldOptions(
   const out: Record<string, ResolvedLookupSelectPatch> = {};
   for (const b of getLookupBindingsForForm(formId)) {
     let rows = await listCommerceLookupValues(b.lookupTypeId);
+    if (b.excludeOptionCodes?.length) {
+      const excluded = new Set(b.excludeOptionCodes.map((c) => c.trim().toLowerCase()));
+      rows = rows.filter((r) => !excluded.has(r.code.trim().toLowerCase()));
+    }
     if (b.lookupTypeId === "product_types" || b.lookupTypeId === "application_type") {
       rows = filterProductTypeLookupRowsForGroceries(rows, CATALOG_PRODUCT_TYPE_ID);
     }

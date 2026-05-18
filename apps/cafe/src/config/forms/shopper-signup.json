@@ -1,0 +1,146 @@
+{
+  "id": "shopper-profile-signup",
+  "title": "Shopper profile",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "1rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Portal credentials",
+        "children": [
+          { "type": "field", "fieldId": "credLoginName" },
+          {
+            "type": "grid",
+            "columns": "repeat(auto-fill, minmax(min(100%, 14rem), 1fr))",
+            "children": [
+              { "type": "field", "fieldId": "credPassword" },
+              { "type": "field", "fieldId": "credConfirmPassword" }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Identity",
+        "children": [
+          { "type": "field", "fieldId": "fullName" },
+          { "type": "field", "fieldId": "email" },
+          { "type": "field", "fieldId": "phone" }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Delivery address",
+        "children": [
+          { "type": "field", "fieldId": "line1" },
+          {
+            "type": "grid",
+            "columns": "repeat(auto-fill, minmax(min(100%, 10rem), 1fr))",
+            "children": [
+              { "type": "field", "fieldId": "city" },
+              { "type": "field", "fieldId": "state" },
+              { "type": "field", "fieldId": "pinCode" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "credLoginName": {
+      "binding": "credentials.loginName",
+      "widget": "text",
+      "label": "Login name",
+      "description": "Use the same value when you return to Sign in (often matches your email).",
+      "props": { "placeholder": "you@example.com", "autoComplete": "username" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 3 }]
+    },
+    "credPassword": {
+      "binding": "credentials.password",
+      "widget": "password",
+      "label": "Password",
+      "props": { "autoComplete": "new-password" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 8 }]
+    },
+    "credConfirmPassword": {
+      "binding": "credentials.confirmPassword",
+      "widget": "password",
+      "label": "Confirm password",
+      "props": { "autoComplete": "new-password" },
+      "default": "",
+      "rules": [
+        { "kind": "required" },
+        {
+          "kind": "eqPath",
+          "path": "credentials.password",
+          "message": "Must match password"
+        }
+      ]
+    },
+    "fullName": {
+      "binding": "profile.fullName",
+      "widget": "text",
+      "label": "Full name",
+      "props": { "placeholder": "As on ID / bank", "autoComplete": "name" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 2 }]
+    },
+    "email": {
+      "binding": "profile.email",
+      "widget": "email",
+      "label": "Email",
+      "props": { "autoComplete": "email" },
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "phone": {
+      "binding": "profile.phone",
+      "widget": "tel",
+      "label": "Mobile number",
+      "description": "10-digit Indian mobile.",
+      "props": { "placeholder": "9876543210", "autoComplete": "tel" },
+      "default": "",
+      "rules": [
+        { "kind": "required" },
+        { "kind": "pattern", "regex": "^[6-9]\\d{9}$", "message": "Enter a valid 10-digit mobile" }
+      ]
+    },
+    "line1": {
+      "binding": "profile.address.line1",
+      "widget": "textarea",
+      "label": "Address line",
+      "props": { "rows": 3, "placeholder": "House / street / locality" },
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "city": {
+      "binding": "profile.address.city",
+      "widget": "text",
+      "label": "City",
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "state": {
+      "binding": "profile.address.state",
+      "widget": "text",
+      "label": "State / UT",
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "pinCode": {
+      "binding": "profile.address.pinCode",
+      "widget": "text",
+      "label": "PIN code",
+      "props": { "inputMode": "numeric", "pattern": "^[0-9]{6}$" },
+      "default": "",
+      "rules": [
+        { "kind": "required" },
+        { "kind": "pattern", "regex": "^[0-9]{6}$", "message": "PIN must be 6 digits" }
+      ]
+    }
+  }
+}

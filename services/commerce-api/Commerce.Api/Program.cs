@@ -123,9 +123,12 @@ if (!app.Environment.IsDevelopment()
     await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(dbAisles);
     await CommerceDevDataSeeder.EnsureProductCategoriesLookupTypeAsync(dbAisles);
     await CommerceDevDataSeeder.EnsureAppTypeLookupSeedAsync(dbAisles);
+    await CommerceDevDataSeeder.EnsureCafeOrderWorkflowLookupsAsync(dbAisles);
+    await CommerceDevDataSeeder.EnsureCafeTableLookupsAsync(dbAisles);
+    await CommerceDevDataSeeder.EnsureOrderFulfillmentStatusLookupsAsync(dbAisles);
     await CommerceDevDataSeeder.EnsureGroceryStorefrontAisleLookupsAsync(dbAisles);
     aisleLogger.LogInformation(
-        "Storefront lookup bootstrap ensured (product types, app_type, grocery aisles).");
+        "Storefront lookup bootstrap ensured (product types, application_type, grocery aisles).");
 }
 
 if (app.Environment.IsDevelopment())
@@ -196,16 +199,18 @@ if (app.Environment.IsDevelopment())
         }
 
         await CommerceDevDataSeeder.EnsureOrderFulfillmentStatusLookupsAsync(db);
+        await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
+        await CommerceDevDataSeeder.EnsureAppTypeLookupSeedAsync(db);
+        await CommerceDevDataSeeder.EnsureCafeOrderWorkflowLookupsAsync(db);
+        await CommerceDevDataSeeder.EnsureCafeTableLookupsAsync(db);
 
-        // Idempotent storefront lookups (aisles, product_types, app_type). Disable when Admin owns lookups from scratch.
+        // Idempotent grocery aisle rows. Disable when Admin owns lookups from scratch.
         if (!string.Equals(
                 builder.Configuration["Commerce:EnsureGroceryStorefrontAisles"],
                 "false",
                 StringComparison.OrdinalIgnoreCase))
         {
-            await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
             await CommerceDevDataSeeder.EnsureProductCategoriesLookupTypeAsync(db);
-            await CommerceDevDataSeeder.EnsureAppTypeLookupSeedAsync(db);
             await CommerceDevDataSeeder.EnsureGroceryStorefrontAisleLookupsAsync(db);
         }
         else

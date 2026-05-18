@@ -1,0 +1,33 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  font-family: "DM Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f3ebe0;
+  color: #2a2118;
+}
+
+html.cafe-site {
+  background: #f3ebe0;
+}
+
+/* JsonForm — café tokens (also set on .shell-root--cafe in cafe-theme.css) */
+.shell-root.shell-root--cafe .webkitfx-json-form.webkitfx-theme:not(.webkitfx-theme--dark) {
+  --fx-font: var(--cafe-font-ui, "DM Sans", system-ui, sans-serif);
+  --fx-accent: var(--cafe-copper, #a67c52);
+  --fx-accent-soft: rgba(166, 124, 82, 0.12);
+  --fx-accent-hover: var(--cafe-mocha-soft, #453528);
+  --fx-focus: 0 0 0 3px rgba(201, 166, 107, 0.45);
+}

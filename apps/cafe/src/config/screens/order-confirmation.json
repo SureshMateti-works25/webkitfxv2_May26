@@ -1,0 +1,8 @@
+{
+  "copy": {
+    "title": "Order placed",
+    "lede": "We're preparing your order. Save your order id to track status.",
+    "trackCta": "Track order",
+    "homeCta": "Back to menu"
+  }
+}

@@ -1,6 +1,7 @@
 {
   "app": {
     "name": "Nistta",
+    "applicationTypeLabel": "Sarees",
     "tagline": "Sarees today — groceries & gas tomorrow. One account, many storefronts."
   },
   "brand": {

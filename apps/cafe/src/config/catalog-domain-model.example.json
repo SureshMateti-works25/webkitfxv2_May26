@@ -1,0 +1,688 @@
+{
+  "version": "2.2",
+  "meta": {
+    "description": "v2.2: audit + concurrency on mutable source rows (createdBy, updatedBy, deletedAt, version, revision). v2.1 facet UX + normalized partitions. Not loaded by app shell.",
+    "auditRowFields": {
+      "note": "Root `version` is this bundle's schema stamp (string). On source rows, `version` is an integer for optimistic concurrency (If-Match / compare-and-swap).",
+      "createdBy": "principal id of first persist (user id or service account, e.g. u_* or svc_*)",
+      "updatedBy": "principal id of last successful mutation",
+      "deletedAt": "soft-delete instant (ISO 8601) or null when row is live",
+      "version": "optimistic-lock counter; increment on each successful UPDATE of the row",
+      "revision": "monotonic audit sequence for the row (event-sourced stores may mirror outbox seq; optional where only version is needed)"
+    },
+    "facetingVocabulary": {
+      "displayType": "PDP + filter UI hint: swatch | pill | dropdown | radio | text | range",
+      "variantAxisOrder": "1 = primary picker axis (e.g. colour), 2 = secondary; omit or null = not a variant axis",
+      "filterable": "expose in PLP/shop left-rail facets",
+      "searchable": "include value text (and synonyms) in search index for this product family",
+      "sortable": "PLP sort option keyed by this attribute (uses attributeValues.sortKey)",
+      "unit": "SKU sell UOM (piece, metre); inventory qty is in that unit unless multi-UOM table added later"
+    },
+    "partitions": {
+      "source": "authoritative OLTP-style rows",
+      "derived": "materialized from source + movements + config windows — safe to drop/rebuild",
+      "analytics": "aggregates / events — separate store in production",
+      "engagement": "reviews & feedback — separate bounded context",
+      "localization": "locale strings keyed by stable keys",
+      "promotionRuleSets": "versioned offer logic referenced by promotion.ruleSetId"
+    }
+  },
+  "source": {
+    "tenants": [{ "id": "t1", "name": "Acme Sarees", "slug": "acme" }],
+    "unitsOfMeasure": [
+      { "code": "EA", "tenantId": "t1", "labelL10nKey": "unit.ea", "isoCode": "C62", "description": "Each / piece" },
+      { "code": "MTR", "tenantId": "t1", "labelL10nKey": "unit.meter", "isoCode": "MTR", "description": "Metre (fabric length)" }
+    ],
+    "productTypes": [
+      {
+        "id": "pt_saree",
+        "tenantId": "t1",
+        "code": "saree",
+        "nameLocalizationKey": "productType.saree.name",
+        "defaultUnitOfMeasureCode": "EA"
+      },
+      {
+        "id": "pt_phys",
+        "tenantId": "t1",
+        "code": "physical_goods",
+        "nameLocalizationKey": "productType.physical.name"
+      }
+    ],
+    "categories": [
+      { "id": "cat_saree", "tenantId": "t1", "parentId": null, "slug": "sarees", "sort": 10 },
+      { "id": "cat_silk", "tenantId": "t1", "parentId": "cat_saree", "slug": "silk", "sort": 20 },
+      { "id": "cat_kan", "tenantId": "t1", "parentId": "cat_silk", "slug": "kanjeevaram", "sort": 30 }
+    ],
+    "productCategories": [
+      { "productId": "p_kj001", "categoryId": "cat_kan", "isPrimary": true, "sort": 0 },
+      { "productId": "p_kj001", "categoryId": "cat_silk", "isPrimary": false, "sort": 1 }
+    ],
+    "products": [
+      {
+        "id": "p_kj001",
+        "tenantId": "t1",
+        "productTypeId": "pt_saree",
+        "slug": "royal-kanjeevaram-zari",
+        "defaultLocale": "en-IN",
+        "titleL10nKey": "product.p_kj001.title",
+        "status": "active",
+        "vendorId": "v_nistta",
+        "gstDefaultState": "MH",
+        "vendorGstin": null,
+        "createdAt": "2026-04-20T08:00:00.000Z",
+        "updatedAt": "2026-05-10T10:15:00.000Z",
+        "createdBy": "u_vendor_admin_1",
+        "updatedBy": "svc_catalog_ingest",
+        "deletedAt": null,
+        "version": 3,
+        "revision": 12,
+        "publishedAt": "2026-04-22T10:00:00.000Z",
+        "availableFrom": "2026-04-22T10:00:00.000Z",
+        "availableTo": null,
+        "variantAxisAttributeDefIds": ["attr_color", "attr_border"]
+      }
+    ],
+    "skus": [
+      {
+        "id": "sku_kj_mar_g3",
+        "tenantId": "t1",
+        "productId": "p_kj001",
+        "skuCode": "KJ-MRN-G3-001",
+        "barcode": "8901234567890",
+        "status": "active",
+        "taxCategoryId": "tax_saree_5",
+        "hsnOverride": null,
+        "gstExemptReason": null,
+        "availableFrom": "2026-04-22T10:00:00.000Z",
+        "availableTo": null,
+        "firstReceiptAt": "2026-04-25T14:00:00.000Z",
+        "createdAt": "2026-04-20T09:05:00.000Z",
+        "updatedAt": "2026-05-10T09:00:00.000Z",
+        "createdBy": "u_vendor_admin_1",
+        "updatedBy": "u_vendor_admin_1",
+        "deletedAt": null,
+        "version": 2,
+        "revision": 5,
+        "unit": {
+          "unitOfMeasureCode": "EA",
+          "saleIncrement": 1,
+          "minOrderQuantity": 1,
+          "allowFractionalQty": false
+        }
+      }
+    ],
+    "skuAttributeTuples": [
+      { "skuId": "sku_kj_mar_g3", "attributeDefId": "attr_color", "attributeValueId": "av_maroon" },
+      { "skuId": "sku_kj_mar_g3", "attributeDefId": "attr_border", "attributeValueId": "av_gold" }
+    ],
+    "attributeDefs": [
+      {
+        "id": "attr_color",
+        "tenantId": "t1",
+        "code": "color",
+        "valueKind": "enum",
+        "labelL10nKey": "attr.color",
+        "variantAxisOrder": 1,
+        "displayType": "swatch",
+        "createdAt": "2026-04-01T00:00:00.000Z",
+        "updatedAt": "2026-05-01T12:00:00.000Z",
+        "createdBy": "svc_bootstrap",
+        "updatedBy": "u_tenant_admin_1",
+        "deletedAt": null,
+        "version": 1,
+        "revision": 4,
+        "filterable": true,
+        "searchable": true,
+        "sortable": false,
+        "facetSort": "definition_order"
+      },
+      {
+        "id": "attr_border",
+        "tenantId": "t1",
+        "code": "border",
+        "valueKind": "enum",
+        "labelL10nKey": "attr.border",
+        "variantAxisOrder": 2,
+        "displayType": "pill",
+        "createdAt": "2026-04-01T00:00:00.000Z",
+        "updatedAt": "2026-05-01T12:00:00.000Z",
+        "createdBy": "svc_bootstrap",
+        "updatedBy": "u_tenant_admin_1",
+        "deletedAt": null,
+        "version": 1,
+        "revision": 4,
+        "filterable": true,
+        "searchable": true,
+        "sortable": true,
+        "facetSort": "value_sort_key"
+      }
+    ],
+    "attributeValues": [
+      {
+        "id": "av_maroon",
+        "attributeDefId": "attr_color",
+        "code": "maroon",
+        "labelL10nKey": "attrValue.color.maroon",
+        "sortKey": 10,
+        "swatchHex": "#7b1e3a",
+        "searchSynonyms": ["maroon", "wine", "burgundy"],
+        "createdAt": "2026-04-01T00:00:00.000Z",
+        "updatedAt": "2026-04-15T08:00:00.000Z",
+        "createdBy": "svc_bootstrap",
+        "updatedBy": "u_tenant_admin_1",
+        "deletedAt": null,
+        "version": 1,
+        "revision": 2
+      },
+      {
+        "id": "av_gold",
+        "attributeDefId": "attr_border",
+        "code": "gold-3cm",
+        "labelL10nKey": "attrValue.border.gold3cm",
+        "sortKey": 20,
+        "createdAt": "2026-04-01T00:00:00.000Z",
+        "updatedAt": "2026-04-15T08:00:00.000Z",
+        "createdBy": "svc_bootstrap",
+        "updatedBy": "u_tenant_admin_1",
+        "deletedAt": null,
+        "version": 1,
+        "revision": 2
+      }
+    ],
+    "mediaAssets": [
+      {
+        "id": "m_hero1",
+        "tenantId": "t1",
+        "storageKey": "t1/p_kj001/hero_01.jpg",
+        "mimeType": "image/jpeg",
+        "width": 2400,
+        "height": 3000,
+        "bytes": 842112,
+        "checksum": "sha256:ab12cd34",
+        "uploadedAt": "2026-04-28T09:12:00.000Z"
+      },
+      {
+        "id": "m_gal2",
+        "tenantId": "t1",
+        "storageKey": "t1/p_kj001/gallery_02.webp",
+        "mimeType": "image/webp",
+        "width": 1600,
+        "height": 2000,
+        "bytes": 201400,
+        "checksum": "sha256:cd56ef78",
+        "uploadedAt": "2026-04-28T09:18:00.000Z"
+      },
+      {
+        "id": "m_swatch_m",
+        "tenantId": "t1",
+        "storageKey": "t1/sku_kj_mar_g3/swatch.webp",
+        "mimeType": "image/webp",
+        "width": 400,
+        "height": 400,
+        "bytes": 12000,
+        "checksum": "sha256:ef90ab12",
+        "uploadedAt": "2026-04-30T11:00:00.000Z"
+      }
+    ],
+    "productMedia": [
+      { "id": "pm1", "productId": "p_kj001", "mediaAssetId": "m_hero1", "role": "hero", "sortOrder": 0, "locale": "en-IN" },
+      { "id": "pm2", "productId": "p_kj001", "mediaAssetId": "m_gal2", "role": "gallery", "sortOrder": 1, "locale": "en-IN" }
+    ],
+    "skuMedia": [
+      { "id": "sm1", "skuId": "sku_kj_mar_g3", "mediaAssetId": "m_swatch_m", "role": "swatch", "sortOrder": 0 },
+      { "id": "sm2", "skuId": "sku_kj_mar_g3", "mediaAssetId": "m_gal2", "role": "gallery", "sortOrder": 1 }
+    ],
+    "priceLists": [{ "id": "pl_b2c", "tenantId": "t1", "code": "B2C-INR", "name": "Retail INR", "currency": "INR" }],
+    "priceRows": [
+      {
+        "id": "pr1",
+        "skuId": "sku_kj_mar_g3",
+        "priceListId": "pl_b2c",
+        "amountMinor": 2499900,
+        "currency": "INR",
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": null,
+        "createdAt": "2026-04-22T10:30:00.000Z",
+        "updatedAt": "2026-05-01T00:00:00.000Z",
+        "createdBy": "u_pricing_ops_1",
+        "updatedBy": "u_pricing_ops_1",
+        "deletedAt": null,
+        "version": 1,
+        "revision": 3
+      }
+    ],
+    "locations": [
+      { "id": "loc_mum", "tenantId": "t1", "code": "WH-MUM-01", "name": "Mumbai Hub", "type": "warehouse" },
+      { "id": "loc_blr", "tenantId": "t1", "code": "ST-BLR-01", "name": "Bengaluru Store", "type": "store" }
+    ],
+    "inventoryPositions": [
+      {
+        "id": "ip1",
+        "skuId": "sku_kj_mar_g3",
+        "locationId": "loc_mum",
+        "onHand": 18,
+        "reserved": 2,
+        "updatedAt": "2026-05-10T10:00:00.000Z",
+        "updatedBy": "svc_inventory_projection",
+        "version": 847,
+        "revision": 1203
+      }
+    ],
+    "inventoryMovements": [
+      {
+        "id": "im1",
+        "skuId": "sku_kj_mar_g3",
+        "locationId": "loc_mum",
+        "qtyDelta": 20,
+        "reason": "receipt",
+        "refType": "po",
+        "refId": "po7788",
+        "createdAt": "2026-05-01T08:00:00.000Z",
+        "createdBy": "svc_wms_receipt"
+      },
+      {
+        "id": "im2",
+        "skuId": "sku_kj_mar_g3",
+        "locationId": "loc_mum",
+        "qtyDelta": -1,
+        "reason": "sale_reserve",
+        "refType": "order",
+        "refId": "ord_991",
+        "createdAt": "2026-05-10T09:30:00.000Z",
+        "createdBy": "svc_order_allocate"
+      }
+    ],
+    "taxCategories": [
+      {
+        "id": "tax_saree_5",
+        "tenantId": "t1",
+        "code": "SAREE-GST-5",
+        "hsnSac": "5007",
+        "sacOnly": false
+      },
+      {
+        "id": "tax_ship_18",
+        "tenantId": "t1",
+        "code": "SHIP-GST-18",
+        "hsnSac": "996511",
+        "sacOnly": true
+      }
+    ],
+    "taxRates": [
+      {
+        "id": "txr_mh_5",
+        "taxCategoryId": "tax_saree_5",
+        "jurisdictionCode": "IN-MH",
+        "cgstBps": 250,
+        "sgstBps": 250,
+        "igstBps": 500,
+        "cessBps": 0,
+        "effectiveFrom": "2025-04-01",
+        "effectiveTo": null
+      }
+    ],
+    "fulfillmentProfiles": [
+      {
+        "id": "fp_std_in",
+        "tenantId": "t1",
+        "code": "STD-IN",
+        "nameLocalizationKey": "fulfillment.std_in.name",
+        "defaultLeadTimeDays": 4,
+        "carrierServiceLevel": "surface"
+      }
+    ],
+    "productFulfillment": [
+      {
+        "productId": "p_kj001",
+        "fulfillmentProfileId": "fp_std_in",
+        "dispatchLocationId": "loc_mum",
+        "shipsInternational": false
+      }
+    ],
+    "channelVisibility": [
+      {
+        "scope": "product",
+        "productId": "p_kj001",
+        "channel": "web",
+        "browseVisible": true,
+        "searchVisible": true,
+        "purchaseEnabled": true
+      },
+      {
+        "scope": "product",
+        "productId": "p_kj001",
+        "channel": "app",
+        "browseVisible": true,
+        "searchVisible": true,
+        "purchaseEnabled": true
+      },
+      {
+        "scope": "sku",
+        "skuId": "sku_kj_mar_g3",
+        "channel": "web",
+        "browseVisible": true,
+        "searchVisible": true,
+        "purchaseEnabled": true
+      }
+    ],
+    "collections": [
+      {
+        "id": "col_pongal",
+        "tenantId": "t1",
+        "slug": "pongal-edit-2026",
+        "titleL10nKey": "collection.pongal2026.title",
+        "type": "manual",
+        "channel": "web",
+        "activeFrom": "2026-01-01T00:00:00.000Z",
+        "activeTo": "2026-01-31T23:59:59.000Z",
+        "items": [{ "productId": "p_kj001", "sortOrder": 0, "pinned": true }],
+        "createdAt": "2025-12-10T10:00:00.000Z",
+        "updatedAt": "2026-01-02T15:00:00.000Z",
+        "createdBy": "u_merch_1",
+        "updatedBy": "u_merch_1",
+        "deletedAt": null,
+        "version": 2,
+        "revision": 6
+      }
+    ],
+    "promotions": [
+      {
+        "id": "promo_percent_category",
+        "tenantId": "t1",
+        "code": "PONGAL26",
+        "ruleSetId": "rs_pongal_pct",
+        "status": "active",
+        "priority": 50,
+        "startsAt": "2026-01-10T00:00:00.000Z",
+        "endsAt": "2026-01-20T23:59:59.000Z",
+        "activationPresetId": "act_in_stock_channels_web_app",
+        "createdAt": "2025-12-15T11:00:00.000Z",
+        "updatedAt": "2026-01-05T09:00:00.000Z",
+        "createdBy": "u_merch_1",
+        "updatedBy": "u_merch_1",
+        "deletedAt": null,
+        "version": 1,
+        "revision": 3
+      },
+      {
+        "id": "promo_flat_cart",
+        "tenantId": "t1",
+        "code": "FLAT250",
+        "ruleSetId": "rs_flat250",
+        "status": "active",
+        "priority": 40,
+        "startsAt": "2026-05-01T00:00:00.000Z",
+        "endsAt": null,
+        "activationPresetId": "act_cart_min_web_app_pos",
+        "createdAt": "2026-04-28T14:00:00.000Z",
+        "updatedAt": "2026-05-02T10:00:00.000Z",
+        "createdBy": "u_merch_2",
+        "updatedBy": "svc_promo_scheduler",
+        "deletedAt": null,
+        "version": 2,
+        "revision": 4
+      },
+      {
+        "id": "promo_buy2_get1",
+        "tenantId": "t1",
+        "code": "B2G1SILK",
+        "ruleSetId": "rs_b2g1_silk",
+        "status": "active",
+        "priority": 60,
+        "startsAt": "2026-05-01T00:00:00.000Z",
+        "endsAt": "2026-05-31T23:59:59.000Z",
+        "activationPresetId": "act_coupon_global_cap",
+        "createdAt": "2026-04-25T09:00:00.000Z",
+        "updatedAt": "2026-04-30T16:00:00.000Z",
+        "createdBy": "u_merch_1",
+        "updatedBy": "u_merch_1",
+        "deletedAt": null,
+        "version": 1,
+        "revision": 2
+      },
+      {
+        "id": "promo_free_ship",
+        "tenantId": "t1",
+        "code": "FREESHIP999",
+        "ruleSetId": "rs_free_ship",
+        "status": "active",
+        "priority": 20,
+        "startsAt": null,
+        "endsAt": null,
+        "activationPresetId": "act_shipping_always",
+        "createdAt": "2026-03-01T08:00:00.000Z",
+        "updatedAt": "2026-03-01T08:00:00.000Z",
+        "createdBy": "u_merch_2",
+        "updatedBy": "u_merch_2",
+        "deletedAt": null,
+        "version": 1,
+        "revision": 1
+      }
+    ],
+    "promotionActivationPresets": {
+      "act_in_stock_channels_web_app": {
+        "enabled": true,
+        "timezone": "Asia/Kolkata",
+        "channels": ["web", "app"],
+        "regionPolicy": { "mode": "allow_list", "stateCodes": ["MH", "KA", "TG"] },
+        "customerSegments": ["all"],
+        "requiresCoupon": false,
+        "inventoryGate": "in_stock_only"
+      },
+      "act_cart_min_web_app_pos": {
+        "enabled": true,
+        "timezone": "Asia/Kolkata",
+        "channels": ["web", "app", "pos"],
+        "regionPolicy": { "mode": "all" },
+        "customerSegments": ["all"],
+        "requiresCoupon": false,
+        "inventoryGate": "none",
+        "maxRedemptionsPerUser": 1
+      },
+      "act_coupon_global_cap": {
+        "enabled": true,
+        "timezone": "Asia/Kolkata",
+        "channels": ["web", "app"],
+        "regionPolicy": { "mode": "all" },
+        "customerSegments": ["all"],
+        "requiresCoupon": true,
+        "couponCodes": ["SILKB2G1"],
+        "inventoryGate": "in_stock_only",
+        "maxRedemptionsGlobal": 5000
+      },
+      "act_shipping_always": {
+        "enabled": true,
+        "timezone": "Asia/Kolkata",
+        "channels": ["web", "app"],
+        "regionPolicy": { "mode": "all" },
+        "customerSegments": ["all"],
+        "requiresCoupon": false,
+        "inventoryGate": "none"
+      }
+    }
+  },
+  "promotionRuleSets": {
+    "rs_pongal_pct": {
+      "version": 1,
+      "stackPolicy": "stackable",
+      "application": { "scope": "line", "allocate": "pro_rata_by_line_subtotal" },
+      "eligibility": {
+        "all": [
+          { "op": "category_id_in_tree", "categoryId": "cat_silk" },
+          { "op": "sku_in_stock", "value": true }
+        ]
+      },
+      "reward": {
+        "type": "percent_off",
+        "percent": 10,
+        "maxDiscountMinor": null,
+        "currency": "INR"
+      }
+    },
+    "rs_flat250": {
+      "version": 1,
+      "stackPolicy": "stackable",
+      "application": { "scope": "order", "allocate": "after_line_discounts" },
+      "eligibility": {
+        "all": [
+          { "op": "cart_subtotal_minor_gte", "value": 1999900 },
+          { "op": "channel_in", "values": ["web", "app"] }
+        ]
+      },
+      "reward": {
+        "type": "fixed_amount_off",
+        "amountMinor": 25000,
+        "currency": "INR"
+      }
+    },
+    "rs_b2g1_silk": {
+      "version": 1,
+      "stackPolicy": "exclusive",
+      "application": { "scope": "line", "allocate": "bxgy_cheapest_free" },
+      "eligibility": {
+        "all": [
+          { "op": "category_id_in_tree", "categoryId": "cat_silk" },
+          { "op": "line_quantity_gte", "value": 3 }
+        ]
+      },
+      "reward": {
+        "type": "buy_x_get_y",
+        "buyQuantity": 2,
+        "getQuantity": 1,
+        "sameProductId": false,
+        "groupKey": "promo_group_silk_may26",
+        "discountOnGet": { "kind": "percent", "percent": 100 },
+        "selectGetUnits": "lowest_priced_in_eligible_group",
+        "repeat": true
+      }
+    },
+    "rs_free_ship": {
+      "version": 1,
+      "stackPolicy": "stackable",
+      "application": { "scope": "shipping", "allocate": "shipping_fee_only" },
+      "eligibility": {
+        "all": [{ "op": "cart_subtotal_minor_gte", "value": 999900 }]
+      },
+      "reward": { "type": "free_shipping", "appliesTo": "standard_only", "currency": "INR" }
+    }
+  },
+  "localization": {
+    "strings": [
+      { "key": "product.p_kj001.title", "locale": "en-IN", "text": "Royal Kanjeevaram Zari" },
+      { "key": "product.p_kj001.title", "locale": "ta-IN", "text": "ராயல் காஞ்சிபுரம் சரி" },
+      { "key": "productType.saree.name", "locale": "en-IN", "text": "Saree" },
+      { "key": "attr.color", "locale": "en-IN", "text": "Colour" },
+      { "key": "attr.border", "locale": "en-IN", "text": "Border" },
+      { "key": "attrValue.color.maroon", "locale": "en-IN", "text": "Maroon" },
+      { "key": "attrValue.border.gold3cm", "locale": "en-IN", "text": "Gold 3 cm" },
+      { "key": "unit.ea", "locale": "en-IN", "text": "Each" },
+      { "key": "unit.meter", "locale": "en-IN", "text": "Metre" },
+      { "key": "collection.pongal2026.title", "locale": "en-IN", "text": "Pongal Edit 2026" },
+      { "key": "fulfillment.std_in.name", "locale": "en-IN", "text": "Standard India delivery" }
+    ]
+  },
+  "derived": {
+    "productListingSignals": [
+      {
+        "productId": "p_kj001",
+        "computedAt": "2026-05-10T06:05:00.000Z",
+        "sourceVersion": "hash-of-source-rows-or-seq",
+        "sellable": true,
+        "recentlyAdded": false,
+        "recentlyRestocked": true,
+        "newMedia": true,
+        "lastRestockedAt": "2026-05-01T08:00:00.000Z",
+        "lastMediaUploadAt": "2026-04-30T11:00:00.000Z",
+        "note": "No duplicate publishedAt here — read from source.products; booleans from tenant window config"
+      }
+    ],
+    "skuListingSignals": [
+      {
+        "skuId": "sku_kj_mar_g3",
+        "computedAt": "2026-05-10T06:05:00.000Z",
+        "atp": 16,
+        "sellable": true,
+        "backInStockAt": "2026-05-01T08:00:00.000Z",
+        "wasOutOfStockBefore": true
+      }
+    ]
+  },
+  "analytics": {
+    "productViewDaily": [
+      { "productId": "p_kj001", "date": "2026-05-09", "views": 1840, "uniqueVisitors": 920 },
+      { "productId": "p_kj001", "date": "2026-05-10", "views": 2103, "uniqueVisitors": 1050 }
+    ],
+    "productTrendScores": [
+      {
+        "productId": "p_kj001",
+        "window": "7d",
+        "score": 87.42,
+        "computedAt": "2026-05-10T06:00:00.000Z",
+        "components": { "orders7d": 42, "views7d": 12500, "ratingDelta7d": 0.08, "returns7d": 1 }
+      }
+    ],
+    "productRatingAggregates": [
+      {
+        "productId": "p_kj001",
+        "avgRating": 4.6,
+        "count1": 2,
+        "count2": 3,
+        "count3": 8,
+        "count4": 24,
+        "count5": 61,
+        "lastComputedAt": "2026-05-10T06:00:00.000Z"
+      }
+    ]
+  },
+  "engagement": {
+    "reviews": [
+      {
+        "id": "rev_1001",
+        "tenantId": "t1",
+        "productId": "p_kj001",
+        "skuId": "sku_kj_mar_g3",
+        "orderId": "ord_880",
+        "userId": "u_shopper_1",
+        "rating": 5,
+        "title": "Beautiful zari",
+        "body": "Colour matched the photos. Delivery was on time.",
+        "status": "published",
+        "createdAt": "2026-05-02T14:22:00.000Z"
+      }
+    ],
+    "productFeedback": [
+      {
+        "id": "fb_501",
+        "tenantId": "t1",
+        "productId": "p_kj001",
+        "skuId": "sku_kj_mar_g3",
+        "orderId": "ord_881",
+        "userId": "u_shopper_2",
+        "type": "size_chart",
+        "message": "Blouse length chart unclear for 5.5m variant.",
+        "status": "open",
+        "createdAt": "2026-05-08T11:05:00.000Z"
+      }
+    ],
+    "appFeedback": [
+      {
+        "id": "afb_01",
+        "tenantId": "t1",
+        "userId": null,
+        "scoreNps": 8,
+        "message": "Checkout smooth; wishlist on mobile would help.",
+        "route": "/cart",
+        "buildVersion": "sarees-market@0.1.0",
+        "createdAt": "2026-05-10T16:40:00.000Z"
+      }
+    ]
+  },
+  "commerceDocs": {
+    "activeOfferEvaluation": [
+      "Resolve promotion.promotionActivationPresets[promotion.activationPresetId] (or inline override)",
+      "AND promotion.status; AND schedule; AND ruleSet eligibility; AND redemption limits from ops extension table (not shown)"
+    ],
+    "resolveLocalizedTitle": "lookup localization.strings where key = product.titleL10nKey AND locale = request.locale else defaultLocale",
+    "optimisticWrites": "PATCH/PUT sends If-Match: product.version (integer); on mismatch return 412; on soft-deleted row deletedAt is non-null — exclude from default queries"
+  }
+}

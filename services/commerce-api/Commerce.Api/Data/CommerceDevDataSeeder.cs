@@ -549,7 +549,7 @@ public static class CommerceDevDataSeeder
     }
 
     /// <summary>
-    /// Idempotent: ensures <c>product_types</c> and <c>product_departments</c> lookups exist, drops legacy singular
+    /// Idempotent: ensures <c>product_departments</c> lookup exists, drops legacy singular
     /// <c>product_department</c> if present, and sets <c>product_categories</c> <c>ParentLookupTypeId</c> to
     /// <c>product_departments</c>. Use <see cref="EnsureProductCategoryLookupParentTypesAsync"/> to align
     /// <c>parent_value_id</c> on category values to department rows.
@@ -560,20 +560,7 @@ public static class CommerceDevDataSeeder
         const string deptPlural = "product_departments";
         const string deptLegacySingular = "product_department";
 
-        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == "product_types", ct))
-        {
-            db.LookupTypes.Add(new LookupType
-            {
-                TenantId = tid,
-                Id = "product_types",
-                Title = "Product types",
-                Description = "Shop assortment (Saree, Grocery, …); aligns with products.product_type_id.",
-                ParentLookupTypeId = null,
-                ParentFieldLabel = null,
-                EntryIdPrefix = "pt_"
-            });
-        }
-
+        const string typeApplication = "application_type";
         if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == deptPlural, ct))
         {
             db.LookupTypes.Add(new LookupType
@@ -581,11 +568,18 @@ public static class CommerceDevDataSeeder
                 TenantId = tid,
                 Id = deptPlural,
                 Title = "Product departments",
-                Description = "Storefront departments; product_categories.parent_value_id references these rows.",
-                ParentLookupTypeId = null,
-                ParentFieldLabel = null,
+                Description = "Storefront departments; parent_value_id is an application_type row (e.g. app_cafe).",
+                ParentLookupTypeId = typeApplication,
+                ParentFieldLabel = "Application type",
                 EntryIdPrefix = "dept_"
             });
+            await db.SaveChangesAsync(ct);
+        }
+        else
+        {
+            var deptType = await db.LookupTypes.FirstAsync(t => t.TenantId == tid && t.Id == deptPlural, ct);
+            deptType.ParentLookupTypeId = typeApplication;
+            deptType.ParentFieldLabel = "Application type";
             await db.SaveChangesAsync(ct);
         }
 
@@ -607,36 +601,6 @@ public static class CommerceDevDataSeeder
             db.LookupTypes.Remove(legacyDeptType);
             await db.SaveChangesAsync(ct);
         }
-
-        if (!await db.LookupValues.AnyAsync(v => v.TenantId == tid && v.Id == "pt_saree", ct))
-        {
-            db.LookupValues.Add(new LookupValue
-            {
-                Id = "pt_saree",
-                TenantId = tid,
-                LookupTypeId = "product_types",
-                Code = "pt_saree",
-                Label = "Saree",
-                SortOrder = 10,
-                ParentValueId = null
-            });
-        }
-
-        if (!await db.LookupValues.AnyAsync(v => v.TenantId == tid && v.Id == "pt_grocery", ct))
-        {
-            db.LookupValues.Add(new LookupValue
-            {
-                Id = "pt_grocery",
-                TenantId = tid,
-                LookupTypeId = "product_types",
-                Code = "pt_grocery",
-                Label = "Grocery",
-                SortOrder = 20,
-                ParentValueId = null
-            });
-        }
-
-        await db.SaveChangesAsync(ct);
 
         await EnsureProductCategoriesLookupTypeAsync(db, ct);
 
@@ -705,11 +669,11 @@ public static class CommerceDevDataSeeder
     }
 
     /// <summary>
-    /// Idempotent: mark the legacy Kanjeevaram seed as <c>pt_saree</c> so storefronts can filter by product type.
+    /// Idempotent: mark the legacy Kanjeevaram seed as <c>app_sr</c> so storefronts can filter by application type.
     /// </summary>
     public static async Task EnsureLegacySareeProductTypeAsync(CommerceDbContext db, CancellationToken ct = default)
     {
-        const string sareeType = "pt_saree";
+        const string sareeType = "app_sr";
         var p = await db.Products.FirstOrDefaultAsync(x => x.Id == "p_kj001", ct);
         if (p is null)
             return;
@@ -801,7 +765,7 @@ public static class CommerceDevDataSeeder
     }
 
     /// <summary>
-    /// Idempotent: sample grocery <c>product_categories</c> + <c>pt_grocery</c> products for the Groceries storefront (tenant <c>t1</c>).
+    /// Idempotent: sample grocery <c>product_categories</c> + <c>app_gr</c> products for the Groceries storefront (tenant <c>t1</c>).
     /// When <paramref name="mediaRootForBlobWrites"/> is set, writes tiny JPEG blobs for demo hero paths.
     /// </summary>
     public static async Task EnsureGroceryCatalogDevSeedAsync(
@@ -810,7 +774,7 @@ public static class CommerceDevDataSeeder
         CancellationToken ct = default)
     {
         const string tid = "t1";
-        const string typeGrocery = "pt_grocery";
+        const string typeGrocery = "app_gr";
 
         await EnsureGroceryStorefrontAisleLookupsAsync(db, ct);
 
@@ -928,117 +892,173 @@ public static class CommerceDevDataSeeder
     }
 
     /// <summary>
-    /// Idempotent <c>application_type</c> + legacy <c>app_type</c> lookups. Each row's <c>parent_value_id</c>
-    /// points at <c>product_types</c> so API + storefront apps stay in sync.
+    /// Idempotent <c>application_type</c> lookup (Sarees, Groceries, Café). Stored on products/orders as
+    /// <c>product_type_id</c>. Removes legacy <c>product_types</c> / <c>app_type</c> duplicates.
     /// </summary>
     public static async Task EnsureAppTypeLookupSeedAsync(CommerceDbContext db, CancellationToken ct = default)
     {
         const string tid = "t1";
-        const string productTypes = "product_types";
+        const string legacyProductTypes = "product_types";
         const string typeApplication = "application_type";
-        const string typeLegacy = "app_type";
+        const string legacyAppType = "app_type";
 
-        foreach (var typeId in new[] { typeApplication, typeLegacy })
-        {
-            if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == typeId, ct))
-            {
-                db.LookupTypes.Add(new LookupType
-                {
-                    TenantId = tid,
-                    Id = typeId,
-                    Title = "Application type",
-                    Description = "Storefront vertical; parent_value_id references product_types.id (stored on products as product_type_id).",
-                    ParentLookupTypeId = productTypes,
-                    ParentFieldLabel = "Product type",
-                    EntryIdPrefix = "app_"
-                });
-                await db.SaveChangesAsync(ct);
-            }
-            else
-            {
-                var existing = await db.LookupTypes.FirstAsync(t => t.TenantId == tid && t.Id == typeId, ct);
-                if (!string.Equals(existing.ParentLookupTypeId, productTypes, StringComparison.Ordinal))
-                {
-                    existing.ParentLookupTypeId = productTypes;
-                    existing.ParentFieldLabel = "Product type";
-                    await db.SaveChangesAsync(ct);
-                }
-            }
-        }
-
-        const string ptGrocery = "pt_grocery";
-        const string ptSaree = "pt_saree";
-
-        foreach (var lt in new[] { typeApplication, typeLegacy })
-        {
-            await UpsertAppTypeValueAsync(db, tid, lt, "app_gr", "gr", "Groceries", 10, ptGrocery, ct);
-            await UpsertAppTypeValueAsync(db, tid, lt, "app_sr", "sr", "Sarees", 20, ptSaree, ct);
-        }
-    }
-
-    /// <summary>
-    /// Idempotent: fulfillment dropdowns for admin/vendor order screens (codes stored on <c>storefront_orders.FulfillmentStatus</c>).
-    /// </summary>
-    public static async Task EnsureOrderFulfillmentStatusLookupsAsync(CommerceDbContext db, CancellationToken ct = default)
-    {
-        const string tid = "t1";
-        const string adminLt = "order_fulfillment_status";
-        const string vendorLt = "order_fulfillment_status_vendor";
-
-        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == adminLt, ct))
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == typeApplication, ct))
         {
             db.LookupTypes.Add(new LookupType
             {
                 TenantId = tid,
-                Id = adminLt,
+                Id = typeApplication,
+                Title = "Application type",
+                Description = "Storefront vertical (Sarees, Groceries, Café). Saved on products as product_type_id (e.g. app_cafe).",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "app_"
+            });
+            await db.SaveChangesAsync(ct);
+        }
+        else
+        {
+            var existing = await db.LookupTypes.FirstAsync(t => t.TenantId == tid && t.Id == typeApplication, ct);
+            existing.Title = "Application type";
+            existing.Description =
+                "Storefront vertical (Sarees, Groceries, Café). Saved on products as product_type_id (e.g. app_cafe).";
+            existing.ParentLookupTypeId = null;
+            existing.ParentFieldLabel = null;
+            await db.SaveChangesAsync(ct);
+        }
+
+        foreach (var child in await db.LookupTypes
+                     .Where(t => t.TenantId == tid && t.ParentLookupTypeId == legacyAppType)
+                     .ToListAsync(ct))
+            child.ParentLookupTypeId = typeApplication;
+
+        var legacyAppValues = await db.LookupValues
+            .Where(v => v.TenantId == tid && v.LookupTypeId == legacyAppType)
+            .ToListAsync(ct);
+        if (legacyAppValues.Count > 0)
+            db.LookupValues.RemoveRange(legacyAppValues);
+
+        var legacyAppTypeRow = await db.LookupTypes.FirstOrDefaultAsync(t => t.TenantId == tid && t.Id == legacyAppType, ct);
+        if (legacyAppTypeRow is not null)
+            db.LookupTypes.Remove(legacyAppTypeRow);
+
+        await db.SaveChangesAsync(ct);
+
+        await UpsertAppTypeValueAsync(db, tid, typeApplication, "app_gr", "gr", "Groceries", 10, null, ct);
+        await UpsertAppTypeValueAsync(db, tid, typeApplication, "app_sr", "sr", "Sarees", 20, null, ct);
+        await UpsertAppTypeValueAsync(db, tid, typeApplication, "app_cafe", "cafe", "Café", 30, null, ct);
+
+        await MigrateLegacyProductTypeIdsToApplicationTypeAsync(db, tid, ct);
+
+        var legacyProductTypeValues = await db.LookupValues
+            .Where(v => v.TenantId == tid && v.LookupTypeId == legacyProductTypes)
+            .ToListAsync(ct);
+        if (legacyProductTypeValues.Count > 0)
+            db.LookupValues.RemoveRange(legacyProductTypeValues);
+
+        var legacyProductTypesRow = await db.LookupTypes.FirstOrDefaultAsync(t => t.TenantId == tid && t.Id == legacyProductTypes, ct);
+        if (legacyProductTypesRow is not null)
+            db.LookupTypes.Remove(legacyProductTypesRow);
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task MigrateLegacyProductTypeIdsToApplicationTypeAsync(
+        CommerceDbContext db,
+        string tenantId,
+        CancellationToken ct)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["pt_saree"] = "app_sr",
+            ["pt_grocery"] = "app_gr",
+            ["pt_cafe"] = "app_cafe",
+        };
+
+        foreach (var (legacy, app) in map)
+        {
+            var childLookups = await db.LookupValues
+                .Where(v => v.TenantId == tenantId && v.ParentValueId == legacy)
+                .ToListAsync(ct);
+            foreach (var v in childLookups)
+                v.ParentValueId = app;
+
+            var products = await db.Products
+                .Where(p => p.TenantId == tenantId && p.ProductTypeId == legacy)
+                .ToListAsync(ct);
+            foreach (var p in products)
+                p.ProductTypeId = app;
+
+            var orders = await db.StorefrontOrders
+                .Where(o => o.TenantId == tenantId && o.ProductTypeId == legacy)
+                .ToListAsync(ct);
+            foreach (var o in orders)
+                o.ProductTypeId = app;
+        }
+
+        var appRows = await db.LookupValues
+            .Where(v => v.TenantId == tenantId && v.LookupTypeId == "application_type")
+            .ToListAsync(ct);
+        foreach (var row in appRows)
+        {
+            var parent = row.ParentValueId?.Trim();
+            if (parent is not null && map.ContainsKey(parent))
+                row.ParentValueId = null;
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Idempotent: single <c>order_fulfillment_status</c> lookup (shopper timeline + vendor-assignable codes).
+    /// Removes legacy duplicate <c>order_fulfillment_status_vendor</c> type if present.
+    /// </summary>
+    public static async Task EnsureOrderFulfillmentStatusLookupsAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string lookupTypeId = "order_fulfillment_status";
+        const string legacyVendorLt = "order_fulfillment_status_vendor";
+
+        var existingType = await db.LookupTypes.FirstOrDefaultAsync(t => t.TenantId == tid && t.Id == lookupTypeId, ct);
+        if (existingType is null)
+        {
+            db.LookupTypes.Add(new LookupType
+            {
+                TenantId = tid,
+                Id = lookupTypeId,
                 Title = "Order fulfillment status",
-                Description = "Full shopper tracking timeline (placed through delivered, cancelled). Not assigned by admins.",
+                Description = "Order lifecycle codes (placed → delivered, cancelled, rejected). Vendors assign in review through rejected; placed/delivered are system-facing.",
                 ParentLookupTypeId = null,
                 ParentFieldLabel = null,
                 EntryIdPrefix = "ofs_"
             });
             await db.SaveChangesAsync(ct);
         }
-
-        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == vendorLt, ct))
+        else
         {
-            db.LookupTypes.Add(new LookupType
-            {
-                TenantId = tid,
-                Id = vendorLt,
-                Title = "Order fulfillment status (vendor)",
-                Description = "Statuses vendors may assign (in review, confirmed, pack, ship, cancel, reject).",
-                ParentLookupTypeId = null,
-                ParentFieldLabel = null,
-                EntryIdPrefix = "ofv_"
-            });
+            existingType.Description =
+                "Order lifecycle codes (placed → delivered, cancelled, rejected). Vendors assign in review through rejected; placed/delivered are system-facing.";
             await db.SaveChangesAsync(ct);
         }
 
-        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_placed", "placed", "Placed", 10, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_inreview", "inreview", "In review", 15, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_confirmed", "confirmed", "Confirmed", 20, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_packed", "packed", "Packed", 30, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_shipped", "shipped", "Shipped", 40, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_delivered", "delivered", "Delivered", 50, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_cancelled", "cancelled", "Cancelled", 90, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, adminLt, "ofs_rejected", "rejected", "Rejected", 95, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, lookupTypeId, "ofs_placed", "placed", "Placed", 10, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, lookupTypeId, "ofs_inreview", "inreview", "In review", 15, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, lookupTypeId, "ofs_confirmed", "confirmed", "Confirmed", 20, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, lookupTypeId, "ofs_packed", "packed", "Packed", 30, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, lookupTypeId, "ofs_shipped", "shipped", "Shipped", 40, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, lookupTypeId, "ofs_delivered", "delivered", "Delivered", 50, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, lookupTypeId, "ofs_cancelled", "cancelled", "Cancelled", 90, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, lookupTypeId, "ofs_rejected", "rejected", "Rejected", 95, ct);
 
-        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_inreview", "inreview", "In review", 15, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_confirmed", "confirmed", "Confirmed", 20, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_packed", "packed", "Packed", 30, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_shipped", "shipped", "Shipped", 40, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_cancelled", "cancelled", "Cancelled", 90, ct);
-        await UpsertFulfillmentStatusValueAsync(db, tid, vendorLt, "ofv_rejected", "rejected", "Rejected", 95, ct);
-
-        var obsoleteVendorStatusIds = new[] { "ofv_placed" };
-        var obsolete = await db.LookupValues
-            .Where(v => v.TenantId == tid && v.LookupTypeId == vendorLt && obsoleteVendorStatusIds.Contains(v.Id))
+        var legacyVendorValues = await db.LookupValues
+            .Where(v => v.TenantId == tid && v.LookupTypeId == legacyVendorLt)
             .ToListAsync(ct);
-        if (obsolete.Count > 0)
-        {
-            db.LookupValues.RemoveRange(obsolete);
-        }
+        if (legacyVendorValues.Count > 0)
+            db.LookupValues.RemoveRange(legacyVendorValues);
+
+        var legacyVendorType = await db.LookupTypes.FirstOrDefaultAsync(t => t.TenantId == tid && t.Id == legacyVendorLt, ct);
+        if (legacyVendorType is not null)
+            db.LookupTypes.Remove(legacyVendorType);
 
         await db.SaveChangesAsync(ct);
     }
@@ -1084,12 +1104,16 @@ public static class CommerceDevDataSeeder
         string code,
         string label,
         int sortOrder,
-        string? productTypeParentId,
+        string? parentValueId,
         CancellationToken ct)
     {
         var row = await db.LookupValues.FirstOrDefaultAsync(
-            v => v.TenantId == tenantId && v.LookupTypeId == lookupTypeId && v.Id == id,
+            v => v.TenantId == tenantId && v.Id == id,
             ct);
+        row ??= await db.LookupValues.FirstOrDefaultAsync(
+            v => v.TenantId == tenantId && v.LookupTypeId == lookupTypeId && v.Code == code,
+            ct);
+
         if (row is null)
         {
             db.LookupValues.Add(new LookupValue
@@ -1100,16 +1124,19 @@ public static class CommerceDevDataSeeder
                 Code = code,
                 Label = label,
                 SortOrder = sortOrder,
-                ParentValueId = productTypeParentId
+                ParentValueId = parentValueId
             });
         }
         else
         {
+            row.LookupTypeId = lookupTypeId;
             row.Code = code;
             row.Label = label;
             row.SortOrder = sortOrder;
-            if (!string.IsNullOrEmpty(productTypeParentId))
-                row.ParentValueId = productTypeParentId;
+            if (parentValueId is null || parentValueId.StartsWith("app_", StringComparison.Ordinal))
+                row.ParentValueId = parentValueId;
+            else if (parentValueId.StartsWith("pt_", StringComparison.Ordinal))
+                row.ParentValueId = null;
         }
 
         await db.SaveChangesAsync(ct);
@@ -1166,6 +1193,123 @@ public static class CommerceDevDataSeeder
                 ct);
         await db.LookupValues.Where(v => v.TenantId == tid).ExecuteDeleteAsync(ct);
         await db.LookupTypes.Where(t => t.TenantId == tid).ExecuteDeleteAsync(ct);
+    }
+
+    /// <summary>
+    /// Idempotent: <c>order_channel</c> + <c>cafe_order_status</c> for dine-in / QR / aggregator workflows.
+    /// </summary>
+    public static async Task EnsureCafeOrderWorkflowLookupsAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string channelLt = "order_channel";
+        const string statusLt = "cafe_order_status";
+
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == channelLt, ct))
+        {
+            db.LookupTypes.Add(new LookupType
+            {
+                TenantId = tid,
+                Id = channelLt,
+                Title = "Order channel",
+                Description = "Café order source: dine-in POS, QR, or aggregator.",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "ch_"
+            });
+        }
+
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == statusLt, ct))
+        {
+            db.LookupTypes.Add(new LookupType
+            {
+                TenantId = tid,
+                Id = statusLt,
+                Title = "Café order status",
+                Description = "Kitchen / POS lifecycle (dine-in, QR, aggregator).",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "cos_"
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        await UpsertFulfillmentStatusValueAsync(db, tid, channelLt, "ch_dine_in", "dine_in", "Dine-in (POS)", 10, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, channelLt, "ch_qr", "qr", "QR order", 20, ct);
+        await UpsertFulfillmentStatusValueAsync(db, tid, channelLt, "ch_aggregator", "aggregator", "Aggregator", 30, ct);
+
+        foreach (var row in Commerce.Api.Orders.CafeOrderWorkflow.AllStatusRows())
+        {
+            var id = $"cos_{row.Code}";
+            if (id.Length > 64) id = id[..64];
+            await UpsertFulfillmentStatusValueAsync(db, tid, statusLt, id, row.Code, row.Label, row.SortOrder, ct);
+        }
+    }
+
+    /// <summary>
+    /// Idempotent: <c>cafe_table_sections</c> and <c>cafe_tables</c> lookup types for café table management (JsonForm workspace).
+    /// </summary>
+    public static async Task EnsureCafeTableLookupsAsync(CommerceDbContext db, CancellationToken ct = default)
+    {
+        const string tid = "t1";
+        const string sections = "cafe_table_sections";
+        const string tables = "cafe_tables";
+
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == sections, ct))
+        {
+            db.LookupTypes.Add(new LookupType
+            {
+                TenantId = tid,
+                Id = sections,
+                Title = "Café table sections",
+                Description = "Dining areas (indoor, patio, bar) for table management.",
+                ParentLookupTypeId = null,
+                ParentFieldLabel = null,
+                EntryIdPrefix = "tsec_"
+            });
+        }
+
+        if (!await db.LookupTypes.AnyAsync(t => t.TenantId == tid && t.Id == tables, ct))
+        {
+            db.LookupTypes.Add(new LookupType
+            {
+                TenantId = tid,
+                Id = tables,
+                Title = "Café tables",
+                Description = "Dining tables; parent is a café table section. Code is the table number at checkout.",
+                ParentLookupTypeId = sections,
+                ParentFieldLabel = "Section",
+                EntryIdPrefix = "tbl_"
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        if (!await db.LookupValues.AnyAsync(v => v.TenantId == tid && v.LookupTypeId == sections, ct))
+        {
+            db.LookupValues.AddRange(
+                new LookupValue
+                {
+                    Id = "tsec_indoor",
+                    TenantId = tid,
+                    LookupTypeId = sections,
+                    Code = "indoor",
+                    Label = "Indoor",
+                    SortOrder = 10,
+                    ParentValueId = null
+                },
+                new LookupValue
+                {
+                    Id = "tsec_patio",
+                    TenantId = tid,
+                    LookupTypeId = sections,
+                    Code = "patio",
+                    Label = "Patio",
+                    SortOrder = 20,
+                    ParentValueId = null
+                });
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     /// <summary>Idempotent dev row so the storefront sponsored rail has one sample placement.</summary>

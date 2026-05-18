@@ -37,7 +37,10 @@ public static class CatalogProductDetailAssembler
             .Where(p => p.TenantId == tenantId && p.Status == "active")
             .Where(p => !string.IsNullOrWhiteSpace(id) ? p.Id == id : p.Slug == slug);
         if (tid is not null)
-            q = q.Where(p => p.ProductTypeId == tid);
+        {
+            var matchIds = await CatalogApplicationVertical.ResolveProductTypeIdsForCatalogFilterAsync(db, tenantId, tid, ct);
+            q = q.Where(p => p.ProductTypeId != null && matchIds.Contains(p.ProductTypeId));
+        }
 
         var row = await q
             .Select(p => new ProductDetailSource(

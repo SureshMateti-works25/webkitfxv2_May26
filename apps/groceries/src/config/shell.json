@@ -1,6 +1,7 @@
 {
   "app": {
     "name": "Nistta Groceries",
+    "applicationTypeLabel": "Groceries",
     "tagline": "Same Nistta shell as fashion — fresh aisles, search, cart, and account chrome for the grocery vertical."
   },
   "brand": {

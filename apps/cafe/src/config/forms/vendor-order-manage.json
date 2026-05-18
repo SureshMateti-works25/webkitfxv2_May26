@@ -1,0 +1,29 @@
+{
+  "id": "vendor-order-manage",
+  "title": "Update order",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      { "type": "field", "fieldId": "fulfillmentStatus" },
+      { "type": "field", "fieldId": "trackingNote" }
+    ]
+  },
+  "fields": {
+    "fulfillmentStatus": {
+      "binding": "fulfillmentStatus",
+      "widget": "select",
+      "label": "Fulfillment status",
+      "default": "",
+      "rules": [{ "kind": "required", "message": "Select a fulfillment status." }]
+    },
+    "trackingNote": {
+      "binding": "trackingNote",
+      "widget": "textarea",
+      "label": "Kitchen / floor note",
+      "props": { "rows": 2, "placeholder": "e.g. Table 12 · extra napkins · allergy: nuts" },
+      "default": ""
+    }
+  }
+}

@@ -7,17 +7,21 @@
     "packages/core-engine",
     "packages/react-renderer",
     "apps/demo",
+    "packages/commerce-screens",
     "apps/sarees",
-    "apps/groceries"
+    "apps/groceries",
+    "apps/cafe"
   ],
   "scripts": {
-    "build": "npm run build -w @webkitfxv2/core-engine && npm run build -w @webkitfxv2/react-renderer",
+    "build": "npm run build -w @webkitfxv2/core-engine && npm run build -w @webkitfxv2/react-renderer && npm run build -w @webkitfxv2/commerce-screens",
     "build:demo": "npm run build && npm run build -w webkitfxv2-demo",
     "build:sarees": "npm run build && npm run build -w sarees-market",
     "build:groceries": "npm run build && npm run build -w groceries-market",
+    "build:cafe": "npm run build && npm run build -w cafe-market",
     "dev": "npm run build && npm run dev -w webkitfxv2-demo",
     "dev:sarees": "npm run build && npm run dev -w sarees-market",
     "dev:groceries": "npm run build && npm run dev -w groceries-market",
+    "dev:cafe": "npm run build && npm run dev -w cafe-market",
     "dev:sarees:stack": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-sarees-stack.ps1",
     "dev:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-sarees-stack.ps1",
     "dev:commerce:apps": "concurrently -k -n sarees,groceries -c green,cyan \"npm run dev -w sarees-market\" \"npm run dev -w groceries-market\"",

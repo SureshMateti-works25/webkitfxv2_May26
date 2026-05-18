@@ -174,6 +174,10 @@ public static class CatalogEndpoints
             return Results.Ok(rowsExclude);
         }
 
+        var canonicalFilter = await CatalogApplicationVertical.ResolveToProductTypeIdAsync(
+            db, tenantId, productTypeFilter, ct);
+        var productTypeMatch = CatalogApplicationVertical.ProductTypeIdsMatchingVertical(canonicalFilter);
+
         var categoryIdsWithType = await (
             from c in db.LookupValues.AsNoTracking()
             join pc in db.ProductCategories.AsNoTracking() on c.Id equals pc.CategoryId
@@ -182,7 +186,8 @@ public static class CatalogEndpoints
                   && c.LookupTypeId == catType
                   && p.TenantId == tenantId
                   && p.Status == "active"
-                  && p.ProductTypeId == productTypeFilter
+                  && p.ProductTypeId != null
+                  && productTypeMatch.Contains(p.ProductTypeId)
             select c.Id).Distinct().ToListAsync(ct);
 
         var allCats = await db.LookupValues.AsNoTracking()
@@ -313,12 +318,19 @@ public static class CatalogEndpoints
         if (productTypeId is not null)
             excludeProductTypeId = null;
 
+        HashSet<string>? verticalProductTypeIds = null;
+        if (productTypeId is not null)
+        {
+            verticalProductTypeIds = await CatalogApplicationVertical.ResolveProductTypeIdsForCatalogFilterAsync(
+                db, tenantId, productTypeId, ct);
+        }
+
         var scope = CatalogListingQueries.ResolveCategoryScope(db, tenantId, categoryIdQ, includeSubtree);
         var facetPairs = CatalogListingQueries.ParseFacetFilters(filters);
 
         var now = DateTimeOffset.UtcNow;
         var baseQ = CatalogListingQueries.BaseProductQuery(
-            db, tenantId, scope, collectionIdQ, search, now, slug, productTypeId, excludeProductTypeId);
+            db, tenantId, scope, collectionIdQ, search, now, slug, verticalProductTypeIds, excludeProductTypeId);
         var filtered = CatalogListingQueries.ApplyFacetFilters(db, baseQ, facetPairs);
         var sorted = CatalogListingQueries.ApplySort(filtered, sort);
 
@@ -775,10 +787,17 @@ public static class CatalogEndpoints
         if (productTypeId is not null)
             excludeProductTypeId = null;
 
+        HashSet<string>? verticalProductTypeIds = null;
+        if (productTypeId is not null)
+        {
+            verticalProductTypeIds = await CatalogApplicationVertical.ResolveProductTypeIdsForCatalogFilterAsync(
+                db, tenantId, productTypeId, ct);
+        }
+
         var scope = CatalogListingQueries.ResolveCategoryScope(db, tenantId, categoryId, includeSubtree);
         var now = DateTimeOffset.UtcNow;
         var baseQ = CatalogListingQueries.BaseProductQuery(
-            db, tenantId, scope, collectionId, search, now, slug: null, productTypeId, excludeProductTypeId);
+            db, tenantId, scope, collectionId, search, now, slug: null, verticalProductTypeIds, excludeProductTypeId);
 
         var defs = await db.AttributeDefs.AsNoTracking()
             .Where(d => d.TenantId == tenantId && d.Filterable)

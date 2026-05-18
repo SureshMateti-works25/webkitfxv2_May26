@@ -50,8 +50,13 @@ public static class StorefrontCheckoutEndpoints
         if (linesIn.Count == 0)
             return Results.BadRequest(new { error = "At least one line is required." });
 
-        var productTypeId = (body.ProductTypeId ?? "pt_saree").Trim();
-        if (productTypeId.Length == 0) productTypeId = "pt_saree";
+        var productTypeId = (body.ProductTypeId ?? "app_sr").Trim();
+        if (productTypeId.Length == 0) productTypeId = "app_sr";
+
+        var canonicalProductTypeId = await CatalogApplicationVertical.ResolveToProductTypeIdAsync(
+            db, tenantId, productTypeId, ct);
+        var allowedProductTypeIds = await CatalogApplicationVertical.ResolveProductTypeIdsForCatalogFilterAsync(
+            db, tenantId, productTypeId, ct);
 
         var shopperUserId = UserId(req.HttpContext.User);
         var now = DateTimeOffset.UtcNow;
@@ -76,8 +81,9 @@ public static class StorefrontCheckoutEndpoints
             if (!products.TryGetValue(productId, out var product))
                 return Results.BadRequest(new { error = $"Unknown product: {productId}" });
 
-            if (!string.IsNullOrWhiteSpace(product.ProductTypeId)
-                && !string.Equals(product.ProductTypeId, productTypeId, StringComparison.Ordinal))
+            var lineProductTypeId = product.ProductTypeId?.Trim();
+            if (!string.IsNullOrEmpty(lineProductTypeId)
+                && !allowedProductTypeIds.Contains(lineProductTypeId))
             {
                 return Results.BadRequest(new { error = $"Product {productId} is not in storefront scope." });
             }
@@ -123,6 +129,17 @@ public static class StorefrontCheckoutEndpoints
             : JsonSerializer.Serialize(body.ShippingAddress);
         var shippingText = FormatShippingAddress(body.ShippingAddress);
 
+        var isCafe = await FulfillmentStatusLookup.IsCafeVerticalOrderAsync(db, tenantId, productTypeId, ct);
+        var orderChannel = isCafe
+            ? CafeOrderWorkflow.NormalizeChannel(body.OrderChannel)
+            : null;
+        var tableCode = isCafe && !string.IsNullOrWhiteSpace(body.TableCode)
+            ? body.TableCode.Trim()[..Math.Min(32, body.TableCode.Trim().Length)]
+            : null;
+        var initialFulfillment = isCafe
+            ? CafeOrderWorkflow.InitialStatusForChannel(orderChannel)
+            : Placed;
+
         var order = new StorefrontOrder
         {
             Id = orderId,
@@ -132,9 +149,13 @@ public static class StorefrontCheckoutEndpoints
             ShopperName = string.IsNullOrWhiteSpace(body.ShopperName) ? null : body.ShopperName.Trim(),
             ShopperPhone = string.IsNullOrWhiteSpace(body.ShopperPhone) ? null : body.ShopperPhone.Trim(),
             ShippingAddressJson = shippingJson,
-            ProductTypeId = productTypeId,
+            ProductTypeId = canonicalProductTypeId.Length > 64
+                ? canonicalProductTypeId[..64]
+                : canonicalProductTypeId,
+            OrderChannel = orderChannel,
+            TableCode = tableCode,
             Status = "placed",
-            FulfillmentStatus = Placed,
+            FulfillmentStatus = initialFulfillment,
             TrackingNote = null,
             StatusUpdatedAt = now,
             PaymentMethod = (body.PaymentMethod ?? "mock").Trim(),
@@ -198,7 +219,7 @@ public static class StorefrontCheckoutEndpoints
 
         await emailNotifier.NotifyOrderPlacedAsync(emailCtx, adminRecipients, vendorRecipients, ct);
 
-        var progression = await FulfillmentStatusLookup.LoadAsync(db, tenantId, FulfillmentStatusLookup.AdminLookupTypeId, ct);
+        var progression = await FulfillmentStatusLookup.LoadProgressionForOrderAsync(db, tenantId, order, ct);
         return Results.Created($"/api/v1/storefront/checkout/orders/{orderId}", StorefrontOrderDtoMapper.ToDto(order, fulfillmentProgression: progression));
     }
 
@@ -287,6 +308,9 @@ public static class StorefrontCheckoutEndpoints
         public string? ShopperPhone { get; set; }
         public ShippingAddressDto? ShippingAddress { get; set; }
         public string? ProductTypeId { get; set; }
+        /// <summary>Café: dine_in | qr | aggregator.</summary>
+        public string? OrderChannel { get; set; }
+        public string? TableCode { get; set; }
         public string? PaymentMethod { get; set; }
         public string? PaymentStatus { get; set; }
         public List<PlaceStorefrontOrderLineRequest>? Lines { get; set; }

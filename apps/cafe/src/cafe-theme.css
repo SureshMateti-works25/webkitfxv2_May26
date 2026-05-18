@@ -1,0 +1,502 @@
+/**
+ * Nistta Café — full storefront theme via CSS custom properties.
+ * Maps legacy --nistta-* / --theme-* tokens used in app-shell.css.
+ */
+
+/* ─── Design tokens ─────────────────────────────────────────────────────────── */
+.shell-root.shell-root--cafe {
+  color-scheme: light;
+
+  /* Typography */
+  --cafe-font-display: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --cafe-font-ui: "DM Sans", system-ui, sans-serif;
+
+  /* Palette */
+  --cafe-espresso: #1c1410;
+  --cafe-mocha: #2f2218;
+  --cafe-mocha-soft: #453528;
+  --cafe-latte: #f3ebe0;
+  --cafe-cream: #faf6f0;
+  --cafe-foam: #fffcf8;
+  --cafe-paper: #fffefb;
+  --cafe-caramel: #c9a66b;
+  --cafe-honey: #d9b978;
+  --cafe-copper: #a67c52;
+  --cafe-sage: #5a7d62;
+  --cafe-rose: #9e6b5c;
+  --cafe-ink: #2a2118;
+  --cafe-ink-muted: #6f6256;
+  --cafe-ink-faint: #9a8d80;
+  --cafe-line: rgba(47, 34, 24, 0.1);
+  --cafe-line-strong: rgba(47, 34, 24, 0.18);
+  --cafe-shadow-sm: 0 2px 8px rgba(28, 20, 16, 0.06);
+  --cafe-shadow-md: 0 10px 28px rgba(28, 20, 16, 0.1);
+  --cafe-shadow-lg: 0 18px 48px rgba(28, 20, 16, 0.12);
+  --cafe-radius-sm: 10px;
+  --cafe-radius-md: 14px;
+  --cafe-radius-lg: 20px;
+  --cafe-radius-pill: 999px;
+
+  /* Chrome */
+  --cafe-header-bg: var(--cafe-mocha);
+  --cafe-header-ink: #faf6f0;
+  --cafe-header-muted: rgba(250, 246, 240, 0.78);
+  --cafe-header-accent: var(--cafe-caramel);
+  --cafe-header-hit: 3.35rem;
+  --cafe-body-bg: var(--cafe-latte);
+  --cafe-body-pattern: radial-gradient(ellipse 120% 80% at 50% -20%, rgba(201, 166, 107, 0.14), transparent 55%),
+    radial-gradient(circle at 100% 0%, rgba(90, 125, 98, 0.06), transparent 40%);
+
+  /* Legacy aliases (app-shell.css) */
+  --font-display: var(--cafe-font-display);
+  --font-ui: var(--cafe-font-ui);
+  --nistta-header: var(--cafe-copper);
+  --nistta-header-deep: var(--cafe-mocha);
+  --nistta-header-ink: var(--cafe-espresso);
+  --nistta-cream: var(--cafe-cream);
+  --nistta-cream-muted: var(--cafe-latte);
+  --nistta-cream-bar: #e8ddd0;
+  --nistta-ink: var(--cafe-ink);
+  --nistta-ink-muted: var(--cafe-ink-muted);
+  --nistta-purple: var(--cafe-copper);
+  --nistta-green: var(--cafe-sage);
+  --nistta-gold: var(--cafe-caramel);
+  --nistta-brand: var(--cafe-copper);
+  --nistta-surface: var(--cafe-paper);
+
+  --theme-focus: var(--cafe-honey);
+  --theme-link: var(--cafe-copper);
+  --theme-link-hover: var(--cafe-mocha-soft);
+  --theme-accent-soft: rgba(166, 124, 82, 0.12);
+  --theme-accent-soft-strong: rgba(166, 124, 82, 0.18);
+  --theme-accent-border: rgba(166, 124, 82, 0.28);
+  --theme-accent-border-strong: rgba(69, 53, 40, 0.4);
+  --theme-primary-gradient: linear-gradient(165deg, var(--cafe-copper) 0%, var(--cafe-mocha-soft) 100%);
+  --theme-primary-shadow: rgba(28, 20, 16, 0.22);
+  --theme-primary-shadow-strong: rgba(28, 20, 16, 0.32);
+  --theme-strap-bar: #ebe3d6;
+  --theme-strap-text: var(--cafe-ink);
+  --theme-header-chrome: var(--cafe-header-bg);
+  --shell-header-hit: var(--cafe-header-hit);
+}
+
+/* Page canvas (outside .shell-root) */
+html:has(.shell-root--cafe),
+body:has(.shell-root--cafe) {
+  background: var(--cafe-latte);
+  color: var(--cafe-ink);
+  font-family: var(--cafe-font-ui);
+}
+
+/* ─── Header — espresso bar, text-first brand ─────────────────────────────── */
+.shell-root.shell-root--cafe .shell-header {
+  background: var(--cafe-header-bg);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  box-shadow: var(--cafe-shadow-md);
+}
+
+.shell-root.shell-root--cafe .shell-header--enterprise::before {
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--cafe-caramel) 22%,
+    var(--cafe-honey) 50%,
+    var(--cafe-caramel) 78%,
+    transparent 100%
+  );
+}
+
+.shell-root.shell-root--cafe .shell-brand {
+  gap: 0;
+  color: var(--cafe-header-ink);
+}
+
+.shell-root.shell-root--cafe .shell-brand-img {
+  display: none;
+}
+
+.shell-root.shell-root--cafe .shell-brand-text {
+  gap: 0.15rem;
+  padding: 0.1rem 0;
+}
+
+.shell-root.shell-root--cafe .shell-brand-name {
+  font-family: var(--cafe-font-display);
+  font-size: clamp(1.15rem, 3.5vw, 1.45rem);
+  font-weight: 600;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  color: var(--cafe-header-ink);
+  max-width: none;
+  opacity: 1;
+}
+
+.shell-root.shell-root--cafe .shell-brand-app-type {
+  font-family: var(--cafe-font-ui);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cafe-header-accent);
+  opacity: 1;
+}
+
+.shell-root.shell-root--cafe .shell-nav a,
+.shell-root.shell-root--cafe .shell-header-actions button,
+.shell-root.shell-root--cafe .shell-menu-toggle {
+  color: var(--cafe-header-muted);
+}
+
+.shell-root.shell-root--cafe .shell-nav a:hover,
+.shell-root.shell-root--cafe .shell-nav a.is-active,
+.shell-root.shell-root--cafe .shell-header-actions button:hover {
+  color: var(--cafe-header-ink);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.shell-root.shell-root--cafe .shell-nav a.is-active {
+  color: var(--cafe-header-ink);
+  background: rgba(201, 166, 107, 0.18);
+  border-color: rgba(201, 166, 107, 0.35);
+}
+
+/* ─── Body & layout ─────────────────────────────────────────────────────────── */
+.shell-root.shell-root--cafe {
+  background: var(--cafe-body-bg);
+  background-image: var(--cafe-body-pattern);
+  background-attachment: fixed;
+}
+
+.shell-root.shell-root--cafe .shell-body {
+  background: transparent;
+}
+
+.shell-root.shell-root--cafe .storefront-wrap {
+  background: transparent;
+  padding-top: 0.5rem;
+}
+
+.shell-root.shell-root--cafe .shell-breadcrumb {
+  background: rgba(255, 252, 248, 0.72);
+  border-bottom: 1px solid var(--cafe-line);
+  backdrop-filter: blur(8px);
+}
+
+.shell-root.shell-root--cafe .shell-breadcrumb a {
+  color: var(--cafe-copper);
+}
+
+.shell-root.shell-root--cafe .shell-breadcrumb a:hover {
+  color: var(--cafe-mocha);
+}
+
+/* ─── Footer — warm dark wood ───────────────────────────────────────────────── */
+.shell-root.shell-root--cafe .shell-footer {
+  background: var(--cafe-espresso);
+  color: rgba(250, 246, 240, 0.88);
+  border-top: 3px solid var(--cafe-caramel);
+}
+
+.shell-root.shell-root--cafe .shell-footer h3 {
+  color: var(--cafe-caramel);
+  font-family: var(--cafe-font-ui);
+  letter-spacing: 0.1em;
+}
+
+.shell-root.shell-root--cafe .shell-footer .shell-footer__app-title,
+.shell-root.shell-root--cafe .shell-app-name {
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+/* ─── Landing ───────────────────────────────────────────────────────────────── */
+.shell-root.shell-root--cafe .landing-strap {
+  background: var(--cafe-espresso);
+  color: var(--cafe-header-muted);
+  border-bottom: none;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.shell-root.shell-root--cafe .landing-hero--nistta-cream {
+  background: linear-gradient(155deg, var(--cafe-paper) 0%, var(--cafe-cream) 45%, var(--cafe-latte) 100%);
+  border: 1px solid var(--cafe-line);
+  border-radius: var(--cafe-radius-lg);
+  box-shadow: var(--cafe-shadow-sm);
+}
+
+.shell-root.shell-root--cafe .landing-hero--nistta-cream .landing-hero__title {
+  font-family: var(--cafe-font-display);
+  font-weight: 600;
+  font-style: italic;
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .landing-hero--nistta-cream .landing-hero__kicker {
+  color: var(--cafe-copper);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.shell-root.shell-root--cafe .landing-hero--nistta-cream .landing-actions a[data-variant="primary"] {
+  background: var(--theme-primary-gradient);
+  color: var(--cafe-foam);
+  border: none;
+  border-radius: var(--cafe-radius-pill);
+  box-shadow: 0 4px 14px var(--theme-primary-shadow);
+}
+
+.shell-root.shell-root--cafe .landing-hero--nistta-cream .landing-actions a[data-variant="secondary"] {
+  border-radius: var(--cafe-radius-pill);
+  border-color: var(--cafe-line-strong);
+  color: var(--cafe-mocha);
+}
+
+.shell-root.shell-root--cafe .landing-highlights__item {
+  background: var(--cafe-paper);
+  border: 1px solid var(--cafe-line);
+  border-radius: var(--cafe-radius-md);
+}
+
+/* ─── Café menu home (HomeCatalogRails) ─────────────────────────────────────── */
+.shell-root.shell-root--cafe .storefront-cafe-hero {
+  margin-bottom: 2.25rem;
+  padding: 2rem 1.25rem 1.75rem;
+  text-align: center;
+  background: var(--cafe-paper);
+  border: 1px solid var(--cafe-line);
+  border-radius: var(--cafe-radius-lg);
+  box-shadow: var(--cafe-shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201, 166, 107, 0.12), transparent 70%);
+  pointer-events: none;
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-hero__title {
+  position: relative;
+  margin: 0 0 0.6rem;
+  font-family: var(--cafe-font-display);
+  font-size: clamp(1.75rem, 5vw, 2.35rem);
+  font-weight: 600;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-hero__intro {
+  position: relative;
+  margin: 0 auto 1.15rem;
+  max-width: 32rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--cafe-ink-muted);
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-hero__cta {
+  position: relative;
+  padding: 0.6rem 1.35rem;
+  border-radius: var(--cafe-radius-pill);
+  font-weight: 700;
+  color: var(--cafe-foam);
+  background: var(--theme-primary-gradient);
+  border: none;
+  box-shadow: 0 4px 16px var(--theme-primary-shadow);
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-hero__cta:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 6px 20px var(--theme-primary-shadow-strong);
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-menu__dept {
+  margin-bottom: 2.5rem;
+  padding: 1.5rem 1.15rem 1.75rem;
+  background: var(--cafe-paper);
+  border: 1px solid var(--cafe-line);
+  border-radius: var(--cafe-radius-lg);
+  box-shadow: var(--cafe-shadow-sm);
+  border-bottom: 1px solid var(--cafe-line);
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-menu__dept-title {
+  margin: 0 0 1.35rem;
+  padding-bottom: 0.65rem;
+  font-family: var(--cafe-font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--cafe-espresso);
+  border-bottom: 2px solid var(--cafe-caramel);
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-menu__category-title {
+  font-family: var(--cafe-font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--cafe-mocha);
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-menu__category-see-all {
+  color: var(--cafe-copper);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-menu__category-see-all:hover {
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-menu__products {
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
+}
+
+.shell-root.shell-root--cafe .storefront-cafe-menu__empty {
+  color: var(--cafe-ink-faint);
+  font-style: italic;
+}
+
+/* ─── Product cards — menu tiles ────────────────────────────────────────────── */
+.shell-root.shell-root--cafe .storefront-product-card {
+  border-radius: var(--cafe-radius-md);
+  border: 1px solid var(--cafe-line);
+  background: var(--cafe-paper);
+  box-shadow: var(--cafe-shadow-sm);
+}
+
+.shell-root.shell-root--cafe .storefront-product-card:hover {
+  border-color: var(--cafe-line-strong);
+  box-shadow: var(--cafe-shadow-md);
+  transform: translateY(-3px);
+  background: var(--cafe-foam);
+}
+
+.shell-root.shell-root--cafe .storefront-product-card__title {
+  font-family: var(--cafe-font-display);
+  font-weight: 600;
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .storefront-product-card__add {
+  background: var(--theme-primary-gradient);
+  color: var(--cafe-foam);
+  box-shadow: 0 3px 10px var(--theme-primary-shadow);
+}
+
+.shell-root.shell-root--cafe .storefront-product-card__add:hover {
+  filter: brightness(1.06);
+}
+
+.shell-root.shell-root--cafe .storefront-category-card {
+  border-radius: var(--cafe-radius-md);
+  background: var(--cafe-paper);
+  border-color: var(--cafe-line);
+}
+
+.shell-root.shell-root--cafe .storefront-category-card__name {
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+}
+
+/* ─── Rails, browse, PDP ────────────────────────────────────────────────────── */
+.shell-root.shell-root--cafe .storefront-rail__title,
+.shell-root.shell-root--cafe .storefront-categories__title {
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+  color: var(--cafe-espresso);
+}
+
+.shell-root.shell-root--cafe .pdp-page--storefront {
+  background: transparent;
+}
+
+.shell-root.shell-root--cafe .pdp-page__title {
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+}
+
+/* ─── Cart, checkout, login ─────────────────────────────────────────────────── */
+.shell-root.shell-root--cafe .cart-page,
+.shell-root.shell-root--cafe .checkout-page,
+.shell-root.shell-root--cafe .login-enterprise-wrap {
+  --page-surface: var(--cafe-paper);
+}
+
+.shell-root.shell-root--cafe .login-enterprise-wrap {
+  background: var(--cafe-latte);
+  background-image: var(--cafe-body-pattern);
+}
+
+.shell-root.shell-root--cafe .login-card {
+  border-radius: var(--cafe-radius-lg);
+  border-color: var(--cafe-line);
+  box-shadow: var(--cafe-shadow-lg);
+  background: var(--cafe-paper);
+}
+
+.shell-root.shell-root--cafe .login-enterprise-panel {
+  background: linear-gradient(160deg, var(--cafe-mocha) 0%, var(--cafe-espresso) 100%);
+}
+
+.shell-root.shell-root--cafe .screen-page__title {
+  font-family: var(--cafe-font-display);
+  font-style: italic;
+}
+
+/* ─── JsonForm (vendor / admin in café shell) ─────────────────────────────────── */
+.shell-root.shell-root--cafe .webkitfx-json-form.webkitfx-theme:not(.webkitfx-theme--dark) {
+  --fx-font: var(--cafe-font-ui);
+  --fx-accent: var(--cafe-copper);
+  --fx-accent-soft: var(--theme-accent-soft);
+  --fx-accent-hover: var(--cafe-mocha-soft);
+  --fx-focus: 0 0 0 3px rgba(201, 166, 107, 0.45);
+}
+
+/* ─── KDS / vendor orders ───────────────────────────────────────────────────── */
+.shell-root.shell-root--cafe .kds-order-header__table-wrap {
+  background: rgba(201, 166, 107, 0.2);
+  border-color: rgba(201, 166, 107, 0.45);
+}
+
+.shell-root.shell-root--cafe .kds-order-header__table-value {
+  color: var(--cafe-espresso);
+}
+
+/* ─── Edge chrome & promos ──────────────────────────────────────────────────── */
+.shell-root.shell-root--cafe .shell-edge-cta {
+  background: var(--cafe-mocha);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.shell-root.shell-root--cafe .shell-promo-card {
+  border-radius: var(--cafe-radius-md);
+  border-color: var(--cafe-line);
+  background: var(--cafe-paper);
+}
+
+@media (min-width: 768px) {
+  .shell-root.shell-root--cafe .shell-header-inner {
+    padding-inline: max(1.25rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-left));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell-root.shell-root--cafe .storefront-product-card:hover {
+    transform: none;
+  }
+}

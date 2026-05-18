@@ -8,6 +8,7 @@ import type { ShellConfig, ShellNavItem } from "../config/shell.types.js";
 type JsonHeaderProps = {
   shell: ShellConfig;
   auth: AuthState;
+  applicationTypeLabel: string;
   onSignOut: () => void;
   onContinueGuest: () => void;
 };
@@ -31,7 +32,13 @@ function navForAuth(shell: ShellConfig, auth: AuthState): ShellNavItem[] {
   return shell.header.navByAuth[roleKey(auth)] ?? [];
 }
 
-export function JsonHeader({ shell, auth, onSignOut, onContinueGuest }: JsonHeaderProps) {
+export function JsonHeader({
+  shell,
+  auth,
+  applicationTypeLabel,
+  onSignOut,
+  onContinueGuest,
+}: JsonHeaderProps) {
   const navigate = useNavigate();
   const { totalQuantity: cartQty } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -83,9 +90,17 @@ export function JsonHeader({ shell, auth, onSignOut, onContinueGuest }: JsonHead
           >
             <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
-          <Link to="/" className="shell-brand" onClick={() => setMobileOpen(false)} aria-label={`${shell.app.name} home`}>
+          <Link
+            to="/"
+            className="shell-brand"
+            onClick={() => setMobileOpen(false)}
+            aria-label={`${shell.app.name}, ${applicationTypeLabel}`}
+          >
             <img className="shell-brand-img" src={shell.brand.logoSrc} alt="" width={216} height={45} decoding="async" />
-            <span className="shell-brand-sr">{shell.app.name}</span>
+            <span className="shell-brand-text">
+              <span className="shell-brand-name">{shell.app.name}</span>
+              <span className="shell-brand-app-type">{applicationTypeLabel}</span>
+            </span>
           </Link>
         </div>
 

@@ -1,0 +1,86 @@
+{
+  "version": "1",
+  "lookupTypes": [
+    {
+      "id": "regions",
+      "title": "Regions",
+      "description": "Top-level geography (no parent).",
+      "parentLookupId": null,
+      "entryIdPrefix": "reg_"
+    },
+    {
+      "id": "cities",
+      "title": "Cities",
+      "description": "Cities belong to a region.",
+      "parentLookupId": "regions",
+      "parentFieldLabel": "Region",
+      "entryIdPrefix": "city_"
+    },
+    {
+      "id": "payment_methods",
+      "title": "Payment methods",
+      "description": "Standalone lookup with no parent.",
+      "parentLookupId": null,
+      "entryIdPrefix": "pay_"
+    },
+    {
+      "id": "application_type",
+      "title": "Application type",
+      "description": "Storefront vertical (Café, Groceries, Sarees). Saved on products as product_type_id (e.g. app_cafe). Departments and categories are parented on these rows.",
+      "parentLookupId": null,
+      "entryIdPrefix": "app_"
+    },
+    {
+      "id": "product_departments",
+      "title": "Product departments",
+      "description": "Menu departments; parent is an application_type row (e.g. app_cafe).",
+      "parentLookupId": "application_type",
+      "parentFieldLabel": "Application type",
+      "entryIdPrefix": "dept_"
+    },
+    {
+      "id": "product_categories",
+      "title": "Product categories",
+      "description": "Menu categories. Parent is a department or application_type. Code = URL slug for /browse/:categorySlug.",
+      "parentLookupId": "product_departments",
+      "parentFieldLabel": "Department",
+      "entryIdPrefix": "cat_"
+    },
+    {
+      "id": "order_fulfillment_status",
+      "title": "Order fulfillment status",
+      "description": "Full order lifecycle (placed → delivered, cancelled, rejected). Vendor forms use in review–rejected only.",
+      "parentLookupId": null,
+      "entryIdPrefix": "ofs_"
+    },
+    {
+      "id": "order_channel",
+      "title": "Order channel",
+      "description": "Café order source: dine_in, qr, aggregator.",
+      "parentLookupId": null,
+      "entryIdPrefix": "ch_"
+    },
+    {
+      "id": "cafe_order_status",
+      "title": "Café order status",
+      "description": "Kitchen / POS lifecycle statuses for dine-in, QR, and aggregator orders.",
+      "parentLookupId": null,
+      "entryIdPrefix": "cos_"
+    },
+    {
+      "id": "cafe_table_sections",
+      "title": "Café table sections",
+      "description": "Dining areas (indoor, patio, bar) for table management.",
+      "parentLookupId": null,
+      "entryIdPrefix": "tsec_"
+    },
+    {
+      "id": "cafe_tables",
+      "title": "Café tables",
+      "description": "Dining tables; parent is a café table section. Code = table number at checkout.",
+      "parentLookupId": "cafe_table_sections",
+      "parentFieldLabel": "Section",
+      "entryIdPrefix": "tbl_"
+    }
+  ]
+}
