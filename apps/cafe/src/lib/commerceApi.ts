@@ -1,3 +1,10 @@
+import { commerceTenantHeaders as runtimeTenantHeaders } from "@webkitfxv2/storefront-runtime";
+import {
+  getCommerceTenantId,
+  getEffectiveStorefrontRuntime,
+  getStorefrontMode,
+} from "../dev/devTenantStore.js";
+
 /**
  * Base URL for Commerce.Api (auth, catalog, media).
  * - If `VITE_COMMERCE_API_URL` / `VITE_CATALOG_API_URL` is set → use it (Azure CI, or override local).
@@ -13,11 +20,12 @@ const LOCAL_COMMERCE_ORIGIN = "http://localhost:5055";
 /** Baked into CI builds when VITE_COMMERCE_API_URL secret is set at deploy time. */
 const PRODUCTION_COMMERCE_API_FALLBACK =
   "https://commerce-api-webkitfx-dev-a6asafebfmgcctak.southindia-01.azurewebsites.net";
+/** Dev without env: same-origin `/api` via Vite proxy (stable; no CORS). */
 const BASE =
   trimmed && trimmed.length > 0
     ? trimmed
     : import.meta.env.DEV
-      ? LOCAL_COMMERCE_ORIGIN
+      ? ""
       : PRODUCTION_COMMERCE_API_FALLBACK;
 
 export type AuthSuccess = {
@@ -27,6 +35,10 @@ export type AuthSuccess = {
   userId: string;
   email: string;
   role: string;
+  tenantId: string;
+  storefrontMode: string;
+  permissions: string[];
+  features: string[];
 };
 
 async function parseAuthResponse(res: Response): Promise<AuthSuccess> {
@@ -42,13 +54,17 @@ async function parseAuthResponse(res: Response): Promise<AuthSuccess> {
     userId: String(data.userId ?? ""),
     email: String(data.email ?? ""),
     role: String(data.role ?? "shopper"),
+    tenantId: String(data.tenantId ?? getCommerceTenantId()),
+    storefrontMode: String(data.storefrontMode ?? getStorefrontMode()),
+    permissions: Array.isArray(data.permissions) ? data.permissions.map(String) : [],
+    features: Array.isArray(data.features) ? data.features.map(String) : [],
   };
 }
 
 export async function loginWithPassword(email: string, password: string): Promise<AuthSuccess> {
   const res = await fetch(`${BASE}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
     body: JSON.stringify({ email, password }),
   });
   return parseAuthResponse(res);
@@ -64,7 +80,7 @@ export type RegisterParams = {
 export async function registerAccount(params: RegisterParams): Promise<AuthSuccess> {
   const res = await fetch(`${BASE}/api/v1/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
     body: JSON.stringify({
       email: params.email,
       password: params.password,
@@ -94,7 +110,7 @@ export async function changePassword(accessToken: string, currentPassword: strin
 export async function forgotPassword(email: string, newPassword: string): Promise<void> {
   const res = await fetch(`${BASE}/api/v1/auth/password/forgot`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
     body: JSON.stringify({ email, newPassword }),
   });
   if (!res.ok) {
@@ -121,6 +137,12 @@ function useRelativeDevMedia(): boolean {
   }
 }
 
+function apiOriginForMedia(): string {
+  if (BASE.length > 0) return BASE.replace(/\/$/, "");
+  if (import.meta.env.DEV) return LOCAL_COMMERCE_ORIGIN;
+  return PRODUCTION_COMMERCE_API_FALLBACK;
+}
+
 /**
  * Public URL for a stored media blob.
  * Default local dev: same-origin `/media/...` (Vite → Commerce.Api). Remote `VITE_COMMERCE_API_URL`: absolute under that base.
@@ -138,13 +160,25 @@ export function mediaAssetUrl(storageKey: string): string {
           .map((p) => encodeURIComponent(p))
           .join("/")}`;
   if (useRelativeDevMedia()) return path;
-  const origin = BASE.replace(/\/$/, "");
+  const origin = apiOriginForMedia();
   return `${origin}${path}`;
 }
 
-/** Default tenant for Commerce.Api (header `X-Tenant-Id`). */
-export const DEFAULT_COMMERCE_TENANT_ID =
-  (import.meta.env.VITE_COMMERCE_TENANT_ID as string | undefined)?.trim() || "t1";
+/** Default tenant for Commerce.Api (header `X-Tenant-Id`). Respects dev switcher override. */
+export function getDefaultCommerceTenantId(): string {
+  return getCommerceTenantId();
+}
+
+/** @deprecated Use {@link getDefaultCommerceTenantId} — value is not fixed at module load. */
+export const DEFAULT_COMMERCE_TENANT_ID = getCommerceTenantId();
+
+/** `marketplace` or `isolated_shop`. Respects dev switcher override. */
+export function getStorefrontModeForApp(): string {
+  return getStorefrontMode();
+}
+
+/** @deprecated Use {@link getStorefrontModeForApp}. */
+export const STOREFRONT_MODE = getStorefrontMode();
 
 /**
  * Storefront vertical: `application_type` lookup row id (e.g. `app_cafe`).
@@ -171,7 +205,7 @@ export function commerceAuthorizedHeaders(accessToken: string): HeadersInit {
   return {
     Accept: "application/json",
     "Content-Type": "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getCommerceTenantId(),
     Authorization: `Bearer ${accessToken}`,
   };
 }
@@ -179,7 +213,7 @@ export function commerceAuthorizedHeaders(accessToken: string): HeadersInit {
 export function commerceTenantHeaders(): HeadersInit {
   return {
     Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    ...runtimeTenantHeaders(getEffectiveStorefrontRuntime()),
   };
 }
 
@@ -1439,7 +1473,7 @@ export async function uploadVendorProductMedia(
 
   const headers: HeadersInit = {
     Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getCommerceTenantId(),
     Authorization: `Bearer ${accessToken}`,
   };
 
@@ -1473,7 +1507,7 @@ export async function uploadTenantMediaAsset(accessToken: string, file: File): P
 
   const headers: HeadersInit = {
     Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getCommerceTenantId(),
     Authorization: `Bearer ${accessToken}`,
   };
 
@@ -1494,6 +1528,414 @@ export async function uploadTenantMediaAsset(accessToken: string, file: File): P
   const publicUrl = data.publicUrl ?? data.PublicUrl ?? `/media/${storageKey}`;
   if (!id || !storageKey) throw new Error("Upload succeeded but response was incomplete.");
   return { id, storageKey, publicUrl };
+}
+
+/** Server-backed shopper cart (GET/POST /api/v1/cart) — scoped by tenant + portal user in Commerce.Api. */
+export type ShopperCartLineDto = {
+  lineId: string;
+  productId: string;
+  slug: string;
+  titleDisplay: string;
+  skuId: string | null;
+  skuCode: string | null;
+  quantity: number;
+  unitPriceMinor: number | null;
+  currency: string | null;
+  heroStorageKey: string | null;
+  vendorCode: string | null;
+  packLabel?: string | null;
+  packUnitType?: string | null;
+  packQuantity?: number | null;
+  unitsPerPack?: number | null;
+};
+
+export type ShopperCartLineInput = {
+  productId: string;
+  skuId?: string | null;
+  quantity: number;
+  unitPriceMinor?: number | null;
+  currency?: string | null;
+  packLabel?: string | null;
+  packUnitType?: string | null;
+  packQuantity?: number | null;
+  unitsPerPack?: number | null;
+};
+
+function mapShopperCartLine(raw: Record<string, unknown>): ShopperCartLineDto {
+  return {
+    lineId: String(raw.lineId ?? raw.LineId ?? ""),
+    productId: String(raw.productId ?? raw.ProductId ?? ""),
+    slug: String(raw.slug ?? raw.Slug ?? ""),
+    titleDisplay: String(raw.titleDisplay ?? raw.TitleDisplay ?? ""),
+    skuId: raw.skuId == null || raw.skuId === "" ? null : String(raw.skuId ?? raw.SkuId),
+    skuCode: raw.skuCode == null || raw.skuCode === "" ? null : String(raw.skuCode ?? raw.SkuCode),
+    quantity: Math.max(1, Math.floor(Number(raw.quantity ?? raw.Quantity ?? 1)) || 1),
+    unitPriceMinor:
+      raw.unitPriceMinor != null || raw.UnitPriceMinor != null
+        ? Number(raw.unitPriceMinor ?? raw.UnitPriceMinor)
+        : null,
+    currency: raw.currency == null ? null : String(raw.currency ?? raw.Currency),
+    heroStorageKey:
+      raw.heroStorageKey == null ? null : String(raw.heroStorageKey ?? raw.HeroStorageKey),
+    vendorCode: raw.vendorCode == null ? null : String(raw.vendorCode ?? raw.VendorCode),
+    packLabel: raw.packLabel == null ? null : String(raw.packLabel ?? raw.PackLabel),
+    packUnitType: raw.packUnitType == null ? null : String(raw.packUnitType ?? raw.PackUnitType),
+    packQuantity:
+      raw.packQuantity != null || raw.PackQuantity != null
+        ? Number(raw.packQuantity ?? raw.PackQuantity)
+        : null,
+    unitsPerPack:
+      raw.unitsPerPack != null || raw.UnitsPerPack != null
+        ? Number(raw.unitsPerPack ?? raw.UnitsPerPack)
+        : null,
+  };
+}
+
+async function parseCartLinesResponse(res: Response): Promise<ShopperCartLineDto[]> {
+  const data = (await res.json().catch(() => ({}))) as { lines?: unknown; error?: string };
+  if (!res.ok) {
+    throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+  }
+  const raw = data.lines;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((x): x is Record<string, unknown> => x != null && typeof x === "object")
+    .map((row) => mapShopperCartLine(row));
+}
+
+export async function fetchShopperCart(accessToken: string): Promise<ShopperCartLineDto[]> {
+  const res = await fetch(`${BASE}/api/v1/cart`, {
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  return parseCartLinesResponse(res);
+}
+
+export async function upsertShopperCartLine(
+  accessToken: string,
+  input: ShopperCartLineInput
+): Promise<ShopperCartLineDto[]> {
+  const res = await fetch(`${BASE}/api/v1/cart/lines`, {
+    method: "POST",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify({
+      productId: input.productId,
+      skuId: input.skuId ?? null,
+      quantity: input.quantity,
+      unitPriceMinor: input.unitPriceMinor ?? null,
+      currency: input.currency ?? null,
+      packLabel: input.packLabel ?? null,
+      packUnitType: input.packUnitType ?? null,
+      packQuantity: input.packQuantity ?? null,
+      unitsPerPack: input.unitsPerPack ?? null,
+    }),
+  });
+  return parseCartLinesResponse(res);
+}
+
+export async function setShopperCartLineQuantity(
+  accessToken: string,
+  lineId: string,
+  quantity: number
+): Promise<ShopperCartLineDto[]> {
+  const res = await fetch(`${BASE}/api/v1/cart/lines/${encodeURIComponent(lineId)}`, {
+    method: "PATCH",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify({ quantity }),
+  });
+  return parseCartLinesResponse(res);
+}
+
+export async function removeShopperCartLine(accessToken: string, lineId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/cart/lines/${encodeURIComponent(lineId)}`, {
+    method: "DELETE",
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+  }
+}
+
+export async function clearShopperCart(accessToken: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/cart`, {
+    method: "DELETE",
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok && res.status !== 204) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+  }
+}
+
+export type AuthMeResponse = {
+  userId: string;
+  email: string;
+  role: string;
+  permissionRole?: string;
+  tenantId: string;
+  storefrontMode: string;
+  vertical?: string | null;
+  permissions: string[];
+  features: string[];
+};
+
+export async function fetchAuthMe(accessToken: string): Promise<AuthMeResponse> {
+  const res = await fetch(`${BASE}/api/v1/auth/me`, {
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+  }
+  return {
+    userId: String(data.userId ?? ""),
+    email: String(data.email ?? ""),
+    role: String(data.role ?? "shopper"),
+    permissionRole: data.permissionRole == null ? undefined : String(data.permissionRole),
+    tenantId: String(data.tenantId ?? getCommerceTenantId()),
+    storefrontMode: String(data.storefrontMode ?? ""),
+    vertical: data.vertical == null ? null : String(data.vertical),
+    permissions: Array.isArray(data.permissions) ? data.permissions.map(String) : [],
+    features: Array.isArray(data.features) ? data.features.map(String) : [],
+  };
+}
+
+export type CommercePermissionCatalogEntry = {
+  id: string;
+  label: string;
+  group: string;
+};
+
+export type CommerceTenantRoleRow = {
+  id: string;
+  roleKey: string;
+  displayName: string;
+  description: string | null;
+  permissions: string[];
+  isSystem: boolean;
+  isBuiltIn: boolean;
+  createdAt: string | null;
+};
+
+export type CommerceTenantRolesResponse = {
+  permissionCatalog: CommercePermissionCatalogEntry[];
+  systemRoles: CommerceTenantRoleRow[];
+  customRoles: CommerceTenantRoleRow[];
+};
+
+function normalizePermissionCatalogEntry(raw: Record<string, unknown>): CommercePermissionCatalogEntry {
+  return {
+    id: String(raw.id ?? ""),
+    label: String(raw.label ?? raw.id ?? ""),
+    group: String(raw.group ?? "General"),
+  };
+}
+
+function normalizeTenantRoleRow(raw: Record<string, unknown>): CommerceTenantRoleRow {
+  const perms = Array.isArray(raw.permissions) ? raw.permissions.map((p) => String(p)) : [];
+  return {
+    id: String(raw.id ?? ""),
+    roleKey: String(raw.roleKey ?? ""),
+    displayName: String(raw.displayName ?? ""),
+    description: raw.description == null ? null : String(raw.description),
+    permissions: perms,
+    isSystem: raw.isSystem === true,
+    isBuiltIn: raw.isBuiltIn === true,
+    createdAt: raw.createdAt == null ? null : String(raw.createdAt),
+  };
+}
+
+export async function fetchTenantRoles(accessToken: string): Promise<CommerceTenantRolesResponse> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles`, {
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const catalog = Array.isArray(data.permissionCatalog)
+    ? data.permissionCatalog.map((x) => normalizePermissionCatalogEntry(x as Record<string, unknown>))
+    : [];
+  const systemRoles = Array.isArray(data.systemRoles)
+    ? data.systemRoles.map((x) => normalizeTenantRoleRow(x as Record<string, unknown>))
+    : [];
+  const customRoles = Array.isArray(data.customRoles)
+    ? data.customRoles.map((x) => normalizeTenantRoleRow(x as Record<string, unknown>))
+    : [];
+  return { permissionCatalog: catalog, systemRoles, customRoles };
+}
+
+export async function createTenantRole(
+  accessToken: string,
+  body: {
+    roleKey: string;
+    displayName: string;
+    description?: string | null;
+    permissions: string[];
+    isBuiltIn?: boolean;
+  }
+): Promise<CommerceTenantRoleRow> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles`, {
+    method: "POST",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizeTenantRoleRow((await res.json()) as Record<string, unknown>);
+}
+
+export async function updateTenantRole(
+  accessToken: string,
+  roleId: string,
+  body: {
+    displayName: string;
+    description?: string | null;
+    permissions: string[];
+  }
+): Promise<CommerceTenantRoleRow> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles/${encodeURIComponent(roleId)}`, {
+    method: "PUT",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizeTenantRoleRow((await res.json()) as Record<string, unknown>);
+}
+
+export async function deleteTenantRole(accessToken: string, roleId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles/${encodeURIComponent(roleId)}`, {
+    method: "DELETE",
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export type CommercePortalRoleAssignmentRow = {
+  id: string;
+  roleKey: string;
+  portalBaseRole: string;
+  isPrimary: boolean;
+  scopeJson: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  createdAt: string;
+};
+
+export type CommercePortalUserRoleAssignmentsResponse = {
+  portalUserId: string;
+  email: string;
+  portalRole: string;
+  assignments: CommercePortalRoleAssignmentRow[];
+};
+
+function normalizePortalRoleAssignmentRow(raw: Record<string, unknown>): CommercePortalRoleAssignmentRow {
+  return {
+    id: String(raw.id ?? ""),
+    roleKey: String(raw.roleKey ?? ""),
+    portalBaseRole: String(raw.portalBaseRole ?? ""),
+    isPrimary: raw.isPrimary === true,
+    scopeJson: raw.scopeJson == null ? null : String(raw.scopeJson),
+    validFrom: raw.validFrom == null ? null : String(raw.validFrom),
+    validTo: raw.validTo == null ? null : String(raw.validTo),
+    createdAt: String(raw.createdAt ?? ""),
+  };
+}
+
+export async function fetchPortalUserRoleAssignments(
+  accessToken: string,
+  portalUserId: string
+): Promise<CommercePortalUserRoleAssignmentsResponse> {
+  const res = await fetch(
+    `${BASE}/api/v1/portal-users/${encodeURIComponent(portalUserId)}/role-assignments`,
+    { headers: commerceAuthorizedHeaders(accessToken) }
+  );
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const assignments = Array.isArray(data.assignments)
+    ? data.assignments.map((x) => normalizePortalRoleAssignmentRow(x as Record<string, unknown>))
+    : [];
+  return {
+    portalUserId: String(data.portalUserId ?? portalUserId),
+    email: String(data.email ?? ""),
+    portalRole: String(data.portalRole ?? ""),
+    assignments,
+  };
+}
+
+export async function createPortalUserRoleAssignment(
+  accessToken: string,
+  portalUserId: string,
+  body: {
+    roleKey: string;
+    portalBaseRole: string;
+    isPrimary?: boolean;
+    scopeJson?: string | null;
+  }
+): Promise<CommercePortalRoleAssignmentRow> {
+  const res = await fetch(
+    `${BASE}/api/v1/portal-users/${encodeURIComponent(portalUserId)}/role-assignments`,
+    {
+      method: "POST",
+      headers: commerceAuthorizedHeaders(accessToken),
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizePortalRoleAssignmentRow((await res.json()) as Record<string, unknown>);
+}
+
+export async function updatePortalUserRoleAssignment(
+  accessToken: string,
+  portalUserId: string,
+  assignmentId: string,
+  body: {
+    roleKey?: string;
+    portalBaseRole: string;
+    isPrimary?: boolean;
+    scopeJson?: string | null;
+  }
+): Promise<CommercePortalRoleAssignmentRow> {
+  const res = await fetch(
+    `${BASE}/api/v1/portal-users/${encodeURIComponent(portalUserId)}/role-assignments/${encodeURIComponent(assignmentId)}`,
+    {
+      method: "PUT",
+      headers: commerceAuthorizedHeaders(accessToken),
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizePortalRoleAssignmentRow((await res.json()) as Record<string, unknown>);
+}
+
+export async function deletePortalUserRoleAssignment(
+  accessToken: string,
+  portalUserId: string,
+  assignmentId: string
+): Promise<void> {
+  const res = await fetch(
+    `${BASE}/api/v1/portal-users/${encodeURIComponent(portalUserId)}/role-assignments/${encodeURIComponent(assignmentId)}`,
+    { method: "DELETE", headers: commerceAuthorizedHeaders(accessToken) }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export async function seedTenantRoleDefaults(
+  accessToken: string,
+  roles: Array<{
+    roleKey: string;
+    displayName: string;
+    description?: string;
+    permissions: string[];
+  }>
+): Promise<CommerceTenantRoleRow[]> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles/seed-defaults`, {
+    method: "POST",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify({ roles }),
+  });
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const created = data.created;
+  if (!Array.isArray(created)) return [];
+  return created.map((x) => normalizeTenantRoleRow(x as Record<string, unknown>));
 }
 
 /** Backend URL for user-visible error strings. */

@@ -7,8 +7,11 @@ import type { ShellConfig, ShellNavItem } from "../config/shell.types.js";
 
 type JsonHeaderProps = {
   shell: ShellConfig;
+  displayName: string;
   auth: AuthState;
   applicationTypeLabel: string;
+  modeBadge?: string;
+  brandingLoading?: boolean;
   onSignOut: () => void;
   onContinueGuest: () => void;
 };
@@ -34,8 +37,11 @@ function navForAuth(shell: ShellConfig, auth: AuthState): ShellNavItem[] {
 
 export function JsonHeader({
   shell,
+  displayName,
   auth,
   applicationTypeLabel,
+  modeBadge,
+  brandingLoading,
   onSignOut,
   onContinueGuest,
 }: JsonHeaderProps) {
@@ -99,12 +105,26 @@ export function JsonHeader({
             to="/"
             className="shell-brand"
             onClick={() => setMobileOpen(false)}
-            aria-label={`${shell.app.name}, ${applicationTypeLabel}`}
+            aria-label={`${displayName}, ${applicationTypeLabel}`}
           >
-            <img className="shell-brand-img" src={shell.brand.logoSrc} alt="" width={216} height={45} decoding="async" />
+            <img
+              className="shell-brand-img"
+              src={shell.brand.logoSrc}
+              alt=""
+              width={216}
+              height={45}
+              decoding="async"
+            />
             <span className="shell-brand-text">
-              <span className="shell-brand-name">{shell.app.name}</span>
-              <span className="shell-brand-app-type">{applicationTypeLabel}</span>
+              <span className="shell-brand-name" aria-busy={brandingLoading}>
+                {displayName}
+              </span>
+              <span className="shell-brand-app-type">
+                {applicationTypeLabel}
+                {modeBadge && !applicationTypeLabel.includes(modeBadge) ? (
+                  <span className="shell-brand-mode-badge">{modeBadge}</span>
+                ) : null}
+              </span>
             </span>
           </Link>
         </div>
@@ -119,7 +139,9 @@ export function JsonHeader({
                 to={to}
                 end={navEnd}
                 title={item.label}
-                aria-label={item.label}
+                aria-label={
+                  item.path === "/cart" && cartQty > 0 ? `${item.label}, ${cartQty} items` : item.label
+                }
                 className={({ isActive }) =>
                   ["shell-nav-icon-btn", isActive ? "shell-nav-active" : ""].filter(Boolean).join(" ")
                 }

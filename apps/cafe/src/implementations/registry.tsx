@@ -25,6 +25,8 @@ import { VendorProductsPage } from "../pages/VendorProductsPage.js";
 import { QrTableMenuPage } from "../pages/QrTableMenuPage.js";
 import { TableManagementPage } from "../pages/TableManagementPage.js";
 import { TableFloorPlanPage } from "../pages/TableFloorPlanPage.js";
+import { RolesAdminPage } from "../pages/RolesAdminPage.js";
+import { UserRoleAssignmentsPage } from "../pages/UserRoleAssignmentsPage.js";
 import { VendorSignupPage } from "../pages/VendorSignupPage.js";
 
 function AdminVendorsPage() {
@@ -65,4 +67,6 @@ export const implementationRegistry: ImplementationRegistry = {
   vendorOrders: VendorOrdersPage,
   tableManagement: TableManagementPage,
   tableFloorPlan: TableFloorPlanPage,
+  rolesAdmin: RolesAdminPage,
+  userRoleAssignments: UserRoleAssignmentsPage,
 };

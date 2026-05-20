@@ -1,4 +1,4 @@
-import { commerceTenantHeaders, DEFAULT_COMMERCE_TENANT_ID, formatCommerceApiError } from "./commerceApi.js";
+import { commerceTenantHeaders, getDefaultCommerceTenantId, formatCommerceApiError } from "./commerceApi.js";
 
 const BASE =
   (import.meta.env.VITE_COMMERCE_API_URL as string | undefined)?.trim().replace(/\/$/, "") ||
@@ -50,7 +50,7 @@ function authHeaders(token: string): HeadersInit {
   return {
     ...commerceTenantHeaders(),
     Authorization: `Bearer ${token}`,
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getDefaultCommerceTenantId(),
   };
 }
 

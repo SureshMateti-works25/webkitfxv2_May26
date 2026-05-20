@@ -1,0 +1,10 @@
+{
+  "vertical": "sarees",
+  "permissionCatalog": [
+    { "id": "collections:view", "label": "View collections", "group": "Catalog" },
+    { "id": "collections:manage", "label": "Manage collections", "group": "Catalog" }
+  ],
+  "storefrontModeFeatures": {
+    "isolated_shop": ["curated_rails", "whatsapp_enquiry"]
+  }
+}

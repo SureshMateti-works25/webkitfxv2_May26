@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext.js";
 import { CartProvider } from "./cart/CartContext.js";
+import { TenantChromeProvider } from "./lib/useTenantChrome.js";
 import { AppChrome } from "./shell/AppChrome.js";
 import { HomePage } from "./pages/HomePage.js";
 import { LoginPage } from "./pages/LoginPage.js";
@@ -36,6 +37,7 @@ export function App() {
   return (
     <AuthProvider>
       <CartProvider>
+        <TenantChromeProvider>
         <BrowserRouter>
           <DevApiPing />
           <Routes>
@@ -64,6 +66,12 @@ export function App() {
               <Route path="/admin/storefront-ads" element={<StorefrontSponsoredAdsAdminPage />} />
               <Route path="/admin/vendors" element={<AdminPortalUsersPage directory="vendors" />} />
               <Route path="/admin/shoppers" element={<AdminPortalUsersPage directory="shoppers" />} />
+              <Route path="/vendor/roles" element={<RolesAdminPage />} />
+              <Route path="/admin/roles" element={<RolesAdminPage />} />
+              <Route
+                path="/admin/portal-users/:portalUserId/role-assignments"
+                element={<UserRoleAssignmentsPage />}
+              />
               <Route path="/admin/orders" element={<AdminOrdersPage />} />
               <Route path="/favourites" element={<DocStubPage />} />
               <Route path="/orders" element={<OrdersPage />} />
@@ -76,7 +84,8 @@ export function App() {
               <Route path="/legal/terms" element={<DocStubPage />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+        </TenantChromeProvider>
       </CartProvider>
     </AuthProvider>
   );

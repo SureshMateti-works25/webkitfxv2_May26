@@ -1,0 +1,44 @@
+{
+  "version": "1",
+  "screenId": "rolesAdmin",
+  "allowedRoles": ["vendor", "admin"],
+  "formId": "tenantRoleEntry",
+  "permissionGroupOrder": ["Operations", "Storefront", "Orders", "Catalog", "Access"],
+  "listColumns": [
+    { "id": "roleKey", "label": "Role key", "binding": "role.roleKey" },
+    { "id": "displayName", "label": "Name", "binding": "role.displayName" },
+    { "id": "permissions", "label": "Permissions", "source": "permissionCount" }
+  ],
+  "defaultRoles": [
+    {
+      "roleKey": "floor_manager",
+      "displayName": "Floor manager",
+      "description": "Manage tables, floor plan, and kitchen queue for this café.",
+      "permissions": [
+        "catalog:read",
+        "orders:read_vendor",
+        "floor_plan:view",
+        "floor_plan:manage",
+        "kitchen:view",
+        "kitchen:manage"
+      ]
+    },
+    {
+      "roleKey": "kitchen_lead",
+      "displayName": "Kitchen lead",
+      "description": "View and update order preparation status.",
+      "permissions": [
+        "catalog:read",
+        "orders:read_vendor",
+        "kitchen:view",
+        "kitchen:manage"
+      ]
+    },
+    {
+      "roleKey": "counter_staff",
+      "displayName": "Counter staff",
+      "description": "Take pickup orders and view the menu.",
+      "permissions": ["catalog:read", "orders:read_vendor", "kitchen:view"]
+    }
+  ]
+}

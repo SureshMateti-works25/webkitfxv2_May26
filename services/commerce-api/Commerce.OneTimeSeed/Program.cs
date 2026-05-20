@@ -70,7 +70,16 @@ if (string.Equals(Env("SEED_CLEAR_TENANT"), "true", StringComparison.OrdinalIgno
 
 if (!await db.Tenants.AnyAsync())
 {
-    db.Tenants.Add(new Tenant { Id = "t1", Name = "Acme Sarees", Slug = "acme" });
+    db.Tenants.Add(new Tenant
+    {
+        Id = "t1",
+        Name = "Acme Sarees",
+        Slug = "acme",
+        StorefrontMode = "isolated_shop",
+        Vertical = "sarees",
+        IsActive = true,
+        CreatedAt = DateTimeOffset.UtcNow
+    });
     await db.SaveChangesAsync();
     log.LogInformation("Inserted default tenant t1.");
 }

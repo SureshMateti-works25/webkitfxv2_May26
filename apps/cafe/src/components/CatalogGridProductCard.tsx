@@ -37,20 +37,26 @@ export function CatalogGridProductCard({ product, compactAddLabel, skin = "groce
       e.stopPropagation();
       const codes = (product.skuCodes ?? []).map((c) => c.trim()).filter(Boolean);
       const skuCode = codes.length > 0 ? codes[0]! : null;
-      addOrMergeLine({
-        productId: product.id,
-        slug: product.slug,
-        titleDisplay: product.titleDisplay,
-        skuId: null,
-        skuCode,
-        quantity: 1,
-        unitPriceMinor: snapshotCardUnitPriceMinor(product),
-        currency: product.currency,
-        heroStorageKey: product.heroStorageKey?.trim() || null,
-        vendorCode: product.vendorCode?.trim() || null,
-      });
-      setAddedFlash(true);
-      window.setTimeout(() => setAddedFlash(false), 1400);
+      void (async () => {
+        try {
+          await addOrMergeLine({
+            productId: product.id,
+            slug: product.slug,
+            titleDisplay: product.titleDisplay,
+            skuId: null,
+            skuCode,
+            quantity: 1,
+            unitPriceMinor: snapshotCardUnitPriceMinor(product),
+            currency: product.currency,
+            heroStorageKey: product.heroStorageKey?.trim() || null,
+            vendorCode: product.vendorCode?.trim() || null,
+          });
+          setAddedFlash(true);
+          window.setTimeout(() => setAddedFlash(false), 1400);
+        } catch {
+          /* sign-in required or API error */
+        }
+      })();
     },
     [addOrMergeLine, product]
   );

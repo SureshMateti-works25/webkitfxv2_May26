@@ -144,12 +144,14 @@
       "vendor": [
         { "label": "Profile", "path": "/account/profile" },
         { "label": "My products", "path": "/vendor/products" },
+        { "label": "Roles & permissions", "path": "/vendor/roles" },
         { "label": "Settings", "path": "/settings" }
       ],
       "admin": [
         { "label": "Profile", "path": "/account/profile" },
         { "label": "Vendors", "path": "/admin/vendors" },
         { "label": "Shoppers", "path": "/admin/shoppers" },
+        { "label": "Roles & permissions", "path": "/admin/roles" },
         { "label": "Orders", "path": "/admin/orders" },
         { "label": "Admin lookups mgt", "path": "/admin/lookups" },
         { "label": "Storefront sponsored ads", "path": "/admin/storefront-ads" }
@@ -295,40 +297,33 @@
   "screens": {
     "login": {
       "title": "Login",
-      "ribbon": "Trusted supplier & shopper portal · Configuration-driven screens (demo)",
       "cardTitle": "Welcome back",
-      "lede": "Sign in with the verified email and password for your account. Your role (shopper or vendor) is determined from that account — not chosen here.",
+      "lede": "Sign in with the email and password for your account. Your role (shopper or vendor) is determined from that account.",
       "guestCta": "Continue as guest",
       "submitMember": "Login",
       "signupLinks": [
         { "label": "New vendor account", "path": "/signup/vendor" },
         { "label": "New shopper profile", "path": "/signup/shopper" }
       ],
-      "enterprise": {
-        "eyebrow": "Enterprise retail · India",
-        "headline": "Run sarees today, groceries and LPG tomorrow on one rails",
-        "intro": "Operators are consolidating storefronts, dark stores, and route logistics onto unified order and identity stacks. Nistta is built as configuration-first commerce so you can swap vertical packs without rewriting screens — ideal when categories expand from high-touch apparel to repeat grocery baskets and regulated cylinder fulfilment.",
-        "trendsTitle": "What the market expects now",
-        "trends": [
+      "welcome": {
+        "eyebrow": "Groceries storefront",
+        "headline": "Welcome",
+        "intro": "Shop fresh aisles, schedule pickup or delivery, and manage your catalogue from one place.",
+        "highlightsTitle": "At this store",
+        "highlights": [
           {
-            "title": "Omnichannel truth, not slides",
-            "body": "Buyers research on mobile, pay with UPI, and expect the same profile whether they checkout as a guest or sign in later. Your stack should treat identity and consent as shared services."
+            "title": "Pickup & delivery",
+            "body": "Slot-based fulfilment configured per location in your ops JSON."
           },
           {
-            "title": "Quick commerce discipline",
-            "body": "SLA-driven fulfilment windows, cut-offs, and exception handling are table stakes. JSON-driven forms let you tune capture fields per city or hub without redeploying the host app."
+            "title": "Aisle browse",
+            "body": "Customers navigate your aisle layout without hard-coded category trees in code."
           },
           {
-            "title": "Trust & verification",
-            "body": "GST-linked vendors, KYC-light shoppers, and auditable contact roles reduce chargebacks and failed deliveries — capture them once at onboarding, re-use everywhere."
+            "title": "Saved basket",
+            "body": "Signed-in shoppers keep cart lines on the server for this tenant."
           }
-        ],
-        "metrics": [
-          { "label": "Repeat purchase lift", "value": "9–15%" },
-          { "label": "Support cost drop", "value": "18–24%" },
-          { "label": "Time-to-launch new vertical", "value": "days, not months" }
-        ],
-        "footerNote": "Roadmap: plug grocery catalogues and LPG subscription cycles into the same shell — business rules stay in JSON packs per vertical."
+        ]
       }
     },
     "vendorSignup": {

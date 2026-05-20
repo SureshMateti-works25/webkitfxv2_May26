@@ -7,9 +7,18 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useAuth } from "../auth/AuthContext.js";
+import { getCommerceTenantId } from "../dev/devTenantStore.js";
+import {
+  clearShopperCart,
+  fetchShopperCart,
+  removeShopperCartLine,
+  setShopperCartLineQuantity,
+  upsertShopperCartLine,
+  type ShopperCartLineDto,
+} from "../lib/commerceApi.js";
 
-const STORAGE_KEY = "sarees.storefront.cart.v1";
-const MAX_LINES = 60;
+const LEGACY_CART_KEYS = ["sarees.storefront.cart.v1", "cafe.storefront.cart.v1"];
 
 export type CartLine = {
   lineId: string;
@@ -25,119 +34,171 @@ export type CartLine = {
   vendorCode: string | null;
 };
 
-function newLineId(): string {
-  return `ln_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
+export type CartLineInput = Omit<CartLine, "lineId">;
 
-function normalizeLine(raw: unknown): CartLine | null {
-  if (raw == null || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const productId = String(o.productId ?? o.ProductId ?? "").trim();
-  if (!productId) return null;
-  const qty = Math.max(1, Math.min(999, Math.floor(Number(o.quantity ?? o.Quantity ?? 1)) || 1));
+function fromDto(d: ShopperCartLineDto): CartLine {
   return {
-    lineId: String(o.lineId ?? o.LineId ?? newLineId()),
-    productId,
-    slug: String(o.slug ?? o.Slug ?? ""),
-    titleDisplay: String(o.titleDisplay ?? o.TitleDisplay ?? ""),
-    skuId: o.skuId == null || o.skuId === "" ? null : String(o.skuId),
-    skuCode: o.skuCode == null || o.skuCode === "" ? null : String(o.skuCode),
-    quantity: qty,
-    unitPriceMinor:
-      o.unitPriceMinor != null || o.UnitPriceMinor != null
-        ? Number(o.unitPriceMinor ?? o.UnitPriceMinor)
-        : null,
-    currency: o.currency == null ? null : String(o.currency ?? o.Currency),
-    heroStorageKey: o.heroStorageKey == null ? null : String(o.heroStorageKey ?? o.HeroStorageKey),
-    vendorCode: o.vendorCode == null ? null : String(o.vendorCode ?? o.VendorCode),
+    lineId: d.lineId,
+    productId: d.productId,
+    slug: d.slug,
+    titleDisplay: d.titleDisplay,
+    skuId: d.skuId,
+    skuCode: d.skuCode,
+    quantity: d.quantity,
+    unitPriceMinor: d.unitPriceMinor,
+    currency: d.currency,
+    heroStorageKey: d.heroStorageKey,
+    vendorCode: d.vendorCode,
   };
 }
 
-function readLines(): CartLine[] {
+function purgeLegacyCartStorage(): void {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeLine).filter((x): x is CartLine => x != null);
+    for (const key of LEGACY_CART_KEYS) {
+      localStorage.removeItem(key);
+    }
+    const prefix = "cafe.storefront.cart.v1.";
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(prefix)) localStorage.removeItem(key);
+    }
   } catch {
-    return [];
-  }
-}
-
-function writeLines(lines: CartLine[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lines.slice(0, MAX_LINES)));
-  } catch {
-    /* quota */
+    /* private mode */
   }
 }
 
 type CartContextValue = {
+  tenantId: string;
   lines: CartLine[];
+  loading: boolean;
   totalQuantity: number;
-  addOrMergeLine: (input: Omit<CartLine, "lineId">) => void;
-  setLineQuantity: (lineId: string, quantity: number) => void;
-  removeLine: (lineId: string) => void;
-  clearCart: () => void;
+  addOrMergeLine: (input: CartLineInput) => Promise<void>;
+  setLineQuantity: (lineId: string, quantity: number) => Promise<void>;
+  removeLine: (lineId: string) => Promise<void>;
+  clearCart: () => Promise<void>;
+  refreshCart: () => Promise<void>;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<CartLine[]>(() => readLines());
+  const tenantId = getCommerceTenantId();
+  const { auth, getAccessToken } = useAuth();
+  const [lines, setLines] = useState<CartLine[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const isShopperSignedIn =
+    auth.status === "signedIn" && auth.role === "shopper" && Boolean(getAccessToken());
 
   useEffect(() => {
-    writeLines(lines);
-    window.dispatchEvent(new CustomEvent("sarees-cart-changed", { detail: { count: lines.length } }));
-  }, [lines]);
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setLines(readLines());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    purgeLegacyCartStorage();
   }, []);
+
+  const refreshCart = useCallback(async () => {
+    const token = getAccessToken();
+    if (auth.status !== "signedIn" || auth.role !== "shopper" || !token) {
+      setLines([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const dtos = await fetchShopperCart(token);
+      setLines(dtos.map(fromDto));
+    } catch {
+      setLines([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [auth.status, auth.role, getAccessToken, tenantId]);
+
+  useEffect(() => {
+    void refreshCart();
+  }, [refreshCart, isShopperSignedIn]);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("cafe-cart-changed", { detail: { count: lines.length, tenantId } })
+    );
+  }, [lines, tenantId]);
+
+  const requireShopperToken = useCallback((): string => {
+    const token = getAccessToken();
+    if (auth.status !== "signedIn" || auth.role !== "shopper" || !token) {
+      throw new Error("Sign in as a shopper to use the cart.");
+    }
+    return token;
+  }, [auth.status, auth.role, getAccessToken]);
 
   const totalQuantity = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines]);
 
-  const addOrMergeLine = useCallback((input: Omit<CartLine, "lineId">) => {
-    setLines((prev) => {
-      const skuKey = input.skuCode?.trim() || "";
-      const idx = prev.findIndex(
-        (l) =>
-          l.productId === input.productId &&
-          (l.skuCode?.trim() || "") === skuKey &&
-          (l.skuId ?? "") === (input.skuId ?? "")
-      );
-      if (idx >= 0) {
-        const next = [...prev];
-        const merged = { ...next[idx]!, quantity: Math.min(999, next[idx]!.quantity + input.quantity) };
-        next[idx] = merged;
-        return next;
+  const addOrMergeLine = useCallback(
+    async (input: CartLineInput) => {
+      const token = requireShopperToken();
+      const dtos = await upsertShopperCartLine(token, {
+        productId: input.productId,
+        skuId: input.skuId,
+        quantity: input.quantity,
+        unitPriceMinor: input.unitPriceMinor,
+        currency: input.currency,
+      });
+      setLines(dtos.map(fromDto));
+    },
+    [requireShopperToken]
+  );
+
+  const setLineQuantity = useCallback(
+    async (lineId: string, quantity: number) => {
+      const token = requireShopperToken();
+      const q = Math.max(0, Math.min(999, Math.floor(quantity)));
+      if (q <= 0) {
+        await removeShopperCartLine(token, lineId);
+        setLines((prev) => prev.filter((l) => l.lineId !== lineId));
+        return;
       }
-      return [...prev, { ...input, lineId: newLineId() }];
-    });
-  }, []);
+      const dtos = await setShopperCartLineQuantity(token, lineId, q);
+      setLines(dtos.map(fromDto));
+    },
+    [requireShopperToken]
+  );
 
-  const setLineQuantity = useCallback((lineId: string, quantity: number) => {
-    const q = Math.max(0, Math.min(999, Math.floor(quantity)));
-    setLines((prev) => {
-      if (q <= 0) return prev.filter((l) => l.lineId !== lineId);
-      return prev.map((l) => (l.lineId === lineId ? { ...l, quantity: q } : l));
-    });
-  }, []);
+  const removeLine = useCallback(
+    async (lineId: string) => {
+      const token = requireShopperToken();
+      await removeShopperCartLine(token, lineId);
+      setLines((prev) => prev.filter((l) => l.lineId !== lineId));
+    },
+    [requireShopperToken]
+  );
 
-  const removeLine = useCallback((lineId: string) => {
-    setLines((prev) => prev.filter((l) => l.lineId !== lineId));
-  }, []);
-
-  const clearCart = useCallback(() => setLines([]), []);
+  const clearCart = useCallback(async () => {
+    const token = requireShopperToken();
+    await clearShopperCart(token);
+    setLines([]);
+  }, [requireShopperToken]);
 
   const value = useMemo(
-    () => ({ lines, totalQuantity, addOrMergeLine, setLineQuantity, removeLine, clearCart }),
-    [lines, totalQuantity, addOrMergeLine, setLineQuantity, removeLine, clearCart]
+    () => ({
+      tenantId,
+      lines,
+      loading,
+      totalQuantity,
+      addOrMergeLine,
+      setLineQuantity,
+      removeLine,
+      clearCart,
+      refreshCart,
+    }),
+    [
+      tenantId,
+      lines,
+      loading,
+      totalQuantity,
+      addOrMergeLine,
+      setLineQuantity,
+      removeLine,
+      clearCart,
+      refreshCart,
+    ]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

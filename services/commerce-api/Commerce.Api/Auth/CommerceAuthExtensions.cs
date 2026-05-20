@@ -1,6 +1,8 @@
 using System.Text;
 using Commerce.Api.Audit;
+using Commerce.Api.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Commerce.Api.Auth;
@@ -91,11 +93,18 @@ public static class CommerceAuthExtensions
                 };
             });
 
+        services.AddSingleton<TenantRbacService>();
+        services.AddScoped<TenantRbacEvaluator>();
+        services.AddCommercePermissionAuthorization();
+
         services.AddAuthorization(o =>
         {
             o.AddPolicy("Vendor", p => p.RequireRole("vendor"));
             o.AddPolicy("Admin", p => p.RequireRole("admin"));
             o.AddPolicy("Shopper", p => p.RequireRole("shopper"));
+
+            var rbac = new TenantRbacService();
+            o.AddCommercePermissionPolicies(rbac);
         });
         return services;
     }

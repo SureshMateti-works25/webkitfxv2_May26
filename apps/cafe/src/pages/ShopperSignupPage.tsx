@@ -4,11 +4,11 @@ import { useState } from "react";
 import { JsonForm } from "@webkitfxv2/react-renderer";
 import { useAuth } from "../auth/AuthContext.js";
 import { shopperSignupForm } from "../config/forms/index.js";
-import { getShell } from "../config/getShell.js";
 import { formatCommerceApiError, registerAccount } from "../lib/commerceApi.js";
+import { useTenantChrome } from "../lib/useTenantChrome.js";
 
 export function ShopperSignupPage() {
-  const shell = getShell();
+  const { shell } = useTenantChrome();
   const copy = shell.screens.shopperSignup;
   const navigate = useNavigate();
   const { signInMember } = useAuth();

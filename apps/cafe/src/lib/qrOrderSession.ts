@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { getCommerceTenantId } from "../dev/devTenantStore.js";
 
 export type QrOrderSession = {
   orderChannel: "qr";
@@ -7,9 +8,14 @@ export type QrOrderSession = {
   startedAt: string;
 };
 
-const SESSION_KEY = "cafe.qrOrder.session.v1";
+const SESSION_KEY_PREFIX = "cafe.qrOrder.session.v1";
 const SESSION_EVENT = "cafe.qrOrder.session";
 
+function sessionStorageKey(): string {
+  return `${SESSION_KEY_PREFIX}.${getCommerceTenantId()}`;
+}
+
+let cachedStorageKey: string | undefined;
 let cachedRaw: string | null | undefined;
 let cachedSnapshot: QrOrderSession | null = null;
 
@@ -18,8 +24,19 @@ function notifySessionChange(): void {
 }
 
 function invalidateSessionCache(): void {
+  cachedStorageKey = undefined;
   cachedRaw = undefined;
   cachedSnapshot = null;
+}
+
+function ensureSessionCacheForCurrentTenant(): string {
+  const key = sessionStorageKey();
+  if (key !== cachedStorageKey) {
+    cachedStorageKey = key;
+    cachedRaw = undefined;
+    cachedSnapshot = null;
+  }
+  return key;
 }
 
 function normalizeSession(parsed: QrOrderSession): QrOrderSession | null {
@@ -36,7 +53,8 @@ function normalizeSession(parsed: QrOrderSession): QrOrderSession | null {
 
 export function readQrOrderSession(): QrOrderSession | null {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const key = ensureSessionCacheForCurrentTenant();
+    const raw = sessionStorage.getItem(key);
     if (raw === cachedRaw) return cachedSnapshot;
     cachedRaw = raw;
     if (!raw) {
@@ -73,15 +91,17 @@ export function writeQrOrderSession(session: Omit<QrOrderSession, "orderChannel"
   if (existing && sessionsEqual(existing, next)) return;
 
   const serialized = JSON.stringify(next);
-  sessionStorage.setItem(SESSION_KEY, serialized);
+  const key = ensureSessionCacheForCurrentTenant();
+  sessionStorage.setItem(key, serialized);
   cachedRaw = serialized;
   cachedSnapshot = next;
   notifySessionChange();
 }
 
 export function clearQrOrderSession(): void {
-  if (!sessionStorage.getItem(SESSION_KEY) && cachedSnapshot == null) return;
-  sessionStorage.removeItem(SESSION_KEY);
+  const key = ensureSessionCacheForCurrentTenant();
+  if (!sessionStorage.getItem(key) && cachedSnapshot == null) return;
+  sessionStorage.removeItem(key);
   invalidateSessionCache();
   notifySessionChange();
 }

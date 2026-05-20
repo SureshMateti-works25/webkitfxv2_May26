@@ -12,7 +12,10 @@ public sealed class PortalJwtIssuer(IOptions<JwtOptions> jwtOptions)
         string userId,
         string email,
         string role,
-        TimeSpan lifetime)
+        string tenantId,
+        string storefrontMode,
+        TimeSpan lifetime,
+        string? permissionRoleKey = null)
     {
         var opt = jwtOptions.Value;
         var keyBytes = Encoding.UTF8.GetBytes(opt.SigningKey);
@@ -24,8 +27,12 @@ public sealed class PortalJwtIssuer(IOptions<JwtOptions> jwtOptions)
             new(JwtRegisteredClaimNames.Sub, userId),
             new(JwtRegisteredClaimNames.Email, email),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
-            new(ClaimTypes.Role, role)
+            new(ClaimTypes.Role, role),
+            new(CommerceClaimTypes.TenantId, tenantId),
+            new("storefront_mode", storefrontMode)
         };
+        var permRole = (permissionRoleKey ?? role).Trim().ToLowerInvariant();
+        claims.Add(new Claim(CommerceClaimTypes.PermissionRole, permRole));
 
         var token = new JwtSecurityToken(
             issuer: opt.Issuer,

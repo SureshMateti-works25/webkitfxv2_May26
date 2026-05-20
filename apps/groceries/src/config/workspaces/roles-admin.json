@@ -1,0 +1,31 @@
+{
+  "version": "1",
+  "screenId": "rolesAdmin",
+  "allowedRoles": ["vendor", "admin"],
+  "formId": "tenantRoleEntry",
+  "permissionGroupOrder": ["Operations", "Storefront", "Orders", "Catalog", "Access"],
+  "listColumns": [
+    { "id": "roleKey", "label": "Role key", "binding": "role.roleKey" },
+    { "id": "displayName", "label": "Name", "binding": "role.displayName" },
+    { "id": "permissions", "label": "Permissions", "source": "permissionCount" }
+  ],
+  "defaultRoles": [
+    {
+      "roleKey": "aisle_manager",
+      "displayName": "Aisle manager",
+      "description": "Manage aisle layout and store operations for this location.",
+      "permissions": [
+        "catalog:read",
+        "orders:read_vendor",
+        "aisle:view",
+        "aisle:manage"
+      ]
+    },
+    {
+      "roleKey": "pick_lead",
+      "displayName": "Pick lead",
+      "description": "View aisles and fulfil vendor orders.",
+      "permissions": ["catalog:read", "orders:read_vendor", "aisle:view"]
+    }
+  ]
+}

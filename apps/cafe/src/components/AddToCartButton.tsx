@@ -36,7 +36,7 @@ export function AddToCartButton({ product, skuFocus }: Props) {
   const needsSkuChoice = skuOptions.length > 1;
   const canAdd = !needsSkuChoice || skuKey.length > 0;
 
-  const onAdd = useCallback(() => {
+  const onAdd = useCallback(async () => {
     setErr(null);
     setHint(null);
     if (needsSkuChoice && !skuKey) {
@@ -45,20 +45,24 @@ export function AddToCartButton({ product, skuFocus }: Props) {
     }
     const key = skuKey || (skuOptions.length === 1 ? skuOptions[0]!.value : "");
     const { skuId, skuCode } = resolveCartSkuFromKey(product, key);
-    addOrMergeLine({
-      productId: product.id,
-      slug: product.slug,
-      titleDisplay: product.titleDisplay,
-      skuId,
-      skuCode,
-      quantity: 1,
-      unitPriceMinor: snapshotStorefrontUnitPriceMinor(product),
-      currency: product.currency,
-      heroStorageKey: product.heroStorageKey?.trim() || null,
-      vendorCode: product.vendorCode?.trim() || null,
-    });
-    setHint("Added to cart");
-    window.setTimeout(() => setHint(null), 2500);
+    try {
+      await addOrMergeLine({
+        productId: product.id,
+        slug: product.slug,
+        titleDisplay: product.titleDisplay,
+        skuId,
+        skuCode,
+        quantity: 1,
+        unitPriceMinor: snapshotStorefrontUnitPriceMinor(product),
+        currency: product.currency,
+        heroStorageKey: product.heroStorageKey?.trim() || null,
+        vendorCode: product.vendorCode?.trim() || null,
+      });
+      setHint("Added to cart");
+      window.setTimeout(() => setHint(null), 2500);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not add to cart.");
+    }
   }, [addOrMergeLine, needsSkuChoice, product, skuKey, skuOptions]);
 
   return (
@@ -66,7 +70,7 @@ export function AddToCartButton({ product, skuFocus }: Props) {
       <button
         type="button"
         className="pdp-add-to-cart__submit pdp-add-to-cart__submit--icon"
-        onClick={onAdd}
+        onClick={() => void onAdd()}
         disabled={!canAdd}
         aria-disabled={!canAdd}
         aria-label="Add to cart"

@@ -1,0 +1,13 @@
+{
+  "copy": {
+    "title": "Roles & permissions",
+    "body": "Built-in shopper, vendor, and admin roles come from the platform. Add custom roles for your team — defaults can be seeded from this app’s workspace JSON.",
+    "systemSectionTitle": "Built-in roles",
+    "customSectionTitle": "Custom roles",
+    "addRoleLabel": "New custom role",
+    "seedDefaultsLabel": "Add default roles",
+    "seedDefaultsHint": "Creates aisle manager and pick lead when they do not exist yet.",
+    "emptyCustom": "No custom roles yet. Seed defaults or create one.",
+    "permissionPickerLabel": "Permissions"
+  }
+}

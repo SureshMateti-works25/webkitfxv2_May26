@@ -1,0 +1,25 @@
+{
+  "t_grocery": {
+    "appName": "Nistta Groceries",
+    "tagline": "Fresh aisles, pickup slots, and pantry staples — one grocery storefront.",
+    "logoSrc": "/logo-nistta.svg",
+    "logoAlt": "NISTTA",
+    "applicationTypeLabel": "Groceries",
+    "loginHeadline": "Welcome to Nistta Groceries",
+    "loginIntro": "Sign in with your shopper or vendor account for this store.",
+    "welcomeHighlights": [
+      {
+        "title": "Pickup & delivery slots",
+        "body": "Choose when you collect or receive — cut-offs stay in your ops JSON."
+      },
+      {
+        "title": "Aisle catalogue",
+        "body": "Browse by aisle layout configured for this location."
+      },
+      {
+        "title": "Saved basket",
+        "body": "Signed-in shoppers keep cart lines on the server between visits."
+      }
+    ]
+  }
+}

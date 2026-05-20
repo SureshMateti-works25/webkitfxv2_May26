@@ -1,0 +1,25 @@
+{
+  "t1": {
+    "appName": "Acme Sarees",
+    "tagline": "Curated collections, festival rails, and vendor onboarding on one stack.",
+    "logoSrc": "/logo-nistta.svg",
+    "logoAlt": "NISTTA",
+    "applicationTypeLabel": "Sarees",
+    "loginHeadline": "Welcome to Acme Sarees",
+    "loginIntro": "Use your shopper or vendor credentials for this storefront.",
+    "welcomeHighlights": [
+      {
+        "title": "Curated collections",
+        "body": "Explore rails grouped by collection and occasion."
+      },
+      {
+        "title": "WhatsApp enquiry",
+        "body": "Reach vendors from product pages when enabled in shell JSON."
+      },
+      {
+        "title": "Your profile",
+        "body": "Save details once and reuse them at checkout."
+      }
+    ]
+  }
+}

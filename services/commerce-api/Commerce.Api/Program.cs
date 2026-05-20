@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Commerce.Api.Features;
 using Commerce.Api.Orders;
 using Commerce.Api.Infrastructure;
+using Commerce.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.StaticFiles;
@@ -106,11 +107,15 @@ if (!app.Environment.IsDevelopment()
 {
     await using var scope = app.Services.CreateAsyncScope();
     var dbTenant = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
-    if (!await dbTenant.Tenants.AnyAsync())
-    {
-        dbTenant.Tenants.Add(new Tenant { Id = "t1", Name = "Acme Sarees", Slug = "acme" });
-        await dbTenant.SaveChangesAsync();
-    }
+    await TenantCatalogBootstrap.EnsureCatalogTenantsAsync(dbTenant);
+}
+
+if (!app.Environment.IsDevelopment()
+    && !string.Equals(app.Configuration["Commerce:SkipTenantCatalogBootstrap"], "true", StringComparison.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var dbCatalog = scope.ServiceProvider.GetRequiredService<CommerceDbContext>();
+    await TenantCatalogBootstrap.EnsureCatalogTenantsAsync(dbCatalog);
 }
 
 // Production / staging: idempotent grocery aisle rows (Fresh vegetables, Atta, …) — dev seed does not run on Azure.
@@ -155,11 +160,7 @@ if (app.Environment.IsDevelopment())
             http: null,
             CancellationToken.None);
 
-        if (!await db.Tenants.AnyAsync())
-        {
-            db.Tenants.Add(new Tenant { Id = "t1", Name = "Acme Sarees", Slug = "acme" });
-            await db.SaveChangesAsync();
-        }
+        await TenantCatalogBootstrap.EnsureCatalogTenantsAsync(db);
 
         var skipLookupReseed = string.Equals(
             builder.Configuration["Commerce:SkipLookupReseed"],
@@ -254,6 +255,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseWebkitFxPlatform();
+app.UseTenantRequestContext();
 // Local dev runs on http://localhost:5055 only; HTTPS redirection breaks Vite's /api proxy and curl tests.
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
@@ -345,6 +347,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseAuthentication();
+app.UseTenantJwtMatch();
 app.UseAuthorization();
 
 app.MapAuthV1();
@@ -360,74 +363,14 @@ app.MapShopperCartV1();
 app.MapStorefrontCheckoutV1();
 app.MapStorefrontOrderManagementV1();
 app.MapCafeFloorV1();
+app.MapTenantV1();
+app.MapTenantRolesV1();
+app.MapPortalRoleAssignmentsV1();
 
 if (app.Environment.IsDevelopment())
     app.MapDevJwt();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "commerce-api" }))
     .WithName("Health");
-
-app.MapGet("/api/v1/tenants", async (CommerceDbContext db, CancellationToken ct) =>
-{
-    var list = await db.Tenants.AsNoTracking().OrderBy(t => t.Slug).ToListAsync(ct);
-    return Results.Ok(list);
-}).WithName("ListTenants");
-
-app.MapPost("/api/v1/tenants", async (
-    Tenant body,
-    HttpContext http,
-    CommerceDbContext db,
-    AuditLogWriter audit,
-    CancellationToken ct) =>
-{
-    var actor = AuditLogWriter.ActorFromPrincipal(http.User);
-    if (string.IsNullOrWhiteSpace(body.Id) || string.IsNullOrWhiteSpace(body.Name) || string.IsNullOrWhiteSpace(body.Slug))
-    {
-        await audit.RecordAsync(
-            AuditActions.TenantCreate,
-            "failure",
-            tenantId: null,
-            actor,
-            "tenant",
-            body.Id,
-            new { reason = "validation" },
-            http,
-            ct);
-        return Results.BadRequest(new { error = "id, name, and slug are required" });
-    }
-
-    db.Tenants.Add(body);
-    try
-    {
-        await db.SaveChangesAsync(ct);
-    }
-    catch (DbUpdateException)
-    {
-        await audit.RecordAsync(
-            AuditActions.TenantCreate,
-            "failure",
-            tenantId: null,
-            actor,
-            "tenant",
-            body.Id,
-            new { reason = "duplicate" },
-            http,
-            ct);
-        return Results.Conflict(new { error = "duplicate id or slug" });
-    }
-
-    await audit.RecordAsync(
-        AuditActions.TenantCreate,
-        "success",
-        body.Id,
-        actor,
-        "tenant",
-        body.Id,
-        new { slug = body.Slug, name = body.Name },
-        http,
-        ct);
-
-    return Results.Created($"/api/v1/tenants/{Uri.EscapeDataString(body.Id)}", body);
-}).RequireAuthorization().WithName("CreateTenant");
 
 app.Run();

@@ -1,0 +1,46 @@
+{
+  "id": "userRoleAssignment",
+  "title": "Role assignment",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      { "type": "field", "fieldId": "roleKey" },
+      { "type": "field", "fieldId": "portalBaseRole" },
+      { "type": "field", "fieldId": "isPrimary" }
+    ]
+  },
+  "fields": {
+    "roleKey": {
+      "binding": "assignment.roleKey",
+      "widget": "select",
+      "label": "Permission role",
+      "description": "System roles (shopper, vendor, admin) or custom roles defined under Roles.",
+      "props": {
+        "options": [],
+        "placeholderOption": "— Select role —"
+      },
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "portalBaseRole": {
+      "binding": "assignment.portalBaseRole",
+      "widget": "select",
+      "label": "Portal access level",
+      "description": "Controls which app areas open (vendor tools, admin directory, etc.). Custom roles usually keep vendor or admin.",
+      "props": {
+        "options": [],
+        "placeholderOption": "— Select —"
+      },
+      "default": "vendor",
+      "rules": [{ "kind": "required" }]
+    },
+    "isPrimary": {
+      "binding": "assignment.isPrimary",
+      "widget": "checkbox",
+      "label": "Primary assignment (used at sign-in)",
+      "default": true
+    }
+  }
+}

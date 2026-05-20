@@ -41,6 +41,10 @@ $env:ASPNETCORE_URLS = "http://localhost:5055"
 if (-not $UseRemoteDatabase) {
     $env:ConnectionStrings__Commerce = "Host=localhost;Port=54330;Database=catalog;Username=catalog;Password=catalog"
     Remove-Item Env:COMMERCE_DATABASE_CONNECTION_STRING -ErrorAction SilentlyContinue
+    Write-Host "Database: local Docker Postgres (54330)" -ForegroundColor DarkGray
+}
+else {
+    Write-Host "Database: remote (COMMERCE_DATABASE_CONNECTION_STRING or ConnectionStrings__Commerce)" -ForegroundColor Yellow
 }
 
 if (-not $SkipBuild) {

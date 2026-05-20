@@ -1,0 +1,17 @@
+{
+  "version": "1",
+  "screenId": "userRoleAssignments",
+  "allowedRoles": ["vendor", "admin"],
+  "formId": "userRoleAssignment",
+  "portalBaseRoleOptions": [
+    { "value": "shopper", "label": "Shopper (storefront)" },
+    { "value": "vendor", "label": "Vendor (catalog & ops)" },
+    { "value": "admin", "label": "Administrator" }
+  ],
+  "defaultPortalBaseRole": "vendor",
+  "listColumns": [
+    { "id": "roleKey", "label": "Permission role", "binding": "assignment.roleKey" },
+    { "id": "portalBaseRole", "label": "Portal access", "binding": "assignment.portalBaseRole" },
+    { "id": "isPrimary", "label": "Primary", "source": "isPrimary" }
+  ]
+}

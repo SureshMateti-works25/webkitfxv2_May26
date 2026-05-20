@@ -103,7 +103,7 @@ export function CheckoutPage() {
         paymentStatus: "pending",
         accessToken: getAccessToken(),
       });
-      clearCart();
+      await clearCart();
       clearCheckoutDraft();
       persistLastOrderEmail(draft.shopperEmail);
       navigate(`/checkout/confirmation/${encodeURIComponent(order.id)}`, {

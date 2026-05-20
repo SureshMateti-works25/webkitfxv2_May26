@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext.js";
 import { CartProvider } from "./cart/CartContext.js";
+import { TenantChromeProvider } from "./lib/useTenantChrome.js";
 import { AppChrome } from "./shell/AppChrome.js";
 import { DevApiPing } from "./dev/DevApiPing.js";
 import { HomePage } from "./pages/HomePage.js";
@@ -20,12 +21,15 @@ import { VendorProductStorefrontPage } from "./pages/VendorProductStorefrontPage
 import { LookupAdminPage } from "./pages/LookupAdminPage.js";
 import { StorefrontSponsoredAdsAdminPage } from "./pages/StorefrontSponsoredAdsAdminPage.js";
 import { AdminPortalUsersPage } from "./pages/AdminPortalUsersPage.js";
+import { RolesAdminPage } from "./pages/RolesAdminPage.js";
+import { UserRoleAssignmentsPage } from "./pages/UserRoleAssignmentsPage.js";
 import { DocStubPage } from "./pages/DocStubPage.js";
 
 export function App() {
   return (
     <AuthProvider>
       <CartProvider>
+        <TenantChromeProvider>
         <BrowserRouter>
           {import.meta.env.DEV ? <DevApiPing /> : null}
           <Routes>
@@ -51,6 +55,12 @@ export function App() {
               <Route path="/admin/storefront-ads" element={<StorefrontSponsoredAdsAdminPage />} />
               <Route path="/admin/vendors" element={<AdminPortalUsersPage directory="vendors" />} />
               <Route path="/admin/shoppers" element={<AdminPortalUsersPage directory="shoppers" />} />
+              <Route path="/vendor/roles" element={<RolesAdminPage />} />
+              <Route path="/admin/roles" element={<RolesAdminPage />} />
+              <Route
+                path="/admin/portal-users/:portalUserId/role-assignments"
+                element={<UserRoleAssignmentsPage />}
+              />
               <Route path="/admin/orders" element={<DocStubPage />} />
               <Route path="/favourites" element={<DocStubPage />} />
               <Route path="/orders" element={<DocStubPage />} />
@@ -62,6 +72,7 @@ export function App() {
             </Route>
           </Routes>
         </BrowserRouter>
+        </TenantChromeProvider>
       </CartProvider>
     </AuthProvider>
   );

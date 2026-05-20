@@ -1,0 +1,92 @@
+{
+  "t1": {
+    "appName": "Nistta Café",
+    "tagline": "Order for pickup or dine-in — menu, kitchen queue, and checkout on one stack.",
+    "logoSrc": "/logo-nistta.svg",
+    "logoAlt": "NISTTA",
+    "applicationTypeLabel": "Café",
+    "loginHeadline": "Welcome to Nistta Café",
+    "loginIntro": "Use the email and password for your shopper or vendor account on this storefront.",
+    "welcomeHighlights": [
+      {
+        "title": "Kitchen display",
+        "body": "Orders flow to prep and ready states for your floor team."
+      },
+      {
+        "title": "Pickup & dine-in",
+        "body": "Guests choose how they are dining; you fulfil from one queue."
+      },
+      {
+        "title": "Table QR",
+        "body": "Scan-to-order at the table without a separate app install."
+      }
+    ]
+  },
+  "t_cornercup": {
+    "appName": "Corner Cup",
+    "tagline": "Your neighborhood café — order ahead or scan the table QR.",
+    "logoSrc": "/logo-nistta.svg",
+    "logoAlt": "Corner Cup",
+    "loginHeadline": "Welcome back to Corner Cup",
+    "loginIntro": "Sign in to save your cart and checkout for this café.",
+    "welcomeHighlights": [
+      {
+        "title": "Order ahead",
+        "body": "Skip the line — pick up when your drinks and bites are ready."
+      },
+      {
+        "title": "Sit-down QR",
+        "body": "Open the menu from your table and send orders to the bar."
+      },
+      {
+        "title": "Your tray, saved",
+        "body": "Cart lines stay on our servers while you are signed in."
+      }
+    ]
+  },
+  "t_brewlab": {
+    "appName": "Brew Lab",
+    "tagline": "Specialty coffee and fresh bites.",
+    "logoSrc": "/logo-nistta.svg",
+    "logoAlt": "Brew Lab",
+    "loginHeadline": "Brew Lab member sign-in",
+    "loginIntro": "Your cart is saved on our servers for this location.",
+    "welcomeHighlights": [
+      {
+        "title": "Single-origin menu",
+        "body": "Browse today's roasts and food pairings from one catalogue."
+      },
+      {
+        "title": "Members & guests",
+        "body": "Sign in to save your cart; browse as a guest anytime."
+      },
+      {
+        "title": "Vendor barista tools",
+        "body": "Staff and vendors manage listings from the same portal."
+      }
+    ]
+  },
+  "t_foodhall": {
+    "appName": "Food Hall",
+    "tagline": "Discover vendors and order from one marketplace menu.",
+    "logoSrc": "/logo-nistta.svg",
+    "logoAlt": "Food Hall",
+    "modeBadge": "Marketplace",
+    "loginHeadline": "Food Hall marketplace",
+    "loginIntro": "One account per marketplace tenant — vendors and shoppers sign in here.",
+    "welcomeHighlights": [
+      {
+        "title": "Many kitchens, one cart",
+        "body": "Add items from different stalls and check out once."
+      },
+      {
+        "title": "Vendor stalls",
+        "body": "Each vendor runs their menu inside this marketplace tenant."
+      },
+      {
+        "title": "Shared sign-in",
+        "body": "Shoppers and vendors use credentials issued for Food Hall only."
+      }
+    ]
+  }
+}

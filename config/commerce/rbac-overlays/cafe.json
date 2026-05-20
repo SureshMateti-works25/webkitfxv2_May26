@@ -1,0 +1,13 @@
+{
+  "vertical": "cafe",
+  "permissionCatalog": [
+    { "id": "floor_plan:view", "label": "View floor plan", "group": "Operations" },
+    { "id": "floor_plan:manage", "label": "Manage tables and sections", "group": "Operations" },
+    { "id": "kitchen:view", "label": "View kitchen queue", "group": "Operations" },
+    { "id": "kitchen:manage", "label": "Update order prep status", "group": "Operations" }
+  ],
+  "storefrontModeFeatures": {
+    "isolated_shop": ["qr_order", "dine_in", "floor_plan"],
+    "marketplace": ["multi_vendor_cart"]
+  }
+}

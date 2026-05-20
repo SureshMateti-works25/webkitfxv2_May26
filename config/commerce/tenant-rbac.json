@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "roles": {
+    "shopper": {
+      "permissions": [
+        "catalog:read",
+        "cart:write",
+        "orders:read_own",
+        "checkout:submit"
+      ]
+    },
+    "vendor": {
+      "permissions": [
+        "catalog:read",
+        "products:manage_own",
+        "orders:read_vendor",
+        "media:upload",
+        "roles:read",
+        "roles:manage"
+      ]
+    },
+    "admin": {
+      "permissions": ["*"]
+    }
+  },
+  "registerableRoles": ["shopper", "vendor"],
+  "permissionCatalog": [
+    { "id": "catalog:read", "label": "View catalogue", "group": "Storefront" },
+    { "id": "cart:write", "label": "Manage cart", "group": "Storefront" },
+    { "id": "checkout:submit", "label": "Place orders", "group": "Storefront" },
+    { "id": "orders:read_own", "label": "View own orders", "group": "Orders" },
+    { "id": "orders:read_vendor", "label": "View vendor orders", "group": "Orders" },
+    { "id": "products:manage_own", "label": "Manage own products", "group": "Catalog" },
+    { "id": "media:upload", "label": "Upload media", "group": "Catalog" },
+    { "id": "roles:read", "label": "View role definitions", "group": "Access" },
+    { "id": "roles:manage", "label": "Create and edit custom roles", "group": "Access" }
+  ],
+  "storefrontModes": {
+    "marketplace": {
+      "features": ["vendor_directory", "multi_vendor_cart"],
+      "deniedPermissions": []
+    },
+    "isolated_shop": {
+      "features": ["single_vendor_catalog"],
+      "deniedPermissions": ["vendor_directory:manage"]
+    }
+  }
+}

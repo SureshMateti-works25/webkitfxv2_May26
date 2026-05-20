@@ -1,34 +1,19 @@
-import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext.js";
-import { getShell } from "../config/getShell.js";
-import {
-  fetchStorefrontApplicationTypeLabel,
-  storefrontApplicationTypeLabelFromConfig,
-} from "../lib/getStorefrontApplicationTypeLabel.js";
+import { useTenantChrome } from "../lib/useTenantChrome.js";
 import { JsonHeader } from "./JsonHeader.js";
 
 export function Header() {
-  const shell = getShell();
   const { auth, signOut, continueGuest } = useAuth();
-  const [applicationTypeLabel, setApplicationTypeLabel] = useState(() =>
-    storefrontApplicationTypeLabelFromConfig()
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetchStorefrontApplicationTypeLabel().then((label) => {
-      if (!cancelled) setApplicationTypeLabel(label);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { shell, displayName, applicationTypeLabel, modeBadge, loading } = useTenantChrome();
 
   return (
     <JsonHeader
       shell={shell}
+      displayName={displayName}
       auth={auth}
       applicationTypeLabel={applicationTypeLabel}
+      modeBadge={modeBadge}
+      brandingLoading={loading}
       onSignOut={signOut}
       onContinueGuest={continueGuest}
     />

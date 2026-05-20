@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "tenants": [
+    {
+      "id": "t1",
+      "name": "Acme Sarees",
+      "slug": "acme",
+      "storefrontMode": "isolated_shop",
+      "vertical": "sarees",
+      "isActive": true,
+      "hostAliases": ["localhost"]
+    },
+    {
+      "id": "t_grocery",
+      "name": "Nistta Groceries",
+      "slug": "groceries",
+      "storefrontMode": "isolated_shop",
+      "vertical": "grocery",
+      "isActive": true,
+      "hostAliases": []
+    },
+    {
+      "id": "t_foodhall",
+      "name": "Food Hall Marketplace",
+      "slug": "foodhall",
+      "storefrontMode": "marketplace",
+      "vertical": "cafe",
+      "isActive": true,
+      "hostAliases": []
+    },
+    {
+      "id": "t_cornercup",
+      "name": "Corner Cup Café",
+      "slug": "cornercup",
+      "storefrontMode": "isolated_shop",
+      "vertical": "cafe",
+      "isActive": true,
+      "hostAliases": []
+    },
+    {
+      "id": "t_brewlab",
+      "name": "Brew Lab",
+      "slug": "brewlab",
+      "storefrontMode": "isolated_shop",
+      "vertical": "cafe",
+      "isActive": true,
+      "hostAliases": []
+    }
+  ]
+}

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@webkitfxv2/commerce-screens": "0.1.0",
+    "@webkitfxv2/storefront-runtime": "0.1.0",
     "@webkitfxv2/core-engine": "0.1.0",
     "@webkitfxv2/react-renderer": "0.1.0",
     "react": "^18.3.1",

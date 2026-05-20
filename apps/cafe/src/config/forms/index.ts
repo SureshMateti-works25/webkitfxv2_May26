@@ -15,6 +15,8 @@ import vendorProductTax from "./vendor-product/tax.json";
 import vendorProductTypeSaree from "./vendor-product/type-saree.json";
 import cafeTableEntry from "./cafe-table-entry.json";
 import cafeTableSectionEntry from "./cafe-table-section-entry.json";
+import tenantRoleEntry from "./tenant-role-entry.json";
+import userRoleAssignment from "./user-role-assignment.json";
 
 export const loginForm = login as FormDefinition;
 export const vendorSignupForm = vendorSignup as FormDefinition;
@@ -33,6 +35,8 @@ export const vendorProductOrdersForm = vendorProductOrders as FormDefinition;
 export const vendorProductTypeSareeForm = vendorProductTypeSaree as FormDefinition;
 export const cafeTableEntryForm = cafeTableEntry as FormDefinition;
 export const cafeTableSectionEntryForm = cafeTableSectionEntry as FormDefinition;
+export const tenantRoleEntryForm = tenantRoleEntry as FormDefinition;
+export const userRoleAssignmentForm = userRoleAssignment as FormDefinition;
 
 const formById: Record<string, FormDefinition> = {
   login: loginForm,
@@ -51,6 +55,8 @@ const formById: Record<string, FormDefinition> = {
   vendorProductTypeSaree: vendorProductTypeSareeForm,
   cafeTableEntry: cafeTableEntryForm,
   cafeTableSectionEntry: cafeTableSectionEntryForm,
+  tenantRoleEntry: tenantRoleEntryForm,
+  userRoleAssignment: userRoleAssignmentForm,
 };
 
 export function getForm(formId: string): FormDefinition {

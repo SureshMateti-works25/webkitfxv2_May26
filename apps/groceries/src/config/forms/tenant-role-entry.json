@@ -1,0 +1,45 @@
+{
+  "id": "tenantRoleEntry",
+  "title": "Custom role",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "0.85rem",
+    "children": [
+      { "type": "field", "fieldId": "roleKey" },
+      { "type": "field", "fieldId": "displayName" },
+      { "type": "field", "fieldId": "description" }
+    ]
+  },
+  "fields": {
+    "roleKey": {
+      "binding": "role.roleKey",
+      "widget": "text",
+      "label": "Role key",
+      "description": "Lowercase slug used in the API (e.g. floor_manager). Cannot be changed after create.",
+      "props": { "placeholder": "e.g. floor_manager", "autoComplete": "off" },
+      "default": "",
+      "rules": [
+        { "kind": "required" },
+        { "kind": "minLength", "value": 2 },
+        { "kind": "maxLength", "value": 48 }
+      ]
+    },
+    "displayName": {
+      "binding": "role.displayName",
+      "widget": "text",
+      "label": "Display name",
+      "props": { "placeholder": "e.g. Floor manager" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "maxLength", "value": 120 }]
+    },
+    "description": {
+      "binding": "role.description",
+      "widget": "textarea",
+      "label": "Description",
+      "props": { "rows": 3, "placeholder": "What this role is for on your floor team." },
+      "default": "",
+      "rules": [{ "kind": "maxLength", "value": 512 }]
+    }
+  }
+}

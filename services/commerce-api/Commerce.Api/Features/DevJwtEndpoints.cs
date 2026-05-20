@@ -21,8 +21,18 @@ public static class DevJwtEndpoints
             {
                 var sub = string.IsNullOrWhiteSpace(body.Subject) ? "dev-user" : body.Subject.Trim();
                 var role = string.IsNullOrWhiteSpace(body.Role) ? "admin" : body.Role.Trim();
+                var tenantId = string.IsNullOrWhiteSpace(body.TenantId) ? "t1" : body.TenantId.Trim();
+                var storefrontMode = string.IsNullOrWhiteSpace(body.StorefrontMode)
+                    ? Tenancy.StorefrontModes.IsolatedShop
+                    : body.StorefrontMode.Trim();
                 var hours = body.ExpiresHours is > 0 and <= 168 ? body.ExpiresHours : 8;
-                var token = jwtIssuer.IssueAccessToken(sub, $"{sub}@dev.local", role, TimeSpan.FromHours(hours));
+                var token = jwtIssuer.IssueAccessToken(
+                    sub,
+                    $"{sub}@dev.local",
+                    role,
+                    tenantId,
+                    storefrontMode,
+                    TimeSpan.FromHours(hours));
 
                 await audit.RecordAsync(
                     AuditActions.AuthDevJwt,
@@ -50,6 +60,8 @@ public static class DevJwtEndpoints
     {
         public string? Subject { get; set; }
         public string? Role { get; set; }
+        public string? TenantId { get; set; }
+        public string? StorefrontMode { get; set; }
         /// <summary>1–168 hours; default 8.</summary>
         public int ExpiresHours { get; set; } = 8;
     }

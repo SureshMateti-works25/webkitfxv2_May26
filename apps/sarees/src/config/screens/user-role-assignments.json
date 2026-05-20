@@ -1,0 +1,12 @@
+{
+  "copy": {
+    "title": "Role assignments",
+    "body": "Assign permission roles to this portal user. Primary assignment drives sign-in: portal access (shopper/vendor/admin) plus the permission bundle (system or custom role).",
+    "assignmentsTitle": "Assignments",
+    "addLabel": "Add assignment",
+    "emptyAssignments": "No assignments — user signs in with their registered portal role only.",
+    "primaryBadge": "Primary",
+    "backVendors": "Back to vendors",
+    "backShoppers": "Back to shoppers"
+  }
+}

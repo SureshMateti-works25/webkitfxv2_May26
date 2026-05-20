@@ -12,6 +12,8 @@ public static class AuditActions
     public const string AuthDevJwt = "auth.dev_jwt";
     public const string TenantMissing = "tenant.missing";
     public const string TenantCreate = "tenant.create";
+    public const string TenantRoleMutate = "tenant_role.mutate";
+    public const string PortalRoleAssignmentMutate = "portal_role_assignment.mutate";
     public const string MediaUpload = "media.upload";
     public const string MediaDelete = "media.delete";
     public const string CatalogProductMutate = "catalog.product_mutate";

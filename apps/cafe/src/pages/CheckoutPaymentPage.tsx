@@ -52,7 +52,7 @@ export function CheckoutPaymentPage() {
         paymentStatus: "captured",
         accessToken: getAccessToken(),
       });
-      clearCart();
+      await clearCart();
       clearCheckoutDraft();
       if (nextDraft.orderChannel === "qr") clearQrOrderSession();
       persistLastOrderEmail(nextDraft.shopperEmail);

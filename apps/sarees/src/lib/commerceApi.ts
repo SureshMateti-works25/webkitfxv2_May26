@@ -1,3 +1,8 @@
+import {
+  commerceTenantHeaders as runtimeTenantHeaders,
+  readStorefrontRuntimeFromEnv,
+} from "@webkitfxv2/storefront-runtime";
+
 /**
  * Base URL for Commerce.Api (auth, catalog, media).
  * - If `VITE_COMMERCE_API_URL` / `VITE_CATALOG_API_URL` is set → use it (Azure CI, or override local).
@@ -10,11 +15,12 @@ const fromEnv =
   (import.meta.env.VITE_CATALOG_API_URL as string | undefined);
 const trimmed = fromEnv?.trim().replace(/\/$/, "");
 const LOCAL_COMMERCE_ORIGIN = "http://localhost:5055";
+/** Dev without env: same-origin `/api` via Vite proxy (stable; no CORS). */
 const BASE =
   trimmed && trimmed.length > 0
     ? trimmed
     : import.meta.env.DEV
-      ? LOCAL_COMMERCE_ORIGIN
+      ? ""
       : "http://localhost:5055";
 
 export type AuthSuccess = {
@@ -24,6 +30,10 @@ export type AuthSuccess = {
   userId: string;
   email: string;
   role: string;
+  tenantId: string;
+  storefrontMode: string;
+  permissions: string[];
+  features: string[];
 };
 
 async function parseAuthResponse(res: Response): Promise<AuthSuccess> {
@@ -39,13 +49,17 @@ async function parseAuthResponse(res: Response): Promise<AuthSuccess> {
     userId: String(data.userId ?? ""),
     email: String(data.email ?? ""),
     role: String(data.role ?? "shopper"),
+    tenantId: String(data.tenantId ?? DEFAULT_COMMERCE_TENANT_ID),
+    storefrontMode: String(data.storefrontMode ?? STOREFRONT_MODE),
+    permissions: Array.isArray(data.permissions) ? data.permissions.map(String) : [],
+    features: Array.isArray(data.features) ? data.features.map(String) : [],
   };
 }
 
 export async function loginWithPassword(email: string, password: string): Promise<AuthSuccess> {
   const res = await fetch(`${BASE}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
     body: JSON.stringify({ email, password }),
   });
   return parseAuthResponse(res);
@@ -61,7 +75,7 @@ export type RegisterParams = {
 export async function registerAccount(params: RegisterParams): Promise<AuthSuccess> {
   const res = await fetch(`${BASE}/api/v1/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
     body: JSON.stringify({
       email: params.email,
       password: params.password,
@@ -91,7 +105,7 @@ export async function changePassword(accessToken: string, currentPassword: strin
 export async function forgotPassword(email: string, newPassword: string): Promise<void> {
   const res = await fetch(`${BASE}/api/v1/auth/password/forgot`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
     body: JSON.stringify({ email, newPassword }),
   });
   if (!res.ok) {
@@ -118,6 +132,12 @@ function useRelativeDevMedia(): boolean {
   }
 }
 
+function apiOriginForMedia(): string {
+  if (BASE.length > 0) return BASE.replace(/\/$/, "");
+  if (import.meta.env.DEV) return LOCAL_COMMERCE_ORIGIN;
+  return "http://localhost:5055";
+}
+
 /**
  * Public URL for a stored media blob.
  * Default local dev: same-origin `/media/...` (Vite → Commerce.Api). Remote `VITE_COMMERCE_API_URL`: absolute under that base.
@@ -135,8 +155,7 @@ export function mediaAssetUrl(storageKey: string): string {
           .map((p) => encodeURIComponent(p))
           .join("/")}`;
   if (useRelativeDevMedia()) return path;
-  const origin = BASE.replace(/\/$/, "");
-  return `${origin}${path}`;
+  return `${apiOriginForMedia()}${path}`;
 }
 
 /** Default tenant for Commerce.Api (header `X-Tenant-Id`). */
@@ -173,7 +192,7 @@ export function commerceAuthorizedHeaders(accessToken: string): HeadersInit {
 export function commerceTenantHeaders(): HeadersInit {
   return {
     Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    ...runtimeTenantHeaders(storefrontRuntime),
   };
 }
 
@@ -1428,6 +1447,244 @@ function isRemoteCommerceApiBase(): boolean {
 }
 
 /** User-visible message for fetch / JSON failures against Commerce.Api */
+export type CommercePermissionCatalogEntry = {
+  id: string;
+  label: string;
+  group: string;
+};
+
+export type CommerceTenantRoleRow = {
+  id: string;
+  roleKey: string;
+  displayName: string;
+  description: string | null;
+  permissions: string[];
+  isSystem: boolean;
+  isBuiltIn: boolean;
+  createdAt: string | null;
+};
+
+export type CommerceTenantRolesResponse = {
+  permissionCatalog: CommercePermissionCatalogEntry[];
+  systemRoles: CommerceTenantRoleRow[];
+  customRoles: CommerceTenantRoleRow[];
+};
+
+function normalizePermissionCatalogEntry(raw: Record<string, unknown>): CommercePermissionCatalogEntry {
+  return {
+    id: String(raw.id ?? ""),
+    label: String(raw.label ?? raw.id ?? ""),
+    group: String(raw.group ?? "General"),
+  };
+}
+
+function normalizeTenantRoleRow(raw: Record<string, unknown>): CommerceTenantRoleRow {
+  const perms = Array.isArray(raw.permissions) ? raw.permissions.map((p) => String(p)) : [];
+  return {
+    id: String(raw.id ?? ""),
+    roleKey: String(raw.roleKey ?? ""),
+    displayName: String(raw.displayName ?? ""),
+    description: raw.description == null ? null : String(raw.description),
+    permissions: perms,
+    isSystem: raw.isSystem === true,
+    isBuiltIn: raw.isBuiltIn === true,
+    createdAt: raw.createdAt == null ? null : String(raw.createdAt),
+  };
+}
+
+export async function fetchTenantRoles(accessToken: string): Promise<CommerceTenantRolesResponse> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles`, {
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const catalog = Array.isArray(data.permissionCatalog)
+    ? data.permissionCatalog.map((x) => normalizePermissionCatalogEntry(x as Record<string, unknown>))
+    : [];
+  const systemRoles = Array.isArray(data.systemRoles)
+    ? data.systemRoles.map((x) => normalizeTenantRoleRow(x as Record<string, unknown>))
+    : [];
+  const customRoles = Array.isArray(data.customRoles)
+    ? data.customRoles.map((x) => normalizeTenantRoleRow(x as Record<string, unknown>))
+    : [];
+  return { permissionCatalog: catalog, systemRoles, customRoles };
+}
+
+export async function createTenantRole(
+  accessToken: string,
+  body: {
+    roleKey: string;
+    displayName: string;
+    description?: string | null;
+    permissions: string[];
+    isBuiltIn?: boolean;
+  }
+): Promise<CommerceTenantRoleRow> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles`, {
+    method: "POST",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizeTenantRoleRow((await res.json()) as Record<string, unknown>);
+}
+
+export async function updateTenantRole(
+  accessToken: string,
+  roleId: string,
+  body: {
+    displayName: string;
+    description?: string | null;
+    permissions: string[];
+  }
+): Promise<CommerceTenantRoleRow> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles/${encodeURIComponent(roleId)}`, {
+    method: "PUT",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizeTenantRoleRow((await res.json()) as Record<string, unknown>);
+}
+
+export async function deleteTenantRole(accessToken: string, roleId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles/${encodeURIComponent(roleId)}`, {
+    method: "DELETE",
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export type CommercePortalRoleAssignmentRow = {
+  id: string;
+  roleKey: string;
+  portalBaseRole: string;
+  isPrimary: boolean;
+  scopeJson: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  createdAt: string;
+};
+
+export type CommercePortalUserRoleAssignmentsResponse = {
+  portalUserId: string;
+  email: string;
+  portalRole: string;
+  assignments: CommercePortalRoleAssignmentRow[];
+};
+
+function normalizePortalRoleAssignmentRow(raw: Record<string, unknown>): CommercePortalRoleAssignmentRow {
+  return {
+    id: String(raw.id ?? ""),
+    roleKey: String(raw.roleKey ?? ""),
+    portalBaseRole: String(raw.portalBaseRole ?? ""),
+    isPrimary: raw.isPrimary === true,
+    scopeJson: raw.scopeJson == null ? null : String(raw.scopeJson),
+    validFrom: raw.validFrom == null ? null : String(raw.validFrom),
+    validTo: raw.validTo == null ? null : String(raw.validTo),
+    createdAt: String(raw.createdAt ?? ""),
+  };
+}
+
+export async function fetchPortalUserRoleAssignments(
+  accessToken: string,
+  portalUserId: string
+): Promise<CommercePortalUserRoleAssignmentsResponse> {
+  const res = await fetch(
+    `${BASE}/api/v1/portal-users/${encodeURIComponent(portalUserId)}/role-assignments`,
+    { headers: commerceAuthorizedHeaders(accessToken) }
+  );
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const assignments = Array.isArray(data.assignments)
+    ? data.assignments.map((x) => normalizePortalRoleAssignmentRow(x as Record<string, unknown>))
+    : [];
+  return {
+    portalUserId: String(data.portalUserId ?? portalUserId),
+    email: String(data.email ?? ""),
+    portalRole: String(data.portalRole ?? ""),
+    assignments,
+  };
+}
+
+export async function createPortalUserRoleAssignment(
+  accessToken: string,
+  portalUserId: string,
+  body: {
+    roleKey: string;
+    portalBaseRole: string;
+    isPrimary?: boolean;
+    scopeJson?: string | null;
+  }
+): Promise<CommercePortalRoleAssignmentRow> {
+  const res = await fetch(
+    `${BASE}/api/v1/portal-users/${encodeURIComponent(portalUserId)}/role-assignments`,
+    {
+      method: "POST",
+      headers: commerceAuthorizedHeaders(accessToken),
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizePortalRoleAssignmentRow((await res.json()) as Record<string, unknown>);
+}
+
+export async function updatePortalUserRoleAssignment(
+  accessToken: string,
+  portalUserId: string,
+  assignmentId: string,
+  body: {
+    roleKey?: string;
+    portalBaseRole: string;
+    isPrimary?: boolean;
+    scopeJson?: string | null;
+  }
+): Promise<CommercePortalRoleAssignmentRow> {
+  const res = await fetch(
+    `${BASE}/api/v1/portal-users/${encodeURIComponent(portalUserId)}/role-assignments/${encodeURIComponent(assignmentId)}`,
+    {
+      method: "PUT",
+      headers: commerceAuthorizedHeaders(accessToken),
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizePortalRoleAssignmentRow((await res.json()) as Record<string, unknown>);
+}
+
+export async function deletePortalUserRoleAssignment(
+  accessToken: string,
+  portalUserId: string,
+  assignmentId: string
+): Promise<void> {
+  const res = await fetch(
+    `${BASE}/api/v1/portal-users/${encodeURIComponent(portalUserId)}/role-assignments/${encodeURIComponent(assignmentId)}`,
+    { method: "DELETE", headers: commerceAuthorizedHeaders(accessToken) }
+  );
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+}
+
+export async function seedTenantRoleDefaults(
+  accessToken: string,
+  roles: Array<{
+    roleKey: string;
+    displayName: string;
+    description?: string;
+    permissions: string[];
+  }>
+): Promise<CommerceTenantRoleRow[]> {
+  const res = await fetch(`${BASE}/api/v1/tenant-roles/seed-defaults`, {
+    method: "POST",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify({ roles }),
+  });
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  const created = data.created;
+  if (!Array.isArray(created)) return [];
+  return created.map((x) => normalizeTenantRoleRow(x as Record<string, unknown>));
+}
+
 export function formatCommerceApiError(error: unknown): string {
   if (error instanceof TypeError && /fetch|network|failed/i.test(String(error.message))) {
     if (isRemoteCommerceApiBase()) {

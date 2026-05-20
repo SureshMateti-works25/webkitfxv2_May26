@@ -789,6 +789,7 @@ body:has(.shell-root--cafe) {
   background: var(--cafe-paper);
 }
 
+.shell-root.shell-root--cafe .login-enterprise__welcome,
 .shell-root.shell-root--cafe .login-enterprise-panel {
   background: linear-gradient(160deg, var(--cafe-mocha) 0%, var(--cafe-espresso) 100%);
 }

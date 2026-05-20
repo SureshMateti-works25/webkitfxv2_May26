@@ -1,7 +1,7 @@
 import { resolveStorefrontProductTypeId } from "./applicationTypeLookup.js";
 import {
   commerceTenantHeaders,
-  DEFAULT_COMMERCE_TENANT_ID,
+  getDefaultCommerceTenantId,
 } from "./commerceApi.js";
 import type { CartLine } from "../cart/CartContext.js";
 
@@ -108,7 +108,7 @@ export async function placeStorefrontOrder(params: {
     ...commerceTenantHeaders(),
     "Content-Type": "application/json",
     Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getDefaultCommerceTenantId(),
   };
   if (params.accessToken) headers["Authorization"] = `Bearer ${params.accessToken}`;
 

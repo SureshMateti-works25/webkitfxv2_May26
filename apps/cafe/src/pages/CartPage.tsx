@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
+import { useAuth } from "../auth/AuthContext.js";
 import { QrOrderBanner } from "../components/QrOrderBanner.js";
 import { getScreenConfig } from "../config/getScreenConfig.js";
 import { useCart } from "../cart/CartContext.js";
+import { canUseStorefrontCart } from "../lib/storefrontCartAccess.js";
 import { useQrOrderSession } from "../lib/qrOrderSession.js";
 import { buildQrMenuPath } from "../lib/qrOrderUrls.js";
 
@@ -15,8 +17,10 @@ function formatMinor(minor: number | null, currency: string | null): string {
 
 export function CartPage() {
   const copy = getScreenConfig("cart");
+  const { auth } = useAuth();
   const qrSession = useQrOrderSession();
-  const { lines, totalQuantity, setLineQuantity, removeLine, clearCart } = useCart();
+  const { lines, loading, totalQuantity, setLineQuantity, removeLine, clearCart } = useCart();
+  const cartAllowed = canUseStorefrontCart(auth);
   const continueShoppingTo = qrSession ? buildQrMenuPath(qrSession.tableCode) : "/search";
 
   const subtotalHint = useMemo(() => {
@@ -42,7 +46,18 @@ export function CartPage() {
         <p className="cart-page__lede">{String(copy.body ?? "")}</p>
       </header>
 
-      {lines.length === 0 ? (
+      {!cartAllowed ? (
+        <div className="cart-page__empty">
+          <p>Sign in as a shopper to view and manage your cart.</p>
+          <Link to="/login" className="cart-page__cta">
+            Sign in
+          </Link>
+        </div>
+      ) : loading ? (
+        <p className="cart-page__lede" aria-live="polite">
+          Loading cart…
+        </p>
+      ) : lines.length === 0 ? (
         <div className="cart-page__empty">
           <p>{copy.emptyHint ?? "Your cart is empty."}</p>
           <Link to={continueShoppingTo} className="cart-page__cta">
@@ -52,7 +67,7 @@ export function CartPage() {
       ) : (
         <>
           <div className="cart-page__toolbar">
-            <button type="button" className="cart-page__linkish" onClick={() => clearCart()}>
+            <button type="button" className="cart-page__linkish" onClick={() => void clearCart()}>
               {copy.clearCartLabel ?? "Clear cart"}
             </button>
             <Link to={continueShoppingTo} className="cart-page__cta-secondary">
@@ -92,11 +107,11 @@ export function CartPage() {
                     min={1}
                     max={999}
                     value={ln.quantity}
-                    onChange={(e) => setLineQuantity(ln.lineId, Number(e.target.value))}
+                    onChange={(e) => void setLineQuantity(ln.lineId, Number(e.target.value))}
                     aria-label={`Quantity for ${ln.titleDisplay}`}
                   />
                 </label>
-                <button type="button" className="cart-line__remove" onClick={() => removeLine(ln.lineId)}>
+                <button type="button" className="cart-line__remove" onClick={() => void removeLine(ln.lineId)}>
                   {copy.removeLineLabel ?? "Remove"}
                 </button>
               </li>

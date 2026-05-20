@@ -1,24 +1,25 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using System.Text.Json;
 using Commerce.Api.Audit;
 using Commerce.Api.Auth;
 using Commerce.Api.Data;
 using Commerce.Api.Entities;
-using System.Security.Claims;
+using Commerce.Api.Tenancy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using WebkitFx.Platform.Tenancy;
 
 namespace Commerce.Api.Features;
 
 public static class AuthEndpoints
 {
-    private const string DefaultTenantId = "t1";
-
     public static void MapAuthV1(this WebApplication app)
     {
         app.MapPost("/api/v1/auth/register", Register).WithName("AuthRegister");
         app.MapPost("/api/v1/auth/login", Login).WithName("AuthLogin");
+        app.MapGet("/api/v1/auth/me", Me).RequireAuthorization().WithName("AuthMe");
         app.MapPost("/api/v1/auth/password/change", ChangePassword)
             .RequireAuthorization()
             .WithName("AuthChangePassword");
@@ -30,19 +31,21 @@ public static class AuthEndpoints
         RegisterRequest body,
         HttpContext http,
         CommerceDbContext db,
+        ITenantContext tenantContext,
         IPasswordHasher<PortalUser> passwordHasher,
         PortalJwtIssuer jwtIssuer,
+        TenantRbacEvaluator rbac,
         IOptions<JwtOptions> jwtOptions,
         AuditLogWriter audit,
         CancellationToken ct)
     {
-        var validation = ValidateRegister(body);
+        var validation = ValidateRegister(body, rbac.Manifest.RegisterableRoles);
         if (validation is not null)
         {
             await audit.RecordAsync(
                 AuditActions.AuthRegister,
                 "failure",
-                DefaultTenantId,
+                null,
                 null,
                 "portal_user",
                 null,
@@ -52,7 +55,11 @@ public static class AuthEndpoints
             return validation;
         }
 
-        var tenantId = DefaultTenantId;
+        var tenant = await ResolveAuthTenantAsync(http, db, tenantContext, audit, ct);
+        if (tenant.Error is not null)
+            return tenant.Error;
+
+        var tenantId = tenant.Tenant!.Id;
         var norm = NormalizeEmail(body.Email);
         if (await db.PortalUsers.AnyAsync(u => u.TenantId == tenantId && u.NormalizedEmail == norm, ct))
         {
@@ -69,7 +76,7 @@ public static class AuthEndpoints
             return Results.Conflict(new { error = "An account with this email already exists." });
         }
 
-        var role = (body.Role?.Trim().ToLowerInvariant() ?? "shopper") == "vendor" ? "vendor" : "shopper";
+        var role = body.Role?.Trim().ToLowerInvariant() ?? PortalRoles.Shopper;
         var id = "u_" + Guid.NewGuid().ToString("N")[..12];
         var user = new PortalUser
         {
@@ -91,7 +98,15 @@ public static class AuthEndpoints
         await db.SaveChangesAsync(ct);
 
         var hours = Math.Clamp(jwtOptions.Value.AccessTokenHours, 1, 720);
-        var token = jwtIssuer.IssueAccessToken(user.Id, user.Email, user.Role, TimeSpan.FromHours(hours));
+        var resolved = await AuthRoleResolver.ResolveAsync(db, user, ct);
+        var token = jwtIssuer.IssueAccessToken(
+            user.Id,
+            user.Email,
+            resolved.PortalRole,
+            tenantId,
+            tenant.Tenant!.StorefrontMode,
+            TimeSpan.FromHours(hours),
+            resolved.PermissionRoleKey);
 
         await audit.RecordAsync(
             AuditActions.AuthRegister,
@@ -100,25 +115,23 @@ public static class AuthEndpoints
             user.Id,
             "portal_user",
             user.Id,
-            new { role = user.Role, emailDomain = EmailDomain(user.Email) },
+            new { role = resolved.PortalRole, permissionRole = resolved.PermissionRoleKey, emailDomain = EmailDomain(user.Email) },
             http,
             ct);
 
-        return Results.Created("/api/v1/auth/me", new AuthResponse(
-            token.AccessToken,
-            "Bearer",
-            (token.ExpiresAtUtc - DateTimeOffset.UtcNow).TotalSeconds,
-            user.Id,
-            user.Email,
-            user.Role));
+        return Results.Created(
+            "/api/v1/auth/me",
+            await BuildAuthResponseAsync(token, user, tenant.Tenant!, rbac, db, ct));
     }
 
     private static async Task<IResult> Login(
         LoginRequest body,
         HttpContext http,
         CommerceDbContext db,
+        ITenantContext tenantContext,
         IPasswordHasher<PortalUser> passwordHasher,
         PortalJwtIssuer jwtIssuer,
+        TenantRbacEvaluator rbac,
         IOptions<JwtOptions> jwtOptions,
         AuditLogWriter audit,
         CancellationToken ct)
@@ -128,7 +141,7 @@ public static class AuthEndpoints
             await audit.RecordAsync(
                 AuditActions.AuthLogin,
                 "failure",
-                DefaultTenantId,
+                null,
                 null,
                 "portal_user",
                 null,
@@ -138,16 +151,21 @@ public static class AuthEndpoints
             return Results.BadRequest(new { error = "Email and password are required." });
         }
 
+        var tenant = await ResolveAuthTenantAsync(http, db, tenantContext, audit, ct);
+        if (tenant.Error is not null)
+            return tenant.Error;
+
+        var tenantId = tenant.Tenant!.Id;
         var norm = NormalizeEmail(body.Email);
         var user = await db.PortalUsers
-            .FirstOrDefaultAsync(u => u.TenantId == DefaultTenantId && u.NormalizedEmail == norm, ct);
+            .FirstOrDefaultAsync(u => u.TenantId == tenantId && u.NormalizedEmail == norm, ct);
 
         if (user is null)
         {
             await audit.RecordAsync(
                 AuditActions.AuthLogin,
                 "failure",
-                DefaultTenantId,
+                tenantId,
                 null,
                 "portal_user",
                 null,
@@ -163,7 +181,7 @@ public static class AuthEndpoints
             await audit.RecordAsync(
                 AuditActions.AuthLogin,
                 "failure",
-                DefaultTenantId,
+                tenantId,
                 null,
                 "portal_user",
                 null,
@@ -178,7 +196,7 @@ public static class AuthEndpoints
             await audit.RecordAsync(
                 AuditActions.AuthLogin,
                 "failure",
-                DefaultTenantId,
+                tenantId,
                 user.Id,
                 "portal_user",
                 user.Id,
@@ -197,29 +215,69 @@ public static class AuthEndpoints
         }
 
         var hours = Math.Clamp(jwtOptions.Value.AccessTokenHours, 1, 720);
-        var token = jwtIssuer.IssueAccessToken(user.Id, user.Email, user.Role, TimeSpan.FromHours(hours));
+        var resolved = await AuthRoleResolver.ResolveAsync(db, user, ct);
+        var token = jwtIssuer.IssueAccessToken(
+            user.Id,
+            user.Email,
+            resolved.PortalRole,
+            tenantId,
+            tenant.Tenant!.StorefrontMode,
+            TimeSpan.FromHours(hours),
+            resolved.PermissionRoleKey);
 
         await audit.RecordAsync(
             AuditActions.AuthLogin,
             "success",
-            DefaultTenantId,
+            tenantId,
             user.Id,
             "portal_user",
             user.Id,
-            new { role = user.Role, emailDomain = EmailDomain(user.Email) },
+            new { role = resolved.PortalRole, permissionRole = resolved.PermissionRoleKey, emailDomain = EmailDomain(user.Email) },
             http,
             ct);
 
-        return Results.Ok(new AuthResponse(
-            token.AccessToken,
-            "Bearer",
-            (token.ExpiresAtUtc - DateTimeOffset.UtcNow).TotalSeconds,
-            user.Id,
-            user.Email,
-            user.Role));
+        return Results.Ok(await BuildAuthResponseAsync(token, user, tenant.Tenant!, rbac, db, ct));
     }
 
-    private static IResult? ValidateRegister(RegisterRequest body)
+    private static async Task<IResult> Me(
+        HttpContext http,
+        CommerceDbContext db,
+        TenantRbacEvaluator rbac,
+        CancellationToken ct)
+    {
+        var tenantId = http.User.FindFirstValue(CommerceClaimTypes.TenantId);
+        var userId = http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? http.User.FindFirstValue("sub");
+        if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(userId))
+            return Results.Unauthorized();
+
+        var user = await db.PortalUsers.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Id == userId, ct);
+        if (user is null)
+            return Results.NotFound(new { error = "Account not found." });
+
+        var tenant = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, ct);
+        if (tenant is null)
+            return Results.NotFound(new { error = "Tenant not found." });
+
+        var storefrontMode = http.User.FindFirstValue("storefront_mode") ?? tenant.StorefrontMode;
+        var resolved = await AuthRoleResolver.ResolveAsync(db, user, ct);
+        var permissions = await AuthRoleResolver.PermissionsForUserAsync(
+            rbac, tenantId, resolved.PermissionRoleKey, storefrontMode, ct);
+        return Results.Ok(new
+        {
+            userId = user.Id,
+            email = user.Email,
+            role = resolved.PortalRole,
+            permissionRole = resolved.PermissionRoleKey,
+            tenantId = tenant.Id,
+            storefrontMode,
+            vertical = tenant.Vertical,
+            permissions,
+            features = await rbac.FeaturesForTenantAsync(tenantId, storefrontMode, ct)
+        });
+    }
+
+    private static IResult? ValidateRegister(RegisterRequest body, IReadOnlyList<string> registerableRoles)
     {
         if (string.IsNullOrWhiteSpace(body.Email) || string.IsNullOrWhiteSpace(body.Password))
             return Results.BadRequest(new { error = "Email and password are required." });
@@ -230,8 +288,8 @@ public static class AuthEndpoints
         if (!new EmailAddressAttribute().IsValid(body.Email.Trim()))
             return Results.BadRequest(new { error = "Invalid email address." });
 
-        var role = body.Role?.Trim().ToLowerInvariant() ?? "shopper";
-        if (role is not ("shopper" or "vendor"))
+        var role = body.Role?.Trim().ToLowerInvariant() ?? PortalRoles.Shopper;
+        if (!registerableRoles.Contains(role, StringComparer.Ordinal))
             return Results.BadRequest(new { error = "Role must be shopper or vendor." });
 
         return null;
@@ -241,12 +299,13 @@ public static class AuthEndpoints
         ChangePasswordRequest body,
         HttpContext http,
         CommerceDbContext db,
-        IPasswordHasher<PortalUser> passwordHasher,
         AuditLogWriter audit,
+        IPasswordHasher<PortalUser> passwordHasher,
         CancellationToken ct)
     {
         var actorUserId = http.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? http.User.FindFirstValue("sub");
-        if (string.IsNullOrWhiteSpace(actorUserId))
+        var tenantId = http.User.FindFirstValue(CommerceClaimTypes.TenantId);
+        if (string.IsNullOrWhiteSpace(actorUserId) || string.IsNullOrWhiteSpace(tenantId))
             return Results.Unauthorized();
 
         if (string.IsNullOrWhiteSpace(body.CurrentPassword) || string.IsNullOrWhiteSpace(body.NewPassword))
@@ -254,7 +313,7 @@ public static class AuthEndpoints
         if (body.NewPassword.Length < 8)
             return Results.BadRequest(new { error = "New password must be at least 8 characters." });
 
-        var user = await db.PortalUsers.FirstOrDefaultAsync(u => u.TenantId == DefaultTenantId && u.Id == actorUserId, ct);
+        var user = await db.PortalUsers.FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Id == actorUserId, ct);
         if (user is null)
             return Results.NotFound(new { error = "Account not found." });
         if (user.LoginDisabled)
@@ -268,7 +327,7 @@ public static class AuthEndpoints
             await audit.RecordAsync(
                 AuditActions.AuthPasswordChange,
                 "failure",
-                DefaultTenantId,
+                tenantId,
                 user.Id,
                 "portal_user",
                 user.Id,
@@ -284,7 +343,7 @@ public static class AuthEndpoints
         await audit.RecordAsync(
             AuditActions.AuthPasswordChange,
             "success",
-            DefaultTenantId,
+            tenantId,
             user.Id,
             "portal_user",
             user.Id,
@@ -299,6 +358,7 @@ public static class AuthEndpoints
         ForgotPasswordRequest body,
         HttpContext http,
         CommerceDbContext db,
+        ITenantContext tenantContext,
         IPasswordHasher<PortalUser> passwordHasher,
         AuditLogWriter audit,
         CancellationToken ct)
@@ -310,9 +370,13 @@ public static class AuthEndpoints
         if (!new EmailAddressAttribute().IsValid(body.Email.Trim()))
             return Results.BadRequest(new { error = "Invalid email address." });
 
+        var tenantId = await TenantResolver.ResolveAuthTenantIdAsync(http, db, tenantContext, ct);
+        if (string.IsNullOrWhiteSpace(tenantId))
+            return Results.BadRequest(new { error = "Tenant is required (X-Tenant-Id header)." });
+
         var norm = NormalizeEmail(body.Email);
         var user = await db.PortalUsers
-            .FirstOrDefaultAsync(u => u.TenantId == DefaultTenantId && u.NormalizedEmail == norm, ct);
+            .FirstOrDefaultAsync(u => u.TenantId == tenantId && u.NormalizedEmail == norm, ct);
 
         if (user is not null)
         {
@@ -323,7 +387,7 @@ public static class AuthEndpoints
         await audit.RecordAsync(
             AuditActions.AuthPasswordForgot,
             "success",
-            DefaultTenantId,
+            tenantId,
             null,
             "portal_user",
             null,
@@ -335,6 +399,69 @@ public static class AuthEndpoints
         {
             message = "If the account exists, the password has been reset. You can now sign in with the new password."
         });
+    }
+
+    private static async Task<(Tenant? Tenant, IResult? Error)> ResolveAuthTenantAsync(
+        HttpContext http,
+        CommerceDbContext db,
+        ITenantContext tenantContext,
+        AuditLogWriter audit,
+        CancellationToken ct)
+    {
+        var tenantId = await TenantResolver.ResolveAuthTenantIdAsync(http, db, tenantContext, ct);
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            await audit.RecordAsync(
+                AuditActions.AuthLogin,
+                "failure",
+                null,
+                null,
+                "tenant",
+                null,
+                new { reason = "missing_tenant" },
+                http,
+                ct);
+            return (null, Results.BadRequest(new
+            {
+                error = $"Provide {TenantConstants.HeaderName} header for auth."
+            }));
+        }
+
+        var tenant = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, ct);
+        if (tenant is null)
+            return (null, Results.NotFound(new { error = "Unknown tenant.", tenantId }));
+
+        if (!tenant.IsActive)
+            return (null, Results.Json(
+                new { error = "Tenant is not active.", tenantId },
+                statusCode: StatusCodes.Status403Forbidden));
+
+        return (tenant, null);
+    }
+
+    private static async Task<AuthResponse> BuildAuthResponseAsync(
+        TokenIssueResult token,
+        PortalUser user,
+        Tenant tenant,
+        TenantRbacEvaluator rbac,
+        CommerceDbContext db,
+        CancellationToken ct)
+    {
+        var resolved = await AuthRoleResolver.ResolveAsync(db, user, ct);
+        var permissions = await AuthRoleResolver.PermissionsForUserAsync(
+            rbac, tenant.Id, resolved.PermissionRoleKey, tenant.StorefrontMode, ct);
+        return new AuthResponse(
+            token.AccessToken,
+            "Bearer",
+            (token.ExpiresAtUtc - DateTimeOffset.UtcNow).TotalSeconds,
+            user.Id,
+            user.Email,
+            resolved.PortalRole,
+            resolved.PermissionRoleKey,
+            tenant.Id,
+            tenant.StorefrontMode,
+            permissions.ToArray(),
+            (await rbac.FeaturesForTenantAsync(tenant.Id, tenant.StorefrontMode, ct)).ToArray());
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToUpperInvariant();
@@ -372,11 +499,16 @@ public static class AuthEndpoints
         public string NewPassword { get; set; } = "";
     }
 
-    private sealed record AuthResponse(
+    public sealed record AuthResponse(
         string AccessToken,
         string TokenType,
         double ExpiresIn,
         string UserId,
         string Email,
-        string Role);
+        string Role,
+        string PermissionRole,
+        string TenantId,
+        string StorefrontMode,
+        string[] Permissions,
+        string[] Features);
 }

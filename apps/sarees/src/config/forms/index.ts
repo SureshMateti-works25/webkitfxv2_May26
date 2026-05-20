@@ -13,6 +13,8 @@ import vendorProductPricing from "./vendor-product/pricing.json";
 import vendorProductCore from "./vendor-product/product-core.json";
 import vendorProductTax from "./vendor-product/tax.json";
 import vendorProductTypeSaree from "./vendor-product/type-saree.json";
+import tenantRoleEntry from "./tenant-role-entry.json";
+import userRoleAssignment from "./user-role-assignment.json";
 
 export const loginForm = login as FormDefinition;
 export const vendorSignupForm = vendorSignup as FormDefinition;
@@ -29,3 +31,30 @@ export const vendorProductFacetsForm = vendorProductFacets as FormDefinition;
 export const vendorProductEnquiriesForm = vendorProductEnquiries as FormDefinition;
 export const vendorProductOrdersForm = vendorProductOrders as FormDefinition;
 export const vendorProductTypeSareeForm = vendorProductTypeSaree as FormDefinition;
+export const tenantRoleEntryForm = tenantRoleEntry as FormDefinition;
+export const userRoleAssignmentForm = userRoleAssignment as FormDefinition;
+
+const formById: Record<string, FormDefinition> = {
+  login: loginForm,
+  vendorSignup: vendorSignupForm,
+  shopperSignup: shopperSignupForm,
+  searchFilters: searchFiltersForm,
+  chromeNotice: chromeNoticeForm,
+  productEngagement: productEngagementForm,
+  vendorProductCore: vendorProductCoreForm,
+  vendorProductPricing: vendorProductPricingForm,
+  vendorProductTax: vendorProductTaxForm,
+  vendorProductCollections: vendorProductCollectionsForm,
+  vendorProductFacets: vendorProductFacetsForm,
+  vendorProductEnquiries: vendorProductEnquiriesForm,
+  vendorProductOrders: vendorProductOrdersForm,
+  vendorProductTypeSaree: vendorProductTypeSareeForm,
+  tenantRoleEntry: tenantRoleEntryForm,
+  userRoleAssignment: userRoleAssignmentForm,
+};
+
+export function getForm(formId: string): FormDefinition {
+  const form = formById[formId];
+  if (!form) throw new Error(`Unknown form id: ${formId}`);
+  return form;
+}

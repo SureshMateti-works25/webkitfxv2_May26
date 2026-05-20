@@ -11,6 +11,8 @@ import vendorOrdersScreen from "./vendor-orders.json";
 import tableManagementScreen from "./table-management.json";
 import floorPlanScreen from "./floor-plan.json";
 import qrTableScreen from "./qr-table.json";
+import rolesAdminScreen from "./roles-admin.json";
+import userRoleAssignmentsScreen from "./user-role-assignments.json";
 
 export type AppScreenDefinition = CatalogScreenDefinition | { copy: Record<string, string> };
 
@@ -26,5 +28,7 @@ export const screenDefinitions: Record<string, AppScreenDefinition> = {
   tableManagement: tableManagementScreen as AppScreenDefinition,
   floorPlan: floorPlanScreen as AppScreenDefinition,
   qrTable: qrTableScreen as AppScreenDefinition,
+  rolesAdmin: rolesAdminScreen as AppScreenDefinition,
+  userRoleAssignments: userRoleAssignmentsScreen as AppScreenDefinition,
   productDetail: productDetailScreen as CatalogScreenDefinition,
 };

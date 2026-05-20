@@ -56,10 +56,22 @@ async function testHealth() {
   log("health", "ok", data);
 }
 
+async function testTenants() {
+  const res = await fetch(`${BASE}/api/v1/tenants/${TENANT}/bootstrap`, { headers: tenantHeaders });
+  const data = await json(res);
+  if (!res.ok) fail("tenants", "bootstrap failed", res, data);
+  if (!data.tenantId) fail("tenants", "missing tenantId in bootstrap", res, data);
+  log("tenants", "bootstrap ok", {
+    tenantId: data.tenantId,
+    storefrontMode: data.storefrontMode,
+    features: data.features?.length ?? 0,
+  });
+}
+
 async function testRegister(email) {
   const res = await fetch(`${BASE}/api/v1/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json", ...tenantHeaders },
     body: JSON.stringify({
       email,
       password: PASSWORD,
@@ -81,13 +93,14 @@ async function testRegister(email) {
 async function testLogin(email) {
   const res = await fetch(`${BASE}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json", ...tenantHeaders },
     body: JSON.stringify({ email, password: PASSWORD }),
   });
   const data = await json(res);
   if (!res.ok) fail("login", "login failed", res, data);
   if (!data.accessToken) fail("login", "missing accessToken", res, data);
-  log("login", "ok", { email, role: data.role });
+  if (!data.tenantId) fail("login", "missing tenantId (JWT tenant scoping)", res, data);
+  log("login", "ok", { email, role: data.role, tenantId: data.tenantId });
   return data.accessToken;
 }
 
@@ -177,6 +190,7 @@ async function testCatalog(accessToken) {
 
 async function runAuth(email) {
   await testHealth();
+  await testTenants();
   if (!FIXED_EMAIL) await testRegister(email);
   return testLogin(FIXED_EMAIL || email);
 }
@@ -196,6 +210,8 @@ async function main() {
   }
 
   if (mode === "catalog") {
+    await testHealth();
+    await testTenants();
     const token = FIXED_EMAIL ? await testLogin(FIXED_EMAIL) : null;
     await testCatalog(token);
     console.log("\nCatalog checks passed.");

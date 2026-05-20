@@ -8,14 +8,12 @@ export function storefrontApplicationTypeLabelFromConfig(): string {
   if (configured) return configured;
 
   const id = CATALOG_APPLICATION_TYPE_LOOKUP_ID.trim();
-  if (id === "app_cafe") return "Café";
-  if (id === "app_sr") return "Sarees";
-  if (id === "app_gr") return "Groceries";
   if (id.startsWith("app_")) {
     const tail = id.slice(4);
     return tail.charAt(0).toUpperCase() + tail.slice(1);
   }
-  return "Café";
+
+  return app.name?.trim() || "Storefront";
 }
 
 export async function fetchStorefrontApplicationTypeLabel(): Promise<string> {

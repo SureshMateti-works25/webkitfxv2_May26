@@ -1,0 +1,10 @@
+{
+  "vertical": "grocery",
+  "permissionCatalog": [
+    { "id": "aisle:view", "label": "View store aisles", "group": "Operations" },
+    { "id": "aisle:manage", "label": "Manage aisle layout", "group": "Operations" }
+  ],
+  "storefrontModeFeatures": {
+    "isolated_shop": ["pickup_slots", "delivery_slots"]
+  }
+}

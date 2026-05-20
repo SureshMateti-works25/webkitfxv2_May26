@@ -8,6 +8,8 @@ import { getForm } from "./config/forms/index.js";
 import { implementationRegistry } from "./implementations/registry.js";
 import { AppChrome } from "./shell/AppChrome.js";
 import { DevApiPing } from "./dev/DevApiPing.js";
+import { DevTenantSwitcher } from "./dev/DevTenantSwitcher.js";
+import { TenantChromeProvider } from "./lib/useTenantChrome.js";
 
 import "./index.css";
 import "./app-shell.css";
@@ -25,10 +27,17 @@ export function App() {
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
-          {import.meta.env.DEV ? <DevApiPing /> : null}
-          <Routes>
-            <Route element={<AppChrome />}>{routeElements}</Route>
-          </Routes>
+          <TenantChromeProvider>
+            {import.meta.env.DEV ? (
+              <>
+                <DevApiPing />
+                <DevTenantSwitcher />
+              </>
+            ) : null}
+            <Routes>
+              <Route element={<AppChrome />}>{routeElements}</Route>
+            </Routes>
+          </TenantChromeProvider>
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>

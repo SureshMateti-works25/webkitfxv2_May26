@@ -138,6 +138,7 @@ export function AdminPortalUsersPage({ directory }: AdminPortalUsersPageProps) {
                   <th scope="col">User id</th>
                   <th scope="col">Created</th>
                   <th scope="col">Sign-in</th>
+                  <th scope="col">Roles</th>
                   <th scope="col">
                     <span className="lookup-admin-page__sr-only">Actions</span>
                   </th>
@@ -155,6 +156,14 @@ export function AdminPortalUsersPage({ directory }: AdminPortalUsersPageProps) {
                       </td>
                       <td>{formatCreated(r.createdAt)}</td>
                       <td>{r.loginDisabled ? "Disabled" : "Allowed"}</td>
+                      <td>
+                        <Link
+                          to={`/admin/portal-users/${encodeURIComponent(r.id)}/role-assignments`}
+                          className="cart-page__linkish"
+                        >
+                          Assign roles
+                        </Link>
+                      </td>
                       <td>
                         {isSelf ? (
                           <span className="lookup-admin-page__hint">This is you</span>

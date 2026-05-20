@@ -31,6 +31,8 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
     public DbSet<ShopperProductView> ShopperProductViews => Set<ShopperProductView>();
     public DbSet<StorefrontOrder> StorefrontOrders => Set<StorefrontOrder>();
     public DbSet<StorefrontOrderLine> StorefrontOrderLines => Set<StorefrontOrderLine>();
+    public DbSet<TenantCustomRole> TenantCustomRoles => Set<TenantCustomRole>();
+    public DbSet<PortalUserRoleAssignment> PortalUserRoleAssignments => Set<PortalUserRoleAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,7 +43,13 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.Property(x => x.Id).HasMaxLength(64);
             e.Property(x => x.Name).HasMaxLength(256).IsRequired();
             e.Property(x => x.Slug).HasMaxLength(128).IsRequired();
+            e.Property(x => x.StorefrontMode).HasMaxLength(32).IsRequired();
+            e.Property(x => x.Vertical).HasMaxLength(32);
+            e.Property(x => x.IsActive).HasDefaultValue(true);
+            e.Property(x => x.CreatedAt).IsRequired();
+            e.Property(x => x.HostAliasesJson);
             e.HasIndex(x => x.Slug).IsUnique();
+            e.HasIndex(x => x.IsActive);
         });
 
         modelBuilder.Entity<Product>(e =>
@@ -390,6 +398,35 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.Property(x => x.Currency).HasMaxLength(8).IsRequired();
             e.HasOne(x => x.Order).WithMany(o => o.Lines).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.OrderId);
+        });
+
+        modelBuilder.Entity<PortalUserRoleAssignment>(e =>
+        {
+            e.ToTable("portal_user_role_assignments");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.PortalUserId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.RoleKey).HasMaxLength(48).IsRequired();
+            e.Property(x => x.PortalBaseRole).HasMaxLength(16).IsRequired();
+            e.Property(x => x.ScopeJson);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(64);
+            e.HasIndex(x => new { x.TenantId, x.PortalUserId, x.RoleKey }).IsUnique();
+            e.HasIndex(x => new { x.TenantId, x.PortalUserId, x.IsPrimary });
+        });
+
+        modelBuilder.Entity<TenantCustomRole>(e =>
+        {
+            e.ToTable("tenant_custom_roles");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.RoleKey).HasMaxLength(48).IsRequired();
+            e.Property(x => x.DisplayName).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(512);
+            e.Property(x => x.PermissionsJson).IsRequired();
+            e.Property(x => x.CreatedByUserId).HasMaxLength(64);
+            e.HasIndex(x => new { x.TenantId, x.RoleKey }).IsUnique();
         });
 
         modelBuilder.Entity<AuditLog>(e =>

@@ -1,0 +1,31 @@
+{
+  "version": "1",
+  "screenId": "rolesAdmin",
+  "allowedRoles": ["vendor", "admin"],
+  "formId": "tenantRoleEntry",
+  "permissionGroupOrder": ["Catalog", "Storefront", "Orders", "Access", "Operations"],
+  "listColumns": [
+    { "id": "roleKey", "label": "Role key", "binding": "role.roleKey" },
+    { "id": "displayName", "label": "Name", "binding": "role.displayName" },
+    { "id": "permissions", "label": "Permissions", "source": "permissionCount" }
+  ],
+  "defaultRoles": [
+    {
+      "roleKey": "collection_curator",
+      "displayName": "Collection curator",
+      "description": "Manage curated collections and own catalogue listings.",
+      "permissions": [
+        "catalog:read",
+        "products:manage_own",
+        "collections:view",
+        "collections:manage"
+      ]
+    },
+    {
+      "roleKey": "showroom_staff",
+      "displayName": "Showroom staff",
+      "description": "Browse collections and view vendor orders.",
+      "permissions": ["catalog:read", "orders:read_vendor", "collections:view"]
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import { getShell } from "../config/getShell.js";
+import { useTenantChrome } from "../lib/useTenantChrome.js";
 
 export function Footer() {
-  const shell = getShell();
+  const { shell } = useTenantChrome();
   const { footer, app } = shell;
 
   return (

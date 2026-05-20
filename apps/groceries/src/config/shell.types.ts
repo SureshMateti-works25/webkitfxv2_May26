@@ -34,8 +34,7 @@ export type ShellLandingSection =
       items: { title: string; body: string }[];
     };
 
-export type LoginEnterpriseTrend = { title: string; body: string };
-export type LoginEnterpriseMetric = { label: string; value: string };
+export type LoginWelcomeHighlight = { title: string; body: string };
 
 /** PDP / cart chrome: WhatsApp deep link from product imagery (config-driven). */
 export type ShellStorefrontWhatsApp = {
@@ -153,21 +152,17 @@ export type ShellConfig = {
   screens: {
     login: {
       title: string;
-      /** Thin full-width line above split (portal / compliance messaging) */
-      ribbon?: string;
       cardTitle: string;
       lede: string;
       guestCta: string;
       submitMember: string;
       signupLinks: ShellNavItem[];
-      enterprise: {
+      welcome: {
         eyebrow: string;
         headline: string;
         intro: string;
-        trendsTitle: string;
-        trends: LoginEnterpriseTrend[];
-        metrics: LoginEnterpriseMetric[];
-        footerNote: string;
+        highlightsTitle: string;
+        highlights: LoginWelcomeHighlight[];
       };
     };
     vendorSignup: { title: string; lede: string; submitLabel: string };
