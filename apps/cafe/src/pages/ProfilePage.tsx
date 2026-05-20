@@ -1,76 +1,110 @@
 import { getAtPath } from "@webkitfxv2/core-engine";
+import { JsonForm } from "@webkitfxv2/react-renderer";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
+import { portalUserProfileForm } from "../config/forms/index.js";
 import { getShell } from "../config/getShell.js";
+import { fetchAuthMe, formatCommerceApiError } from "../lib/commerceApi.js";
 
-function asStr(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  return "";
-}
+const READONLY_WIDGETS = {
+  text: (p: { value: unknown }) => <span>{String(p.value ?? "—")}</span>,
+  textarea: (p: { value: unknown }) => <span>{String(p.value ?? "—")}</span>,
+};
 
 export function ProfilePage() {
-  const { auth } = useAuth();
+  const { auth, getAccessToken } = useAuth();
   const shell = getShell();
   const copy = shell.screens.accountProfile;
+  const [profileSeed, setProfileSeed] = useState<Record<string, unknown>>({
+    profile: { fullName: "", phone: "", jobTitle: "", notes: "" },
+  });
+  const [meta, setMeta] = useState<{ email: string; role: string; permissionRole?: string } | null>(
+    null
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (auth.status !== "signedIn") return;
+    const token = getAccessToken();
+    if (!token) return;
+    void fetchAuthMe(token)
+      .then((me) => {
+        const p = me.profile ?? {};
+        setProfileSeed({
+          profile: {
+            fullName: String(p.fullName ?? getAtPath(auth.payload, "profile.fullName") ?? ""),
+            phone: String(p.phone ?? getAtPath(auth.payload, "profile.phone") ?? ""),
+            jobTitle: String(p.jobTitle ?? getAtPath(auth.payload, "profile.jobTitle") ?? ""),
+            notes: String(p.notes ?? ""),
+          },
+        });
+        setMeta({
+          email: me.email,
+          role: me.role,
+          permissionRole: me.permissionRole,
+        });
+      })
+      .catch((e) => setError(formatCommerceApiError(e)));
+  }, [auth.status, getAccessToken, auth]);
+
+  const readOnlyForm = useMemo(() => {
+    const base = portalUserProfileForm;
+    const fields = { ...base.fields };
+    for (const key of Object.keys(fields)) {
+      const f = fields[key];
+      if (!f) continue;
+      fields[key] = {
+        ...f,
+        props: { ...(f.props as Record<string, unknown>), readOnly: true, disabled: true },
+      };
+    }
+    return { ...base, fields };
+  }, []);
 
   if (auth.status !== "signedIn") {
     return <Navigate to="/login" replace />;
   }
 
-  const { role, payload } = auth;
-  const sessionEmail = asStr(getAtPath(payload, "session.email"));
-  const userId = asStr(getAtPath(payload, "session.userId"));
-  const loginName = asStr(getAtPath(payload, "credentials.loginName"));
-
-  const roleLabel = role === "vendor" ? "Vendor" : role === "admin" ? "Site admin" : "Shopper";
-
-  const rows: { label: string; value: string }[] = [
-    { label: "Role", value: roleLabel },
-    { label: "Signed in as", value: sessionEmail || loginName || "—" },
-    { label: "User ID", value: userId || "—" },
-  ];
-
-  if (role === "shopper") {
-    const fullName = asStr(getAtPath(payload, "profile.fullName"));
-    const profileEmail = asStr(getAtPath(payload, "profile.email"));
-    const phone = asStr(getAtPath(payload, "profile.phone"));
-    if (fullName) rows.push({ label: "Full name", value: fullName });
-    if (profileEmail && profileEmail !== sessionEmail)
-      rows.push({ label: "Profile email", value: profileEmail });
-    if (phone) rows.push({ label: "Mobile", value: phone });
-    const line1 = asStr(getAtPath(payload, "profile.address.line1"));
-    if (line1) {
-      const city = asStr(getAtPath(payload, "profile.address.city"));
-      const state = asStr(getAtPath(payload, "profile.address.state"));
-      const pin = asStr(getAtPath(payload, "profile.address.pinCode"));
-      rows.push({
-        label: "Delivery address",
-        value: [line1, city, state, pin].filter(Boolean).join(", "),
-      });
-    }
-  } else if (role === "vendor") {
-    const businessName = asStr(getAtPath(payload, "vendor.registration.businessName"));
-    const outlet = asStr(getAtPath(payload, "vendor.registration.outletCode"));
-    const gstin = asStr(getAtPath(payload, "vendor.registration.gstin"));
-    if (businessName) rows.push({ label: "Business name", value: businessName });
-    if (outlet) rows.push({ label: "Outlet code", value: outlet });
-    if (gstin) rows.push({ label: "GSTIN", value: gstin });
-  }
+  const roleLabel =
+    meta?.role === "vendor" ? "Vendor / staff" : meta?.role === "admin" ? "Site admin" : "Shopper";
 
   return (
     <div className="screen-prose profile-page">
       <h1>{copy.title}</h1>
       <p>{copy.body}</p>
+      {error ? (
+        <p className="storefront-error" role="alert">
+          {error}
+        </p>
+      ) : null}
       <dl className="profile-summary">
-        {rows.map((r) => (
-          <div key={r.label} className="profile-summary__row">
-            <dt>{r.label}</dt>
-            <dd>{r.value}</dd>
-          </div>
-        ))}
+        <div className="profile-summary__row">
+          <dt>Role</dt>
+          <dd>
+            {roleLabel}
+            {meta?.permissionRole ? (
+              <>
+                {" "}
+                (<code>{meta.permissionRole}</code>)
+              </>
+            ) : null}
+          </dd>
+        </div>
+        <div className="profile-summary__row">
+          <dt>Email</dt>
+          <dd>{meta?.email ?? "—"}</dd>
+        </div>
       </dl>
+      <section className="lookup-admin-page__panel" aria-label="Profile details">
+        <JsonForm
+          form={readOnlyForm}
+          className="lookup-admin-page__form"
+          seedValues={profileSeed}
+          resetKey={meta?.email ?? "profile"}
+          widgets={READONLY_WIDGETS}
+        />
+      </section>
       <p>
         <Link to="/account/change-password">Change password</Link>
       </p>

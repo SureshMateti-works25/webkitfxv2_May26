@@ -65,7 +65,7 @@ From `appsettings.Development.json` / DevSeed:
 
 - Email: `siteadmin@example.local`
 - Password: `LocalSiteAdmin!1`
-- Header: `X-Tenant-Id: t1`
+- Use the storefront’s tenant (`t1` sarees/café default, `t_grocery` groceries). Dev seed creates this admin on **every active tenant**; login must match the app’s `X-Tenant-Id`.
 
 ## Troubleshooting
 

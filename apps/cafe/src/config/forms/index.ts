@@ -17,6 +17,9 @@ import cafeTableEntry from "./cafe-table-entry.json";
 import cafeTableSectionEntry from "./cafe-table-section-entry.json";
 import tenantRoleEntry from "./tenant-role-entry.json";
 import userRoleAssignment from "./user-role-assignment.json";
+import portalUserProfile from "./portal-user-profile.json";
+import adminCreatePortalUser from "./admin-create-portal-user.json";
+import setInitialPassword from "./set-initial-password.json";
 
 export const loginForm = login as FormDefinition;
 export const vendorSignupForm = vendorSignup as FormDefinition;
@@ -37,6 +40,9 @@ export const cafeTableEntryForm = cafeTableEntry as FormDefinition;
 export const cafeTableSectionEntryForm = cafeTableSectionEntry as FormDefinition;
 export const tenantRoleEntryForm = tenantRoleEntry as FormDefinition;
 export const userRoleAssignmentForm = userRoleAssignment as FormDefinition;
+export const portalUserProfileForm = portalUserProfile as FormDefinition;
+export const adminCreatePortalUserForm = adminCreatePortalUser as FormDefinition;
+export const setInitialPasswordForm = setInitialPassword as FormDefinition;
 
 const formById: Record<string, FormDefinition> = {
   login: loginForm,
@@ -57,6 +63,9 @@ const formById: Record<string, FormDefinition> = {
   cafeTableSectionEntry: cafeTableSectionEntryForm,
   tenantRoleEntry: tenantRoleEntryForm,
   userRoleAssignment: userRoleAssignmentForm,
+  portalUserProfile: portalUserProfileForm,
+  adminCreatePortalUser: adminCreatePortalUserForm,
+  setInitialPassword: setInitialPasswordForm,
 };
 
 export function getForm(formId: string): FormDefinition {

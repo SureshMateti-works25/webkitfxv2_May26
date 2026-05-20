@@ -3,6 +3,7 @@ using System;
 using Commerce.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Commerce.Api.Migrations
 {
     [DbContext(typeof(CommerceDbContext))]
-    partial class CommerceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260520204148_PortalUserMustChangePassword")]
+    partial class PortalUserMustChangePassword
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -442,11 +445,6 @@ namespace Commerce.Api.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.Property<bool>("LoginDisabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("MustChangePassword")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);

@@ -2,6 +2,7 @@
   "t1": {
     "appName": "Nistta Café",
     "tagline": "Order for pickup or dine-in — menu, kitchen queue, and checkout on one stack.",
+    "marqueeMessage": "Nistta Café — order ahead for pickup · Dine-in and table QR ordering · Kitchen queue for your floor team",
     "logoSrc": "/logo-nistta.svg",
     "logoAlt": "NISTTA",
     "applicationTypeLabel": "Café",
@@ -25,6 +26,7 @@
   "t_cornercup": {
     "appName": "Corner Cup",
     "tagline": "Your neighborhood café — order ahead or scan the table QR.",
+    "marqueeMessage": "Corner Cup — skip the line with order-ahead pickup · Scan the table QR for sit-down orders · Fresh drinks and bites from our kitchen",
     "logoSrc": "/logo-nistta.svg",
     "logoAlt": "Corner Cup",
     "loginHeadline": "Welcome back to Corner Cup",
@@ -47,6 +49,7 @@
   "t_brewlab": {
     "appName": "Brew Lab",
     "tagline": "Specialty coffee and fresh bites.",
+    "marqueeMessage": "Brew Lab — today's roasts and pairings on the menu · Order ahead or scan your table · Barista queue updates live",
     "logoSrc": "/logo-nistta.svg",
     "logoAlt": "Brew Lab",
     "loginHeadline": "Brew Lab member sign-in",
@@ -69,6 +72,7 @@
   "t_foodhall": {
     "appName": "Food Hall",
     "tagline": "Discover vendors and order from one marketplace menu.",
+    "marqueeMessage": "Food Hall — browse stall menus in one place · One checkout for multiple kitchens · Pick up when your order is ready",
     "logoSrc": "/logo-nistta.svg",
     "logoAlt": "Food Hall",
     "modeBadge": "Marketplace",

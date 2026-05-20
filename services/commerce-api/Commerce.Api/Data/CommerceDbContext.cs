@@ -227,6 +227,7 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
             e.Property(x => x.Role).HasMaxLength(32).IsRequired();
             e.Property(x => x.ProfileJson);
             e.Property(x => x.LoginDisabled).HasDefaultValue(false);
+            e.Property(x => x.MustChangePassword).HasDefaultValue(false);
             e.HasIndex(x => new { x.TenantId, x.NormalizedEmail }).IsUnique();
         });
 

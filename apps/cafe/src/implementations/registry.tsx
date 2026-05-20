@@ -4,6 +4,9 @@ import { AdminPortalUsersPage } from "../pages/AdminPortalUsersPage.js";
 import { CartPage } from "../pages/CartPage.js";
 import { CategoryBrowsePage } from "../pages/CategoryBrowsePage.js";
 import { ChangePasswordPage } from "../pages/ChangePasswordPage.js";
+import { SetInitialPasswordPage } from "../pages/SetInitialPasswordPage.js";
+import { AdminPortalUserCreatePage } from "../pages/AdminPortalUserCreatePage.js";
+import { AdminPortalUserProfilePage } from "../pages/AdminPortalUserProfilePage.js";
 import { CheckoutPage } from "../pages/CheckoutPage.js";
 import { CheckoutPaymentPage } from "../pages/CheckoutPaymentPage.js";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage.js";
@@ -51,6 +54,9 @@ export const implementationRegistry: ImplementationRegistry = {
   login: LoginPage,
   forgotPassword: ForgotPasswordPage,
   changePassword: ChangePasswordPage,
+  setInitialPassword: SetInitialPasswordPage,
+  adminPortalUserCreate: AdminPortalUserCreatePage,
+  adminPortalUserProfile: AdminPortalUserProfilePage,
   vendorSignup: VendorSignupPage,
   shopperSignup: ShopperSignupPage,
   profile: ProfilePage,

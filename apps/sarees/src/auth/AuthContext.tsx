@@ -6,12 +6,17 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode
+  type ReactNode,
 } from "react";
+import { getCommerceTenantId } from "../lib/commerceApi.js";
 
 export type PortalRole = "shopper" | "vendor" | "admin";
 
-const AUTH_STORAGE = "webkitfx.auth";
+const LEGACY_AUTH_STORAGE = "webkitfx.auth";
+
+function authStorageKey(tenantId: string = getCommerceTenantId()): string {
+  return `webkitfx.auth.${tenantId}`;
+}
 
 export type AuthState =
   | { status: "anonymous" }
@@ -22,6 +27,7 @@ export type SignInOptions = { role?: PortalRole; accessToken?: string };
 
 type AuthContextValue = {
   auth: AuthState;
+  tenantId: string;
   /**
    * `payload` is JsonForm values. Pass `accessToken` from Commerce.Api login/register.
    * `options.role` overrides role claim when the API returns a different shape.
@@ -35,26 +41,39 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function readStoredAuth(tenantId: string): AuthState {
+  try {
+    const key = authStorageKey(tenantId);
+    const raw = localStorage.getItem(key) ?? sessionStorage.getItem(key);
+    if (!raw) return { status: "anonymous" };
+    const s = JSON.parse(raw) as {
+      accessToken?: string;
+      role?: PortalRole;
+      payload?: Record<string, unknown>;
+    };
+    if (s.accessToken && s.role && s.payload) {
+      return { status: "signedIn", role: s.role, accessToken: s.accessToken, payload: s.payload };
+    }
+  } catch {
+    localStorage.removeItem(authStorageKey(tenantId));
+    sessionStorage.removeItem(authStorageKey(tenantId));
+  }
+  return { status: "anonymous" };
+}
+
+function clearLegacyAuthStorage(): void {
+  localStorage.removeItem(LEGACY_AUTH_STORAGE);
+  sessionStorage.removeItem(LEGACY_AUTH_STORAGE);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [auth, setAuth] = useState<AuthState>({ status: "anonymous" });
+  const tenantId = getCommerceTenantId();
+  const [auth, setAuth] = useState<AuthState>(() => readStoredAuth(tenantId));
 
   useEffect(() => {
-    try {
-      const raw =
-        localStorage.getItem(AUTH_STORAGE) ?? sessionStorage.getItem(AUTH_STORAGE);
-      if (!raw) return;
-      const s = JSON.parse(raw) as {
-        accessToken?: string;
-        role?: PortalRole;
-        payload?: Record<string, unknown>;
-      };
-      if (s.accessToken && s.role && s.payload)
-        setAuth({ status: "signedIn", role: s.role, accessToken: s.accessToken, payload: s.payload });
-    } catch {
-      localStorage.removeItem(AUTH_STORAGE);
-      sessionStorage.removeItem(AUTH_STORAGE);
-    }
-  }, []);
+    clearLegacyAuthStorage();
+    setAuth(readStoredAuth(tenantId));
+  }, [tenantId]);
 
   const signInMember = useCallback((payload: Record<string, unknown>, options?: SignInOptions) => {
     const fromApi =
@@ -68,11 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth({ status: "signedIn", role, accessToken, payload });
 
     const remember = getAtPath(payload, "session.rememberMe") === true;
+    const tid = getCommerceTenantId();
+    const key = authStorageKey(tid);
+    clearLegacyAuthStorage();
     if (accessToken) {
       const packed = JSON.stringify({ accessToken, role, payload });
-      sessionStorage.setItem(AUTH_STORAGE, packed);
-      if (remember) localStorage.setItem(AUTH_STORAGE, packed);
-      else localStorage.removeItem(AUTH_STORAGE);
+      sessionStorage.setItem(key, packed);
+      if (remember) localStorage.setItem(key, packed);
+      else localStorage.removeItem(key);
     }
   }, []);
 
@@ -81,8 +103,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => {
-    sessionStorage.removeItem(AUTH_STORAGE);
-    localStorage.removeItem(AUTH_STORAGE);
+    const key = authStorageKey(getCommerceTenantId());
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+    clearLegacyAuthStorage();
     setAuth({ status: "anonymous" });
   }, []);
 
@@ -91,8 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [auth]);
 
   const value = useMemo(
-    () => ({ auth, signInMember, continueGuest, signOut, getAccessToken }),
-    [auth, signInMember, continueGuest, signOut, getAccessToken]
+    () => ({ auth, tenantId, signInMember, continueGuest, signOut, getAccessToken }),
+    [auth, tenantId, signInMember, continueGuest, signOut, getAccessToken]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

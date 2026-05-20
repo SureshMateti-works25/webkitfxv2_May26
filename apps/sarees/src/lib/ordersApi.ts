@@ -1,4 +1,4 @@
-import { commerceTenantHeaders, DEFAULT_COMMERCE_TENANT_ID } from "./commerceApi.js";
+import { commerceTenantHeaders, getCommerceTenantId } from "./commerceApi.js";
 import { formatMinor } from "./checkoutApi.js";
 import type { ShippingAddress, StorefrontOrder, StorefrontOrderLine } from "./checkoutApi.js";
 
@@ -28,7 +28,7 @@ function authHeaders(token: string): HeadersInit {
   return {
     ...commerceTenantHeaders(),
     Authorization: `Bearer ${token}`,
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getCommerceTenantId(),
   };
 }
 

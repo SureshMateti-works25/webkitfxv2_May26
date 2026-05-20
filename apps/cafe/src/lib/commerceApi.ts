@@ -39,6 +39,8 @@ export type AuthSuccess = {
   storefrontMode: string;
   permissions: string[];
   features: string[];
+  mustChangePassword?: boolean;
+  permissionRole?: string;
 };
 
 async function parseAuthResponse(res: Response): Promise<AuthSuccess> {
@@ -58,13 +60,18 @@ async function parseAuthResponse(res: Response): Promise<AuthSuccess> {
     storefrontMode: String(data.storefrontMode ?? getStorefrontMode()),
     permissions: Array.isArray(data.permissions) ? data.permissions.map(String) : [],
     features: Array.isArray(data.features) ? data.features.map(String) : [],
+    mustChangePassword: Boolean(data.mustChangePassword ?? data.MustChangePassword ?? false),
+    permissionRole:
+      data.permissionRole == null && data.PermissionRole == null
+        ? undefined
+        : String(data.permissionRole ?? data.PermissionRole ?? ""),
   };
 }
 
 export async function loginWithPassword(email: string, password: string): Promise<AuthSuccess> {
   const res = await fetch(`${BASE}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
+    headers: { "Content-Type": "application/json", ...commerceTenantHeaders() },
     body: JSON.stringify({ email, password }),
   });
   return parseAuthResponse(res);
@@ -80,7 +87,7 @@ export type RegisterParams = {
 export async function registerAccount(params: RegisterParams): Promise<AuthSuccess> {
   const res = await fetch(`${BASE}/api/v1/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
+    headers: { "Content-Type": "application/json", ...commerceTenantHeaders() },
     body: JSON.stringify({
       email: params.email,
       password: params.password,
@@ -91,26 +98,10 @@ export async function registerAccount(params: RegisterParams): Promise<AuthSucce
   return parseAuthResponse(res);
 }
 
-export async function changePassword(accessToken: string, currentPassword: string, newPassword: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/v1/auth/password/change`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ currentPassword, newPassword }),
-  });
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error || `HTTP ${res.status}`);
-  }
-}
-
 export async function forgotPassword(email: string, newPassword: string): Promise<void> {
   const res = await fetch(`${BASE}/api/v1/auth/password/forgot`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
+    headers: { "Content-Type": "application/json", ...commerceTenantHeaders() },
     body: JSON.stringify({ email, newPassword }),
   });
   if (!res.ok) {
@@ -904,6 +895,11 @@ export type CommercePortalUserDirectoryRow = {
   role: string;
   createdAt: string;
   loginDisabled: boolean;
+  mustChangePassword: boolean;
+};
+
+export type CommercePortalUserDetail = CommercePortalUserDirectoryRow & {
+  profile: Record<string, unknown> | null;
 };
 
 function normalizePortalUserDirectoryRow(o: Record<string, unknown>): CommercePortalUserDirectoryRow {
@@ -913,7 +909,18 @@ function normalizePortalUserDirectoryRow(o: Record<string, unknown>): CommercePo
     role: String(o.role ?? o.Role ?? ""),
     createdAt: String(o.createdAt ?? o.CreatedAt ?? ""),
     loginDisabled: Boolean(o.loginDisabled ?? o.LoginDisabled ?? false),
+    mustChangePassword: Boolean(o.mustChangePassword ?? o.MustChangePassword ?? false),
   };
+}
+
+function normalizePortalUserDetail(o: Record<string, unknown>): CommercePortalUserDetail {
+  const base = normalizePortalUserDirectoryRow(o);
+  const profileRaw = o.profile ?? o.Profile;
+  let profile: Record<string, unknown> | null = null;
+  if (profileRaw != null && typeof profileRaw === "object" && !Array.isArray(profileRaw)) {
+    profile = profileRaw as Record<string, unknown>;
+  }
+  return { ...base, profile };
 }
 
 /** Admin directory: portal accounts for the tenant (filter by role). */
@@ -933,19 +940,94 @@ export async function listAdminPortalUsers(
   return arr.map((x) => normalizePortalUserDirectoryRow(x as Record<string, unknown>));
 }
 
+export async function getAdminPortalUser(
+  accessToken: string,
+  userId: string
+): Promise<CommercePortalUserDetail> {
+  const res = await fetch(`${BASE}/api/v1/admin/portal-users/${encodeURIComponent(userId.trim())}`, {
+    headers: commerceAuthorizedHeaders(accessToken),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizePortalUserDetail((await res.json()) as Record<string, unknown>);
+}
+
+export type CreateAdminPortalUserParams = {
+  email: string;
+  temporaryPassword: string;
+  portalRole: "vendor" | "shopper";
+  profile?: Record<string, unknown>;
+  primaryAssignment?: { roleKey: string; portalBaseRole: "vendor" | "shopper" };
+};
+
+export async function createAdminPortalUser(
+  accessToken: string,
+  params: CreateAdminPortalUserParams
+): Promise<CommercePortalUserDetail> {
+  const res = await fetch(`${BASE}/api/v1/admin/portal-users`, {
+    method: "POST",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify({
+      email: params.email,
+      temporaryPassword: params.temporaryPassword,
+      portalRole: params.portalRole,
+      profile: params.profile ?? undefined,
+      primaryAssignment: params.primaryAssignment ?? undefined,
+    }),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizePortalUserDetail((await res.json()) as Record<string, unknown>);
+}
+
+export type PatchAdminPortalUserParams = {
+  loginDisabled?: boolean;
+  profile?: Record<string, unknown>;
+  resetTemporaryPassword?: string;
+};
+
+/** Admin: update portal user profile, login flag, or reset temporary password. */
+export async function patchAdminPortalUser(
+  accessToken: string,
+  userId: string,
+  params: PatchAdminPortalUserParams
+): Promise<CommercePortalUserDetail> {
+  const res = await fetch(`${BASE}/api/v1/admin/portal-users/${encodeURIComponent(userId.trim())}`, {
+    method: "PATCH",
+    headers: commerceAuthorizedHeaders(accessToken),
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
+  return normalizePortalUserDetail((await res.json()) as Record<string, unknown>);
+}
+
 /** Admin: enable or disable password login for a portal user (not yourself). */
 export async function patchAdminPortalUserLogin(
   accessToken: string,
   userId: string,
   loginDisabled: boolean
 ): Promise<CommercePortalUserDirectoryRow> {
-  const res = await fetch(`${BASE}/api/v1/admin/portal-users/${encodeURIComponent(userId.trim())}`, {
-    method: "PATCH",
-    headers: commerceAuthorizedHeaders(accessToken),
-    body: JSON.stringify({ loginDisabled }),
+  const detail = await patchAdminPortalUser(accessToken, userId, { loginDisabled });
+  return detail;
+}
+
+/** Set new password; omit currentPassword when mustChangePassword is active. */
+export async function changePassword(
+  accessToken: string,
+  currentPassword: string | null,
+  newPassword: string
+): Promise<void> {
+  const body: Record<string, string> = { newPassword };
+  if (currentPassword != null && currentPassword.length > 0) {
+    body.currentPassword = currentPassword;
+  }
+  const res = await fetch(`${BASE}/api/v1/auth/password/change`, {
+    method: "POST",
+    headers: { ...commerceAuthorizedHeaders(accessToken), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
-  return normalizePortalUserDirectoryRow((await res.json()) as Record<string, unknown>);
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
 }
 
 /**
@@ -1677,6 +1759,8 @@ export type AuthMeResponse = {
   vertical?: string | null;
   permissions: string[];
   features: string[];
+  mustChangePassword: boolean;
+  profile: Record<string, unknown> | null;
 };
 
 export async function fetchAuthMe(accessToken: string): Promise<AuthMeResponse> {
@@ -1697,6 +1781,11 @@ export async function fetchAuthMe(accessToken: string): Promise<AuthMeResponse> 
     vertical: data.vertical == null ? null : String(data.vertical),
     permissions: Array.isArray(data.permissions) ? data.permissions.map(String) : [],
     features: Array.isArray(data.features) ? data.features.map(String) : [],
+    mustChangePassword: Boolean(data.mustChangePassword ?? data.MustChangePassword ?? false),
+    profile:
+      data.profile != null && typeof data.profile === "object" && !Array.isArray(data.profile)
+        ? (data.profile as Record<string, unknown>)
+        : null,
   };
 }
 

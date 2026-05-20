@@ -9,7 +9,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "Starting Postgres (host port 54330)..." -ForegroundColor Cyan
+Write-Host "Starting Postgres (host port 25432)..." -ForegroundColor Cyan
 docker compose -f $compose up -d
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-Write-Host "Postgres ready. Connection: Host=localhost;Port=54330;Database=catalog;Username=catalog;Password=catalog" -ForegroundColor Green
+Write-Host "Postgres ready. Connection: Host=localhost;Port=25432;Database=catalog;Username=catalog;Password=catalog" -ForegroundColor Green

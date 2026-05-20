@@ -27,6 +27,8 @@ import { VendorProductStorefrontPage } from "./pages/VendorProductStorefrontPage
 import { LookupAdminPage } from "./pages/LookupAdminPage.js";
 import { StorefrontSponsoredAdsAdminPage } from "./pages/StorefrontSponsoredAdsAdminPage.js";
 import { AdminPortalUsersPage } from "./pages/AdminPortalUsersPage.js";
+import { RolesAdminPage } from "./pages/RolesAdminPage.js";
+import { UserRoleAssignmentsPage } from "./pages/UserRoleAssignmentsPage.js";
 import { SearchPage } from "./pages/SearchPage.js";
 import { DevApiPing } from "./dev/DevApiPing.js";
 

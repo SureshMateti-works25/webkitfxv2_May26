@@ -118,11 +118,31 @@ public static class StorefrontOrderManagementEndpoints
     {
         var tenantFail = await TenantGate.RequireTenantAsync(req.HttpContext, tenantContext, audit, ct);
         if (tenantFail is not null) return tenantFail;
-        _ = req.ResolveTenantId(tenantContext);
+        var tenantId = req.ResolveTenantId(tenantContext)!;
 
-        return Results.Json(
-            new { error = "Admins cannot change fulfillment. Vendors pack and ship; use GET to monitor orders." },
-            statusCode: 403);
+        var order = await db.StorefrontOrders
+            .Include(o => o.Lines)
+            .FirstOrDefaultAsync(o => o.TenantId == tenantId && o.Id == orderId.Trim(), ct);
+        if (order is null) return Results.NotFound();
+
+        if (!await FulfillmentStatusLookup.IsCafeVerticalOrderAsync(db, tenantId, order.ProductTypeId, ct))
+        {
+            return Results.Json(
+                new
+                {
+                    error =
+                        "Admins cannot change fulfillment on non-café orders. Vendors pack and ship; use GET to monitor."
+                },
+                statusCode: 403);
+        }
+
+        var allowed = await FulfillmentStatusLookup.LoadVendorAssignableForOrderAsync(db, tenantId, order, ct);
+        var err = ApplyPatch(order, body, allowed);
+        if (err is not null) return Results.BadRequest(new { error = err });
+
+        await db.SaveChangesAsync(ct);
+        var progression = await FulfillmentStatusLookup.LoadProgressionForOrderAsync(db, tenantId, order, ct);
+        return Results.Ok(StorefrontOrderDtoMapper.ToDto(order, fulfillmentProgression: progression));
     }
 
     private static async Task<IResult> VendorListOrders(

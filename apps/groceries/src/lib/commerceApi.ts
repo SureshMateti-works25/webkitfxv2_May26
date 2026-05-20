@@ -23,11 +23,16 @@ const BASE =
       : "http://localhost:5055";
 
 /** Default tenant for Commerce.Api (header `X-Tenant-Id`). */
-export const DEFAULT_COMMERCE_TENANT_ID =
-  (import.meta.env.VITE_COMMERCE_TENANT_ID as string | undefined)?.trim() || "t_grocery";
+export function getCommerceTenantId(): string {
+  return (
+    (import.meta.env.VITE_COMMERCE_TENANT_ID as string | undefined)?.trim() || "t_grocery"
+  );
+}
+
+export const DEFAULT_COMMERCE_TENANT_ID = getCommerceTenantId();
 
 const tenantHeader = (): Record<string, string> => ({
-  "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+  "X-Tenant-Id": getCommerceTenantId(),
 });
 
 export type AuthSuccess = {
@@ -203,7 +208,7 @@ export function commerceAuthorizedHeaders(accessToken: string): HeadersInit {
   return {
     Accept: "application/json",
     "Content-Type": "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getCommerceTenantId(),
     Authorization: `Bearer ${accessToken}`,
   };
 }
@@ -211,7 +216,7 @@ export function commerceAuthorizedHeaders(accessToken: string): HeadersInit {
 export function commerceTenantHeaders(): HeadersInit {
   return {
     Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getCommerceTenantId(),
   };
 }
 
@@ -1523,7 +1528,7 @@ export async function uploadVendorProductMedia(
 
   const headers: HeadersInit = {
     Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getCommerceTenantId(),
     Authorization: `Bearer ${accessToken}`,
   };
 
@@ -1557,7 +1562,7 @@ export async function uploadTenantMediaAsset(accessToken: string, file: File): P
 
   const headers: HeadersInit = {
     Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getCommerceTenantId(),
     Authorization: `Bearer ${accessToken}`,
   };
 

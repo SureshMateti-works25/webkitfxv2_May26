@@ -7,8 +7,8 @@ services:
       POSTGRES_PASSWORD: catalog
       POSTGRES_DB: catalog
     ports:
-      # 55432 is often blocked on Windows (hypervisor / excluded range); 54330 avoids that.
-      - "54330:5432"
+      # Use 54332 on Windows if 54330 is in an excluded port range (Hyper-V / WSL).
+      - "25432:5432"
     volumes:
       - catalog_pg_data:/var/lib/postgresql/data
 

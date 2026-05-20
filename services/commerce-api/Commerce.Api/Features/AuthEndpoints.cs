@@ -263,6 +263,19 @@ public static class AuthEndpoints
         var resolved = await AuthRoleResolver.ResolveAsync(db, user, ct);
         var permissions = await AuthRoleResolver.PermissionsForUserAsync(
             rbac, tenantId, resolved.PermissionRoleKey, storefrontMode, ct);
+        object? profile = null;
+        if (!string.IsNullOrWhiteSpace(user.ProfileJson))
+        {
+            try
+            {
+                profile = JsonSerializer.Deserialize<object>(user.ProfileJson);
+            }
+            catch
+            {
+                profile = null;
+            }
+        }
+
         return Results.Ok(new
         {
             userId = user.Id,
@@ -273,7 +286,9 @@ public static class AuthEndpoints
             storefrontMode,
             vertical = tenant.Vertical,
             permissions,
-            features = await rbac.FeaturesForTenantAsync(tenantId, storefrontMode, ct)
+            features = await rbac.FeaturesForTenantAsync(tenantId, storefrontMode, ct),
+            mustChangePassword = user.MustChangePassword,
+            profile
         });
     }
 
@@ -308,8 +323,8 @@ public static class AuthEndpoints
         if (string.IsNullOrWhiteSpace(actorUserId) || string.IsNullOrWhiteSpace(tenantId))
             return Results.Unauthorized();
 
-        if (string.IsNullOrWhiteSpace(body.CurrentPassword) || string.IsNullOrWhiteSpace(body.NewPassword))
-            return Results.BadRequest(new { error = "Current password and new password are required." });
+        if (string.IsNullOrWhiteSpace(body.NewPassword))
+            return Results.BadRequest(new { error = "New password is required." });
         if (body.NewPassword.Length < 8)
             return Results.BadRequest(new { error = "New password must be at least 8 characters." });
 
@@ -321,23 +336,31 @@ public static class AuthEndpoints
                 new { error = "This account has been disabled. Contact support if you need help." },
                 statusCode: StatusCodes.Status403Forbidden);
 
-        var verify = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, body.CurrentPassword);
-        if (verify == PasswordVerificationResult.Failed)
+        var mustChangeOnly = user.MustChangePassword;
+        if (!mustChangeOnly && string.IsNullOrWhiteSpace(body.CurrentPassword))
+            return Results.BadRequest(new { error = "Current password and new password are required." });
+
+        if (!mustChangeOnly)
         {
-            await audit.RecordAsync(
-                AuditActions.AuthPasswordChange,
-                "failure",
-                tenantId,
-                user.Id,
-                "portal_user",
-                user.Id,
-                new { reason = "bad_current_password" },
-                http,
-                ct);
-            return Results.Json(new { error = "Current password is incorrect." }, statusCode: StatusCodes.Status401Unauthorized);
+            var verify = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, body.CurrentPassword);
+            if (verify == PasswordVerificationResult.Failed)
+            {
+                await audit.RecordAsync(
+                    AuditActions.AuthPasswordChange,
+                    "failure",
+                    tenantId,
+                    user.Id,
+                    "portal_user",
+                    user.Id,
+                    new { reason = "bad_current_password" },
+                    http,
+                    ct);
+                return Results.Json(new { error = "Current password is incorrect." }, statusCode: StatusCodes.Status401Unauthorized);
+            }
         }
 
         user.PasswordHash = passwordHasher.HashPassword(user, body.NewPassword);
+        user.MustChangePassword = false;
         await db.SaveChangesAsync(ct);
 
         await audit.RecordAsync(
@@ -347,7 +370,7 @@ public static class AuthEndpoints
             user.Id,
             "portal_user",
             user.Id,
-            new { via = "self_service" },
+            new { via = mustChangeOnly ? "first_login_setup" : "self_service" },
             http,
             ct);
 
@@ -461,7 +484,8 @@ public static class AuthEndpoints
             tenant.Id,
             tenant.StorefrontMode,
             permissions.ToArray(),
-            (await rbac.FeaturesForTenantAsync(tenant.Id, tenant.StorefrontMode, ct)).ToArray());
+            (await rbac.FeaturesForTenantAsync(tenant.Id, tenant.StorefrontMode, ct)).ToArray(),
+            user.MustChangePassword);
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToUpperInvariant();
@@ -510,5 +534,6 @@ public static class AuthEndpoints
         string TenantId,
         string StorefrontMode,
         string[] Permissions,
-        string[] Features);
+        string[] Features,
+        bool MustChangePassword);
 }

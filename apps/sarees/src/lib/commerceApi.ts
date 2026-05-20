@@ -23,6 +23,8 @@ const BASE =
       ? ""
       : "http://localhost:5055";
 
+const storefrontRuntime = readStorefrontRuntimeFromEnv();
+
 export type AuthSuccess = {
   accessToken: string;
   tokenType: string;
@@ -59,7 +61,7 @@ async function parseAuthResponse(res: Response): Promise<AuthSuccess> {
 export async function loginWithPassword(email: string, password: string): Promise<AuthSuccess> {
   const res = await fetch(`${BASE}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
+    headers: { "Content-Type": "application/json", ...commerceTenantHeaders() },
     body: JSON.stringify({ email, password }),
   });
   return parseAuthResponse(res);
@@ -75,7 +77,7 @@ export type RegisterParams = {
 export async function registerAccount(params: RegisterParams): Promise<AuthSuccess> {
   const res = await fetch(`${BASE}/api/v1/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
+    headers: { "Content-Type": "application/json", ...commerceTenantHeaders() },
     body: JSON.stringify({
       email: params.email,
       password: params.password,
@@ -105,7 +107,7 @@ export async function changePassword(accessToken: string, currentPassword: strin
 export async function forgotPassword(email: string, newPassword: string): Promise<void> {
   const res = await fetch(`${BASE}/api/v1/auth/password/forgot`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...runtimeTenantHeaders() },
+    headers: { "Content-Type": "application/json", ...commerceTenantHeaders() },
     body: JSON.stringify({ email, newPassword }),
   });
   if (!res.ok) {
@@ -159,8 +161,13 @@ export function mediaAssetUrl(storageKey: string): string {
 }
 
 /** Default tenant for Commerce.Api (header `X-Tenant-Id`). */
-export const DEFAULT_COMMERCE_TENANT_ID =
-  (import.meta.env.VITE_COMMERCE_TENANT_ID as string | undefined)?.trim() || "t1";
+export function getCommerceTenantId(): string {
+  return storefrontRuntime.tenantId;
+}
+
+export const DEFAULT_COMMERCE_TENANT_ID = getCommerceTenantId();
+
+export const STOREFRONT_MODE = storefrontRuntime.storefrontMode;
 
 /**
  * Storefront vertical: `application_type` lookup row id (e.g. `app_sr`).
@@ -184,7 +191,7 @@ export function commerceAuthorizedHeaders(accessToken: string): HeadersInit {
   return {
     Accept: "application/json",
     "Content-Type": "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
+    "X-Tenant-Id": getCommerceTenantId(),
     Authorization: `Bearer ${accessToken}`,
   };
 }
@@ -1377,15 +1384,9 @@ export async function uploadVendorProductMedia(
   const sid = options?.skuId?.trim();
   if (sid) fd.append("skuId", sid);
 
-  const headers: HeadersInit = {
-    Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
-    Authorization: `Bearer ${accessToken}`,
-  };
-
   const res = await fetch(`${BASE}/api/v1/media/assets`, {
     method: "POST",
-    headers,
+    headers: commerceAuthorizedHeaders(accessToken),
     body: fd,
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));
@@ -1411,15 +1412,9 @@ export async function uploadTenantMediaAsset(accessToken: string, file: File): P
   const fd = new FormData();
   fd.append("file", file);
 
-  const headers: HeadersInit = {
-    Accept: "application/json",
-    "X-Tenant-Id": DEFAULT_COMMERCE_TENANT_ID,
-    Authorization: `Bearer ${accessToken}`,
-  };
-
   const res = await fetch(`${BASE}/api/v1/media/assets`, {
     method: "POST",
-    headers,
+    headers: commerceAuthorizedHeaders(accessToken),
     body: fd,
   });
   if (!res.ok) throw new Error(await readCommerceErrorMessage(res));

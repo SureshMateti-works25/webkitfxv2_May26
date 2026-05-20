@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
 import { getScreenConfig } from "../config/getScreenConfig.js";
 import {
@@ -144,6 +144,7 @@ function FloorSectionPanel({
 
 export function TableFloorPlanPage() {
   const copy = getScreenConfig("floorPlan");
+  const navigate = useNavigate();
   const { auth, getAccessToken } = useAuth();
   const [floor, setFloor] = useState<CafeFloorPlan | null>(null);
   const [loading, setLoading] = useState(true);
@@ -178,7 +179,7 @@ export function TableFloorPlanPage() {
   }, [load, role]);
 
   const onSelectOrder = (orderId: string) => {
-    window.location.href = `/vendor/orders?order=${encodeURIComponent(orderId)}`;
+    navigate(`/vendor/orders?order=${encodeURIComponent(orderId)}`);
   };
 
   if (auth.status !== "signedIn" || !role) {

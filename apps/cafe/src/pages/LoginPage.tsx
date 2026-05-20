@@ -55,10 +55,27 @@ export function LoginPage() {
                     role,
                     userId: auth.userId,
                     email: auth.email,
+                    permissionRole: auth.permissionRole,
+                    mustChangePassword: auth.mustChangePassword === true,
                   };
-                  signInMember({ ...v, session }, { accessToken: auth.accessToken, role });
+                  signInMember(
+                    { ...v, session },
+                    {
+                      accessToken: auth.accessToken,
+                      role,
+                      mustChangePassword: auth.mustChangePassword === true,
+                    }
+                  );
+                  if (auth.mustChangePassword) {
+                    navigate("/account/set-password", { replace: true });
+                    return;
+                  }
                   const dest =
-                    role === "vendor" ? "/vendor/products" : role === "admin" ? "/admin/vendors" : "/";
+                    role === "vendor"
+                      ? "/vendor/floor"
+                      : role === "admin"
+                        ? "/admin/vendors"
+                        : "/";
                   navigate(dest, { state: { notice: "member-signed-in" } });
                 } catch (e) {
                   setError(formatCommerceApiError(e));

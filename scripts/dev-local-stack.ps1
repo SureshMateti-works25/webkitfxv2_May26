@@ -72,7 +72,7 @@ else {
 }
 
 if ($Apps -eq "api-only") {
-    Write-Host "`n[6/6] API only — ready at http://localhost:5055" -ForegroundColor Green
+    Write-Host "`n[6/6] API only - ready at http://localhost:5055" -ForegroundColor Green
     Write-Host "  Tenant bootstrap: http://localhost:5055/api/v1/tenants/t1/bootstrap" -ForegroundColor DarkGray
     exit 0
 }
@@ -96,15 +96,10 @@ switch ($Apps) {
     }
     "commerce" {
         Write-Host "Sarees: http://localhost:5175 | Groceries: http://localhost:5183" -ForegroundColor DarkGray
-        npx concurrently -k -n sarees,groceries -c green,cyan `
-            "npm run dev -w sarees-market" `
-            "npm run dev -w groceries-market"
+        npx concurrently -k -n sarees,groceries -c green,cyan "npm run dev -w sarees-market" "npm run dev -w groceries-market"
     }
     "all" {
         Write-Host "Sarees: http://localhost:5175 | Groceries: http://localhost:5183 | Cafe: http://localhost:5190" -ForegroundColor DarkGray
-        npx concurrently -k -n sarees,groceries,cafe -c green,cyan,magenta `
-            "npm run dev -w sarees-market" `
-            "npm run dev -w groceries-market" `
-            "npm run dev -w cafe-market"
+        npx concurrently -k -n sarees,groceries,cafe -c green,cyan,magenta "npm run dev -w sarees-market" "npm run dev -w groceries-market" "npm run dev -w cafe-market"
     }
 }

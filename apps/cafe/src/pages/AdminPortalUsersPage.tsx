@@ -2,6 +2,7 @@ import { getAtPath } from "@webkitfxv2/core-engine";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
+import { getPortalUsersAdminScreen } from "../config/getPortalUsersAdminScreen.js";
 import {
   formatCommerceApiError,
   listAdminPortalUsers,
@@ -21,6 +22,7 @@ function formatCreated(iso: string): string {
 }
 
 export function AdminPortalUsersPage({ directory }: AdminPortalUsersPageProps) {
+  const adminCopy = getPortalUsersAdminScreen().copy;
   const { auth, getAccessToken } = useAuth();
   const token = getAccessToken();
   const roleFilter = directory === "vendors" ? "vendor" : "shopper";
@@ -113,6 +115,13 @@ export function AdminPortalUsersPage({ directory }: AdminPortalUsersPageProps) {
           password login (for example after abuse review); they will see a clear message at login.{" "}
           <strong>Enable sign-in</strong> restores access. You cannot change your own account here.
         </p>
+        {directory === "vendors" ? (
+          <p className="lookup-admin-page__lede">
+            <Link className="shell-btn shell-btn--primary" to="/admin/portal-users/new">
+              {String(adminCopy.listCreateCta ?? "Create account")}
+            </Link>
+          </p>
+        ) : null}
       </header>
 
       {error ? (
@@ -138,6 +147,7 @@ export function AdminPortalUsersPage({ directory }: AdminPortalUsersPageProps) {
                   <th scope="col">User id</th>
                   <th scope="col">Created</th>
                   <th scope="col">Sign-in</th>
+                  <th scope="col">Status</th>
                   <th scope="col">Roles</th>
                   <th scope="col">
                     <span className="lookup-admin-page__sr-only">Actions</span>
@@ -157,11 +167,27 @@ export function AdminPortalUsersPage({ directory }: AdminPortalUsersPageProps) {
                       <td>{formatCreated(r.createdAt)}</td>
                       <td>{r.loginDisabled ? "Disabled" : "Allowed"}</td>
                       <td>
+                        {r.mustChangePassword ? (
+                          <span className="lookup-admin-page__hint">
+                            {String(adminCopy.mustChangeBadge ?? "Must set password")}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>
+                        <Link
+                          to={`/admin/portal-users/${encodeURIComponent(r.id)}`}
+                          className="cart-page__linkish"
+                        >
+                          {String(adminCopy.listEditProfile ?? "Profile")}
+                        </Link>
+                        {" · "}
                         <Link
                           to={`/admin/portal-users/${encodeURIComponent(r.id)}/role-assignments`}
                           className="cart-page__linkish"
                         >
-                          Assign roles
+                          Roles
                         </Link>
                       </td>
                       <td>

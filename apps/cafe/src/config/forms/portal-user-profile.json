@@ -1,0 +1,55 @@
+{
+  "id": "portal-user-profile",
+  "title": "Portal user profile",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "1rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Contact",
+        "children": [
+          { "type": "field", "fieldId": "fullName" },
+          { "type": "field", "fieldId": "phone" },
+          { "type": "field", "fieldId": "jobTitle" }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Notes",
+        "children": [{ "type": "field", "fieldId": "notes" }]
+      }
+    ]
+  },
+  "fields": {
+    "fullName": {
+      "binding": "profile.fullName",
+      "widget": "text",
+      "label": "Full name",
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "phone": {
+      "binding": "profile.phone",
+      "widget": "text",
+      "label": "Mobile",
+      "props": { "inputMode": "tel" },
+      "default": ""
+    },
+    "jobTitle": {
+      "binding": "profile.jobTitle",
+      "widget": "text",
+      "label": "Job title",
+      "description": "e.g. Floor manager, Barista, Counter",
+      "default": ""
+    },
+    "notes": {
+      "binding": "profile.notes",
+      "widget": "textarea",
+      "label": "Internal notes",
+      "props": { "rows": 3 },
+      "default": ""
+    }
+  }
+}

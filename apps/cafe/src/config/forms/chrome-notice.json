@@ -12,9 +12,9 @@
       "binding": "notice.message",
       "widget": "marqueeNotice",
       "label": "Notice",
-      "default": "Free shipping over INR 1,999 · New festival collections live now · GST-ready invoices for every order",
+      "default": "Order for pickup or dine-in · Scan your table QR to order · Track prep status on the kitchen queue",
       "props": {
-        "ariaLabel": "Store announcements",
+        "ariaLabel": "Café announcements",
         "repeatCount": 2
       }
     }

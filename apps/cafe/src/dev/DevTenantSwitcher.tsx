@@ -153,7 +153,8 @@ export function DevTenantSwitcher() {
             </button>
           </div>
           <p className="dev-tenant-switcher__note">
-            Sets <code>X-Tenant-Id</code> for all API calls. Reload clears cart/session for the previous tenant.
+            Sets <code>X-Tenant-Id</code> for all API calls (including login). Reload clears cart/session; sign in again
+            for the new tenant if you need an authenticated session.
           </p>
         </div>
       ) : null}

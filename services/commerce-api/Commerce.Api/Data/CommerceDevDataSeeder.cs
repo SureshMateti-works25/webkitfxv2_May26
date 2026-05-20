@@ -1418,7 +1418,7 @@ public static class CommerceDevDataSeeder
 
     /// <summary>
     /// Optional dev site administrator: set <c>DevSeed:AdminEmail</c> and <c>DevSeed:AdminPassword</c> in configuration
-    /// (e.g. appsettings.Development.json). Skips when either is missing or the email already exists for tenant <c>t1</c>.
+    /// (e.g. appsettings.Development.json). Creates one admin <c>portal_users</c> row per active tenant when missing.
     /// </summary>
     public static async Task EnsureDevSiteAdminAsync(
         CommerceDbContext db,
@@ -1435,27 +1435,45 @@ public static class CommerceDevDataSeeder
             return;
         }
 
-        const string tid = "t1";
         var norm = email.Trim().ToUpperInvariant();
-        if (await db.PortalUsers.AnyAsync(u => u.TenantId == tid && u.NormalizedEmail == norm, ct))
+        var tenantIds = await db.Tenants
+            .AsNoTracking()
+            .Where(t => t.IsActive)
+            .Select(t => t.Id)
+            .ToListAsync(ct);
+        if (tenantIds.Count == 0)
+            tenantIds.Add("t1");
+
+        var seeded = 0;
+        foreach (var tid in tenantIds)
+        {
+            if (await db.PortalUsers.AnyAsync(u => u.TenantId == tid && u.NormalizedEmail == norm, ct))
+                continue;
+
+            var user = new PortalUser
+            {
+                Id = "u_" + Guid.NewGuid().ToString("N")[..12],
+                TenantId = tid,
+                Email = email,
+                NormalizedEmail = norm,
+                PasswordHash = "",
+                Role = "admin",
+                ProfileJson = null,
+                CreatedAt = DateTimeOffset.UtcNow,
+                LoginDisabled = false
+            };
+            user.PasswordHash = passwordHasher.HashPassword(user, password);
+            db.PortalUsers.Add(user);
+            seeded++;
+        }
+
+        if (seeded == 0)
             return;
 
-        var id = "u_" + Guid.NewGuid().ToString("N")[..12];
-        var user = new PortalUser
-        {
-            Id = id,
-            TenantId = tid,
-            Email = email,
-            NormalizedEmail = norm,
-            PasswordHash = "",
-            Role = "admin",
-            ProfileJson = null,
-            CreatedAt = DateTimeOffset.UtcNow,
-            LoginDisabled = false
-        };
-        user.PasswordHash = passwordHasher.HashPassword(user, password);
-        db.PortalUsers.Add(user);
         await db.SaveChangesAsync(ct);
-        logger.LogInformation("Seeded dev site admin portal user {Email} (role admin).", email);
+        logger.LogInformation(
+            "Seeded dev site admin portal user {Email} (role admin) for {Count} tenant(s).",
+            email,
+            seeded);
     }
 }

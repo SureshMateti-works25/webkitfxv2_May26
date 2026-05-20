@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
 import { formatCommerceApiError } from "../lib/commerceApi.js";
 import { KdsOrderHeader } from "../components/KdsOrderHeader.js";
@@ -10,7 +10,9 @@ import { getScreenConfig } from "../config/getScreenConfig.js";
 import { enrichOrderForKds, formatOrderTableLabel } from "../lib/orderTableDisplay.js";
 import {
   formatMinor,
+  listAdminOrders,
   listVendorOrders,
+  patchAdminOrder,
   patchVendorOrder,
   type StorefrontOrderExtended,
 } from "../lib/ordersApi.js";
@@ -18,49 +20,66 @@ import {
 export function VendorOrdersPage() {
   const copy = getScreenConfig("vendorOrders");
   const { auth, getAccessToken } = useAuth();
+  const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<StorefrontOrderExtended[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => searchParams.get("order")?.trim() || null
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const portalRole =
+    auth.status === "signedIn" && (auth.role === "vendor" || auth.role === "admin")
+      ? auth.role
+      : null;
 
   const selected = orders.find((o) => o.id === selectedId) ?? null;
   const selectedKds = selected ? enrichOrderForKds(selected) : null;
 
   const load = useCallback(async () => {
     const token = getAccessToken();
-    if (!token) return;
+    if (!token || !portalRole) return;
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
     try {
-      const list = await listVendorOrders(token);
+      const list =
+        portalRole === "admin" ? await listAdminOrders(token) : await listVendorOrders(token);
       setOrders(list);
-      if (list.length > 0 && !list.some((o) => o.id === selectedId)) setSelectedId(list[0]!.id);
+      const fromQuery = searchParams.get("order")?.trim();
+      if (fromQuery && list.some((o) => o.id === fromQuery)) {
+        setSelectedId(fromQuery);
+      } else if (list.length > 0 && !list.some((o) => o.id === selectedId)) {
+        setSelectedId(list[0]!.id);
+      }
     } catch (e) {
       setError(formatCommerceApiError(e));
     } finally {
       setLoading(false);
     }
-  }, [getAccessToken, selectedId]);
+  }, [getAccessToken, portalRole, searchParams, selectedId]);
 
   useEffect(() => {
-    if (auth.status === "signedIn" && auth.role === "vendor") void load();
-  }, [auth.status, auth.role, load]);
+    if (portalRole) void load();
+  }, [portalRole, load]);
 
-  if (auth.status !== "signedIn" || auth.role !== "vendor") {
+  if (auth.status !== "signedIn" || !portalRole) {
     return <Navigate to="/login" replace />;
   }
 
   const onSave = async (patch: { fulfillmentStatus: string; trackingNote: string }) => {
     const token = getAccessToken();
-    if (!token || !selected) return;
+    if (!token || !selected || !portalRole) return;
     setSaving(true);
     setError(null);
     setSuccessMessage(null);
     try {
-      const updated = await patchVendorOrder(token, selected.id, patch);
+      const updated =
+        portalRole === "admin"
+          ? await patchAdminOrder(token, selected.id, patch)
+          : await patchVendorOrder(token, selected.id, patch);
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
       const statusLabel =
         patch.fulfillmentStatus.charAt(0).toUpperCase() + patch.fulfillmentStatus.slice(1);

@@ -109,8 +109,8 @@
       "login": "Login"
     },
     "notificationBar": {
-      "message": "Free shipping over INR 1,999 · New festival collections live now · GST-ready invoices for every order",
-      "ariaLabel": "Store announcements"
+      "message": "Order for pickup or dine-in · Scan your table QR to order · Track prep status on the kitchen queue",
+      "ariaLabel": "Café announcements"
     },
     "navByAuth": {
       "guest": [
@@ -153,9 +153,11 @@
       ],
       "admin": [
         { "label": "Profile", "path": "/account/profile" },
-        { "label": "Vendors", "path": "/admin/vendors" },
+        { "label": "Team accounts", "path": "/admin/vendors" },
+        { "label": "Create account", "path": "/admin/portal-users/new" },
         { "label": "Shoppers", "path": "/admin/shoppers" },
         { "label": "Orders", "path": "/admin/orders" },
+        { "label": "Kitchen queue", "path": "/vendor/orders" },
         { "label": "Floor plan", "path": "/vendor/floor" },
         { "label": "Table management", "path": "/vendor/tables" },
         { "label": "Admin lookups mgt", "path": "/admin/lookups" },

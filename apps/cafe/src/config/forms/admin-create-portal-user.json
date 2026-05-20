@@ -1,0 +1,114 @@
+{
+  "id": "admin-create-portal-user",
+  "title": "Create portal account",
+  "layout": {
+    "type": "stack",
+    "axis": "vertical",
+    "gap": "1.25rem",
+    "children": [
+      {
+        "type": "region",
+        "name": "Sign-in",
+        "children": [
+          { "type": "field", "fieldId": "email" },
+          { "type": "field", "fieldId": "temporaryPassword" },
+          { "type": "field", "fieldId": "portalRole" }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Permission role",
+        "description": "Primary assignment used at sign-in (recommended for café staff).",
+        "children": [
+          { "type": "field", "fieldId": "permissionRoleKey" },
+          { "type": "field", "fieldId": "portalBaseRole" }
+        ]
+      },
+      {
+        "type": "region",
+        "name": "Profile",
+        "children": [
+          { "type": "field", "fieldId": "fullName" },
+          {
+            "type": "grid",
+            "columns": "repeat(auto-fill, minmax(min(100%, 14rem), 1fr))",
+            "children": [
+              { "type": "field", "fieldId": "phone" },
+              { "type": "field", "fieldId": "jobTitle" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "email": {
+      "binding": "account.email",
+      "widget": "text",
+      "label": "Email (login)",
+      "props": { "autoComplete": "username", "inputMode": "email" },
+      "default": "",
+      "rules": [{ "kind": "required" }]
+    },
+    "temporaryPassword": {
+      "binding": "account.temporaryPassword",
+      "widget": "password",
+      "label": "Temporary password",
+      "description": "Share securely; user must choose a new password on first sign-in.",
+      "props": { "autoComplete": "new-password" },
+      "default": "",
+      "rules": [{ "kind": "required" }, { "kind": "minLength", "value": 8 }]
+    },
+    "portalRole": {
+      "binding": "account.portalRole",
+      "widget": "select",
+      "label": "Portal access",
+      "description": "Vendor = operations (kitchen, floor). Shopper = guest ordering only.",
+      "props": {
+        "options": [
+          { "value": "vendor", "label": "Vendor / staff" },
+          { "value": "shopper", "label": "Shopper" }
+        ]
+      },
+      "default": "vendor",
+      "rules": [{ "kind": "required" }]
+    },
+    "permissionRoleKey": {
+      "binding": "assignment.roleKey",
+      "widget": "select",
+      "label": "Permission role",
+      "props": { "options": [], "placeholderOption": "— Optional —" },
+      "default": ""
+    },
+    "portalBaseRole": {
+      "binding": "assignment.portalBaseRole",
+      "widget": "select",
+      "label": "Portal base role at sign-in",
+      "props": {
+        "options": [
+          { "value": "vendor", "label": "Vendor" },
+          { "value": "shopper", "label": "Shopper" }
+        ]
+      },
+      "default": "vendor"
+    },
+    "fullName": {
+      "binding": "profile.fullName",
+      "widget": "text",
+      "label": "Full name",
+      "default": ""
+    },
+    "phone": {
+      "binding": "profile.phone",
+      "widget": "text",
+      "label": "Mobile",
+      "default": ""
+    },
+    "jobTitle": {
+      "binding": "profile.jobTitle",
+      "widget": "text",
+      "label": "Job title",
+      "default": ""
+    }
+  }
+}

@@ -45,14 +45,16 @@ dotnet run
 
 ### Development: seeded site administrator
 
-When **`DevSeed:AdminEmail`** and **`DevSeed:AdminPassword`** are set (see `appsettings.Development.json`), startup creates one **`portal_users`** row with **`role`: `admin`** if that email is not already registered. Remove or clear those keys to skip. Rotate the password before any shared environment.
+When **`DevSeed:AdminEmail`** and **`DevSeed:AdminPassword`** are set (see `appsettings.Development.json`), startup creates one **`portal_users`** **`admin`** row per **active tenant** when that email is not already registered for that tenant. Remove or clear those keys to skip. Rotate the password before any shared environment.
 
 ### Admin API (JWT role `admin`)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/v1/admin/portal-users` | Bearer, `Admin` policy | Optional query `role=shopper\|vendor\|admin`; returns `id`, `email`, `role`, `createdAt`, `loginDisabled` for `X-Tenant-Id` |
-| PATCH | `/api/v1/admin/portal-users/{userId}` | Bearer, `Admin` policy | Body `{ "loginDisabled": true \| false }` toggles password login; cannot target your own user id |
+| GET | `/api/v1/admin/portal-users` | Bearer, `Admin` policy | Optional query `role=shopper\|vendor\|admin`; returns `id`, `email`, `role`, `createdAt`, `loginDisabled`, `mustChangePassword` |
+| POST | `/api/v1/admin/portal-users` | Bearer, `Admin` policy | Body `{ email, temporaryPassword, portalRole, profile?, primaryAssignment? }` — provisions account with `mustChangePassword: true` |
+| GET | `/api/v1/admin/portal-users/{userId}` | Bearer, `Admin` policy | Profile + flags |
+| PATCH | `/api/v1/admin/portal-users/{userId}` | Bearer, `Admin` policy | `{ loginDisabled?, profile?, resetTemporaryPassword? }` — cannot toggle own `loginDisabled` |
 
 **CORS:** In **Development**, `Program.cs` allows Vite on **http://localhost:5170–5209** and **http://127.0.0.1:5170–5209** (Sarees, Groceries, alternate ports). Add more under **`Cors:Origins`** in `appsettings.Development.json` if needed.
 

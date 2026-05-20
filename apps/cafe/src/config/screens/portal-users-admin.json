@@ -1,0 +1,13 @@
+{
+  "copy": {
+    "createTitle": "Create team account",
+    "createLede": "Provision email, temporary password, and permission role. The user must set a new password on first sign-in.",
+    "profileTitle": "Edit account",
+    "profileLede": "Update profile and sign-in settings. Resetting the temporary password forces a change on next login.",
+    "listCreateCta": "Create account",
+    "listEditProfile": "Profile",
+    "mustChangeBadge": "Must set password",
+    "signInDisabled": "Sign-in disabled",
+    "signInAllowed": "Sign-in allowed"
+  }
+}

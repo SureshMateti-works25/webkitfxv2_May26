@@ -14,4 +14,6 @@ public sealed class PortalUser
     public DateTimeOffset CreatedAt { get; set; }
     /// <summary>When true, password login is rejected until an admin clears the flag.</summary>
     public bool LoginDisabled { get; set; }
+    /// <summary>When true, user must set a new password before using the portal (after admin provisioning).</summary>
+    public bool MustChangePassword { get; set; }
 }

@@ -199,28 +199,31 @@ if (app.Environment.IsDevelopment())
             await CommerceDevDataSeeder.EnsureKalamkariCategoryAsync(db);
         }
 
-        await CommerceDevDataSeeder.EnsureOrderFulfillmentStatusLookupsAsync(db);
-        await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
-        await CommerceDevDataSeeder.EnsureAppTypeLookupSeedAsync(db);
-        await CommerceDevDataSeeder.EnsureCafeOrderWorkflowLookupsAsync(db);
-        await CommerceDevDataSeeder.EnsureCafeTableLookupsAsync(db);
-
-        // Idempotent grocery aisle rows. Disable when Admin owns lookups from scratch.
-        if (!string.Equals(
-                builder.Configuration["Commerce:EnsureGroceryStorefrontAisles"],
-                "false",
-                StringComparison.OrdinalIgnoreCase))
+        if (!skipLookupReseed)
         {
-            await CommerceDevDataSeeder.EnsureProductCategoriesLookupTypeAsync(db);
-            await CommerceDevDataSeeder.EnsureGroceryStorefrontAisleLookupsAsync(db);
-        }
-        else
-        {
-            bootstrapLogger.LogInformation(
-                "Skipping storefront lookup bootstrap (Commerce:EnsureGroceryStorefrontAisles=false).");
-        }
+            await CommerceDevDataSeeder.EnsureOrderFulfillmentStatusLookupsAsync(db);
+            await CommerceDevDataSeeder.EnsureProductTypesLookupAndLinkCategoriesParentAsync(db);
+            await CommerceDevDataSeeder.EnsureAppTypeLookupSeedAsync(db);
+            await CommerceDevDataSeeder.EnsureCafeOrderWorkflowLookupsAsync(db);
+            await CommerceDevDataSeeder.EnsureCafeTableLookupsAsync(db);
 
-        await CommerceDevDataSeeder.EnsureLegacySareeProductTypeAsync(db);
+            // Idempotent grocery aisle rows. Disable when Admin owns lookups from scratch.
+            if (!string.Equals(
+                    builder.Configuration["Commerce:EnsureGroceryStorefrontAisles"],
+                    "false",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                await CommerceDevDataSeeder.EnsureProductCategoriesLookupTypeAsync(db);
+                await CommerceDevDataSeeder.EnsureGroceryStorefrontAisleLookupsAsync(db);
+            }
+            else
+            {
+                bootstrapLogger.LogInformation(
+                    "Skipping storefront lookup bootstrap (Commerce:EnsureGroceryStorefrontAisles=false).");
+            }
+
+            await CommerceDevDataSeeder.EnsureLegacySareeProductTypeAsync(db);
+        }
 
         var mediaRootForSeed = Path.GetFullPath(Path.Combine(
             app.Environment.ContentRootPath,
